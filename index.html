@@ -8,14 +8,15 @@
 <style>
   :root{ --c:#3fe0cf; --bg:#05080c; }
   html,body{margin:0;height:100%;background:var(--bg);overflow:hidden;
-    touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  .btn,.s,.opt,.sw,#fxToggle,#screen,input[type=range]{touch-action:manipulation}
   #screen{position:absolute;inset:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
     color:var(--c);background:var(--bg);line-height:0.92em;letter-spacing:0;white-space:pre;
     display:flex;align-items:center;justify-content:center;}
   /* scene bar */
   #scenes{position:fixed;top:calc(env(safe-area-inset-top) + 10px);left:10px;right:118px;z-index:6;
     display:flex;gap:6px;font-family:ui-monospace,Menlo,monospace;
-    overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;touch-action:pan-x}
   #scenes::-webkit-scrollbar{display:none}
   #scenes .s{flex:none;border:1px solid var(--c);border-radius:8px;background:rgba(127,127,127,.10);color:var(--c);
     font:inherit;font-size:11px;letter-spacing:.06em;padding:7px 10px;cursor:pointer;opacity:.5;white-space:nowrap}
@@ -66,6 +67,10 @@
 <script>
 (function(){
 "use strict";
+/* iOS ignores viewport user-scalable, so block zoom in JS: no pinch, no double-tap */
+document.addEventListener("gesturestart", function(e){ e.preventDefault(); }, {passive:false});
+var _lastTap=0;
+document.addEventListener("touchend", function(e){ var n=Date.now(); if(n-_lastTap<=350) e.preventDefault(); _lastTap=n; }, {passive:false});
 var screen=document.getElementById("screen");
 
 /* ---------- map helpers ---------- */
