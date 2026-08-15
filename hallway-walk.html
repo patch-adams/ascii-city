@@ -74,8 +74,19 @@ sizeGrid();addEventListener("resize",sizeGrid);addEventListener("orientationchan
 
 /* corridor (regenerated per room) */
 var MAP,MH,MW,TARGET;
-function makeCorridor(){ MAP=["#####","#...#","#...#","#...#","D...#","#...#","#...#","#...D","#...#","#...#","#...#","#...T","#...#","#...#","#...#","#...#","#...#","#...#","#...#","#####"];
-  MH=MAP.length;MW=MAP[0].length;TARGET={x:4,y:11}; }
+function seededRnd(s){ s=(s>>>0)||1; return function(){ s=(Math.imul(s,1103515245)+12345)>>>0; return s/4294967296; }; }
+function makeCorridor(seed){                          // each word seeds a DIFFERENT corridor
+  var R=seededRnd(seed||1), len=16+((R()*12)|0), tSide=R()<0.5?0:4, tRow=len-3-((R()*2)|0), rows=[];
+  for(var y=0;y<len;y++){
+    if(y===0||y===len-1){ rows.push("#####"); continue; }
+    var L="#",Rt="#";
+    if(y>2&&y<len-3&&R()<0.14){ if(R()<0.5)L="D"; else Rt="D"; }
+    if(y===tRow){ if(tSide===0)L="T"; else Rt="T"; }
+    rows.push(L+"..."+Rt);
+  }
+  MAP=rows; MH=len; MW=5; TARGET={x:tSide,y:tRow};
+  var faceAng=(tSide===4)?0:Math.PI;
+  WP=[{x:2.5,y:1.5,a:Math.PI/2},{x:2.5,y:Math.max(3,tRow*0.4),a:Math.PI/2},{x:2.5,y:Math.max(4,tRow-2),a:Math.PI/2},{x:2.5,y:tRow+0.5,a:faceAng}]; }
 function Cc(x,y){if(x<0||y<0||x>=MW||y>=MH)return "#";return MAP[y|0][x|0];}
 function solid(x,y){var c=Cc(x,y);return c==="#"||c==="D"||c==="T";}
 function isDoor(x,y){var c=Cc(x,y);return c==="D"||c==="T";}
@@ -102,7 +113,7 @@ function renderHall(){var out="",col=[];for(var x=0;x<W;x++)col[x]=cast(x);var t
 function renderBlack(){ var row=new Array(W+1).join(" ")+"\n"; screen.textContent=new Array(H+1).join(row); }
 /* the point of light: appears small/far, grows closer with each tap; dust thickens as it nears */
 var lightGrow=0;
-function renderVoid(){var out="",cx=W/2,cy=H/2,rad=lightGrow*Math.max(W,H)*0.62,tt=now*.00016,dustThresh=0.999-lightGrow*0.03;
+function renderVoid(){var out="",cx=W/2,cy=H/2,rad=Math.pow(lightGrow,1.7)*Math.max(W,H)*0.74,tt=now*.00016,dustThresh=0.999-lightGrow*0.03;
   for(var y=0;y<H;y++){var r="";for(var x=0;x<W;x++){var dxp=(x-cx)*0.55,dyp=(y-cy),dist=Math.sqrt(dxp*dxp+dyp*dyp),ch=" ";
     if(dist<rad){var k=1-dist/Math.max(1,rad);ch=LIGHT[Math.min(LIGHT.length-1,(k*LIGHT.length)|0)];}
     else if(lightGrow>0.05 && rnd(x,y,(tt*40)|0)>dustThresh)ch="·";
@@ -125,10 +136,10 @@ function toVoid(){ phase="void"; lightGrow=0; act.classList.remove("on");
 }
 function boom(){ phase="booming"; fwd.classList.remove("on"); chord();
   flash.style.opacity=.9; setTimeout(function(){ flash.style.opacity=0; },90);
-  makeCorridor(); cam={x:2.5,y:1.5,ang:Math.PI/2}; doorOpen=0; opening=false; railT=0; roomIndex=0;
+  makeCorridor(1); cam={x:2.5,y:1.5,ang:Math.PI/2}; doorOpen=0; opening=false; railT=0; roomIndex=0;
   setTimeout(function(){ phase="hall"; capMarks=[[.02,"You have a body now. The hall runs ahead — a door is knocking, far down on the left."],[.4,"A door drifts past on your left, light leaking under it."],[.7,"Dust turns in the air. The knock is in your chest now."]]; showCap(capMarks[0][1]); knock(); fwd.classList.add("on"); },260);
 }
-var WP=[{x:2.5,y:1.5,a:Math.PI/2},{x:2.5,y:5.5,a:Math.PI/2},{x:2.5,y:9.2,a:Math.PI/2},{x:2.5,y:11.5,a:0}];
+var WP=[];
 function pathAt(t){var seg=Math.min(2.999,t*3),i=seg|0,f=seg-i,A=WP[i],B=WP[i+1];cam.x=A.x+(B.x-A.x)*f;cam.y=A.y+(B.y-A.y)*f;
   var da=((B.a-A.a+Math.PI)%(2*Math.PI))-Math.PI;cam.ang=A.a+da*f;}
 
@@ -158,7 +169,7 @@ function walkThrough(word){
   window._last=word; roomIndex++;
   chord(); flash.style.opacity=.85; setTimeout(function(){flash.style.opacity=0;},120);
   seedColor(hash(word));
-  makeCorridor(); cam={x:2.5,y:1.5,ang:Math.PI/2}; doorOpen=0; opening=false; railT=0; phase="hall";
+  makeCorridor(hash(word)); cam={x:2.5,y:1.5,ang:Math.PI/2}; doorOpen=0; opening=false; railT=0; phase="hall";
   capMarks=[[.02,"You step through, into <span class='said'>"+esc(word)+"</span>. It builds itself around you as you move — same strange grain, a new shape."],[.55,"It keeps going. Another door waits ahead."]];
   setTimeout(function(){ showCap(capMarks[0][1]); fwd.classList.add("on"); },300);
 }
