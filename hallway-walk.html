@@ -3,183 +3,180 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>The Hallway — walk it</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0908'/%3E%3Crect x='12' y='7' width='9' height='18' rx='1' fill='none' stroke='%23d8b878' stroke-width='1.6'/%3E%3C/svg%3E">
+<title>The Hallway</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0908'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23d8b878'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&family=Space+Mono&display=swap" rel="stylesheet">
 <style>
   :root{--ink:#d8b878;--paper:#0a0908}
-  html,body{margin:0;height:100%;background:var(--paper);overflow:hidden;
-    touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-  #screen{position:absolute;inset:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
-    color:var(--ink);background:var(--paper);line-height:0.92em;white-space:pre;
-    display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 2.6s ease;
-    text-shadow:0 0 5px rgba(216,184,120,.16)}
-  #screen.on{opacity:1}
-  #panel{position:fixed;inset:10px;z-index:3;pointer-events:none;border:2px solid rgba(216,184,120,.28);border-radius:4px;
-    box-shadow:inset 0 0 120px 34px rgba(0,0,0,.72)}
-  #cap{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 108px);z-index:6;
-    max-width:min(30em,86vw);background:#efe7d2;color:#20180c;border:1.5px solid #20180c;border-radius:3px;
-    padding:13px 18px;font-family:"Newsreader",Georgia,serif;font-size:clamp(1.05rem,3.4vw,1.35rem);line-height:1.42;
-    box-shadow:4px 4px 0 rgba(0,0,0,.55);opacity:0;transition:opacity .55s ease;text-align:center}
+  html,body{margin:0;height:100%;background:var(--paper);overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  #screen{position:absolute;inset:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);background:var(--paper);
+    line-height:0.92em;white-space:pre;display:flex;align-items:center;justify-content:center;text-shadow:0 0 6px rgba(216,184,120,.2)}
+  #flash{position:fixed;inset:0;background:#fff;opacity:0;z-index:8;pointer-events:none;transition:opacity .5s ease}
+  #panel{position:fixed;inset:10px;z-index:3;pointer-events:none;border:2px solid rgba(216,184,120,.26);border-radius:4px;box-shadow:inset 0 0 120px 34px rgba(0,0,0,.7)}
+  #cap{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 118px);z-index:6;max-width:min(30em,86vw);
+    background:#efe7d2;color:#20180c;border:1.5px solid #20180c;border-radius:3px;padding:12px 18px;font-family:"Newsreader",Georgia,serif;
+    font-size:clamp(1.05rem,3.4vw,1.32rem);line-height:1.4;box-shadow:4px 4px 0 rgba(0,0,0,.5);opacity:0;transition:opacity .55s ease;text-align:center}
   #cap.on{opacity:1}
   #cap .said{font-style:italic;color:#7a5a1e}
-  #act{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 40px);z-index:6;
-    display:flex;gap:12px;justify-content:center;flex-wrap:wrap;opacity:0;transition:opacity .5s ease}
+  /* the one forward control */
+  #fwd{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 32px);z-index:7;
+    font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#efe7d2;
+    background:rgba(20,16,10,.55);border:1px solid var(--ink);border-radius:999px;padding:16px 30px;cursor:pointer;
+    display:none;align-items:center;gap:10px;opacity:.85}
+  #fwd.on{display:inline-flex}
+  #fwd.push{background:rgba(216,184,120,.28)}
+  #fwd .arw{font-size:16px}
+  /* a normal tap button (intro / end) */
+  #act{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 36px);z-index:7;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;opacity:0;transition:opacity .5s ease}
   #act.on{opacity:1}
-  button.b{font-family:"Space Mono",monospace;font-size:13px;letter-spacing:.05em;color:#efe7d2;background:rgba(20,16,10,.6);
-    border:1px solid var(--ink);border-radius:999px;padding:13px 22px;cursor:pointer}
-  button.b:active{transform:translateY(1px)}
-  input#see{font-family:"Newsreader",serif;font-style:italic;font-size:1.15rem;background:transparent;color:var(--ink);
-    border:0;border-bottom:1px solid var(--ink);text-align:center;width:min(20em,80vw);padding:8px 4px;outline:none}
+  button.b{font-family:"Space Mono",monospace;font-size:13px;color:#efe7d2;background:rgba(20,16,10,.6);border:1px solid var(--ink);border-radius:999px;padding:13px 22px;cursor:pointer}
+  /* the clear TYPE moment */
+  #typebox{position:fixed;inset:0;z-index:9;display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:30px;background:rgba(6,5,4,.55)}
+  #typebox.on{display:flex}
+  #typebox .q{font-family:"Newsreader",serif;font-style:italic;font-size:clamp(1.4rem,5vw,2.1rem);color:#efe7d2;text-align:center;max-width:16em}
+  #see{font-family:"Newsreader",serif;font-size:clamp(1.3rem,5vw,1.9rem);background:transparent;color:var(--ink);border:0;border-bottom:2px solid var(--ink);
+    text-align:center;width:min(16em,84vw);padding:10px 4px;outline:none;caret-color:var(--ink)}
+  #see::placeholder{color:rgba(216,184,120,.4);font-style:italic}
+  #typebox .go{font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.1em;color:#efe7d2;background:transparent;border:1px solid var(--ink);border-radius:999px;padding:11px 20px;cursor:pointer}
 </style>
 </head>
 <body>
 <pre id="screen"></pre>
+<div id="flash"></div>
 <div id="panel"></div>
 <div id="cap"></div>
+<div id="fwd"><span class="arw">↑</span> hold to move forward</div>
 <div id="act"></div>
+<div id="typebox"><div class="q" id="tq">The door opens. What do you see?</div><input id="see" type="text" autocomplete="off" autocapitalize="off" placeholder="type it — anything that comes"><button class="go" id="tgo">step through →</button></div>
 
 <script>
 (function(){
 "use strict";
 document.addEventListener("gesturestart",function(e){e.preventDefault();},{passive:false});
 var _lt=0;document.addEventListener("touchend",function(e){var n=Date.now();if(n-_lt<=350)e.preventDefault();_lt=n;},{passive:false});
-var screen=document.getElementById("screen"), cap=document.getElementById("cap"), act=document.getElementById("act");
+var screen=document.getElementById("screen"),cap=document.getElementById("cap"),fwd=document.getElementById("fwd"),
+    act=document.getElementById("act"),flash=document.getElementById("flash"),typebox=document.getElementById("typebox"),see=document.getElementById("see");
 
-/* ---- sound ---- */
+/* sound */
 var AC=null;function audio(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}return AC;}
-function tone(f,d,t,v){var a=audio();if(!a)return;var o=a.createOscillator(),g=a.createGain();o.type=t||"sine";o.frequency.value=f;
-  o.connect(g);g.connect(a.destination);var s=a.currentTime;g.gain.setValueAtTime(v||0.15,s);g.gain.exponentialRampToValueAtTime(0.0001,s+d);o.start(s);o.stop(s+d+0.02);}
-function knock(v){tone(88,0.16,"sine",v||0.26);setTimeout(function(){tone(66,0.18,"sine",(v||0.26)*0.8);},70);}
-function creak(){tone(150,0.5,"sawtooth",0.05);setTimeout(function(){tone(120,0.4,"sawtooth",0.04);},120);}
-function clik(){tone(1500,0.04,"square",0.08);}
+function tone(f,d,t,v){var a=audio();if(!a)return;var o=a.createOscillator(),g=a.createGain();o.type=t||"sine";o.frequency.value=f;o.connect(g);g.connect(a.destination);var s=a.currentTime;g.gain.setValueAtTime(v||.15,s);g.gain.exponentialRampToValueAtTime(.0001,s+d);o.start(s);o.stop(s+d+.02);}
+function knock(v){tone(88,.16,"sine",v||.24);setTimeout(function(){tone(66,.18,"sine",(v||.24)*.8);},70);}
+function creak(){tone(150,.5,"sawtooth",.05);}
+function chord(){tone(196,1.2,"sine",.12);tone(294,1.2,"sine",.08);}
 
-/* ---- corridor ---- */
-var MAP=["#####","#...#","#...#","#...#","D...#","#...#","#...#","#...D","#...#","#...#","#...#","#...T","#...#","#...#","#...#","#...#","#...#","#...#","#...#","#####"];
-var MH=MAP.length,MW=MAP[0].length,TARGET={x:4,y:11},doorOpen=0,opening=false;
+/* grid */
+var W,H,FS;
+function sizeGrid(){var vw=innerWidth,vh=innerHeight;FS=Math.max(7,Math.min(13,Math.round(Math.min(vw,vh)/46)));screen.style.fontSize=FS+"px";
+  W=Math.max(44,Math.min(150,Math.floor(vw/(FS*.60))));H=Math.max(30,Math.min(84,Math.floor(vh/(FS*.92))));}
+sizeGrid();addEventListener("resize",sizeGrid);addEventListener("orientationchange",function(){setTimeout(sizeGrid,200);});
+
+/* corridor (regenerated per room) */
+var MAP,MH,MW,TARGET;
+function makeCorridor(){ MAP=["#####","#...#","#...#","#...#","D...#","#...#","#...#","#...D","#...#","#...#","#...#","#...T","#...#","#...#","#...#","#...#","#...#","#...#","#...#","#####"];
+  MH=MAP.length;MW=MAP[0].length;TARGET={x:4,y:11}; }
 function Cc(x,y){if(x<0||y<0||x>=MW||y>=MH)return "#";return MAP[y|0][x|0];}
 function solid(x,y){var c=Cc(x,y);return c==="#"||c==="D"||c==="T";}
 function isDoor(x,y){var c=Cc(x,y);return c==="D"||c==="T";}
 
-var W,H,FS;
-function sizeGrid(){var vw=innerWidth,vh=innerHeight;FS=Math.max(7,Math.min(13,Math.round(Math.min(vw,vh)/46)));screen.style.fontSize=FS+"px";
-  W=Math.max(44,Math.min(150,Math.floor(vw/(FS*0.60))));H=Math.max(30,Math.min(88,Math.floor(vh/(FS*0.92))));}
-sizeGrid();addEventListener("resize",sizeGrid);addEventListener("orientationchange",function(){setTimeout(sizeGrid,200);});
-
-/* ---- camera on rails ---- */
-var cam={x:2.5,y:1.5,ang:Math.PI/2},FOV=0.66,bob=0,now=0;
-var SHADE="@N#WkHm=+~:-. ";
-var LIGHT="@8&%$#*o";  // bright spill from the opened door
-function cast(sx){
-  var dx=Math.cos(cam.ang),dy=Math.sin(cam.ang),pX=-dy*FOV,pY=dx*FOV;
-  var camX=2*sx/W-1,rdx=dx+pX*camX,rdy=dy+pY*camX;
-  var mx=cam.x|0,my=cam.y|0,ddx=Math.abs(1/rdx),ddy=Math.abs(1/rdy),stepX,stepY,dX,dY;
-  if(rdx<0){stepX=-1;dX=(cam.x-mx)*ddx;}else{stepX=1;dX=(mx+1-cam.x)*ddx;}
-  if(rdy<0){stepY=-1;dY=(cam.y-my)*ddy;}else{stepY=1;dY=(my+1-cam.y)*ddy;}
-  var side=0,hit=false,g=0;
-  while(!hit&&g++<300){if(dX<dY){dX+=ddx;mx+=stepX;side=0;}else{dY+=ddy;my+=stepY;side=1;}if(solid(mx,my))hit=true;}
-  var d=(side===0)?(dX-ddx):(dY-ddy);if(d<0.0001)d=0.0001;
-  return {d:d,side:side,door:isDoor(mx,my),target:(mx===TARGET.x&&my===TARGET.y)};
-}
+/* camera + raycaster */
+var cam={x:2.5,y:1.5,ang:Math.PI/2},FOV=.66,doorOpen=0,opening=false,now=0;
+var SHADE="@N#WkHm=+~:-. ", LIGHT="@8&%$#*o";
+function cast(sx){var dx=Math.cos(cam.ang),dy=Math.sin(cam.ang),pX=-dy*FOV,pY=dx*FOV;var camX=2*sx/W-1,rdx=dx+pX*camX,rdy=dy+pY*camX;
+  var mx=cam.x|0,my=cam.y|0,ddx=Math.abs(1/rdx),ddy=Math.abs(1/rdy),sX,sY,dX,dY;
+  if(rdx<0){sX=-1;dX=(cam.x-mx)*ddx;}else{sX=1;dX=(mx+1-cam.x)*ddx;}
+  if(rdy<0){sY=-1;dY=(cam.y-my)*ddy;}else{sY=1;dY=(my+1-cam.y)*ddy;}
+  var side=0,hit=false,g=0;while(!hit&&g++<300){if(dX<dY){dX+=ddx;mx+=sX;side=0;}else{dY+=ddy;my+=sY;side=1;}if(solid(mx,my))hit=true;}
+  var d=(side===0)?(dX-ddx):(dY-ddy);if(d<.0001)d=.0001;return{d:d,side:side,door:isDoor(mx,my),target:(mx===TARGET.x&&my===TARGET.y)};}
 function rnd(x,y,t){var m=Math.sin(x*12.9898+y*78.233+t)*43758.5453;return m-Math.floor(m);}
-function render(){
-  var out="",col=[];
-  for(var x=0;x<W;x++)col[x]=cast(x);
-  var hb=Math.round(bob), tt=now*0.00016;
-  for(var y=0;y<H;y++){var r="";
-    for(var x=0;x<W;x++){var c=col[x],lh=Math.floor(H/c.d),s=(((H-lh)/2)|0)+hb,e=(((H+lh)/2)|0)+hb,ch;
-      if(y<s||y>e){                                   // air — ceiling/floor + drifting dust
-        var p=Math.abs((y-H/2)/(H/2));
-        ch = p>0.80 ? " " : (((x+y*3)%9===0)?".":" ");
-        if(ch===" " && rnd(x, y, ((tt*40)|0))>0.9955) ch="·";     // dust motes
-      } else {
-        var si=Math.floor(c.d/16*(SHADE.length-1));if(c.side===1)si++;if(si<0)si=0;if(si>=SHADE.length)si=SHADE.length-1;ch=SHADE[si];
-        if(c.door){
-          var t=(y-s)/Math.max(1,e-s);
-          ch=((y-s)%3===0)?(c.side===0?"|":"]"):ch;
-          if(t>0.46&&t<0.54)ch="o";                    // knob
-          if(t>0.9)ch="_";                             // light line beneath
-          if(c.target){
-            if(t>0.9 && doorOpen<0.05) ch="=";         // that thin glow, even before it opens
-            if(doorOpen>0){
-              var op=t>(0.5-0.5*doorOpen)&&t<(0.5+0.5*doorOpen);
-              if(op){ var li=(rnd(x,y,(tt*30)|0)* LIGHT.length)|0; ch=LIGHT[Math.min(LIGHT.length-1,li)]; }
-            }
-          }
-        }
-      }
-      r+=ch;}
-    out+=r+"\n";}
-  screen.textContent=out;
-}
+function renderHall(){var out="",col=[];for(var x=0;x<W;x++)col[x]=cast(x);var tt=now*.00016;
+  for(var y=0;y<H;y++){var r="";for(var x=0;x<W;x++){var c=col[x],lh=Math.floor(H/c.d),s=((H-lh)/2)|0,e=((H+lh)/2)|0,ch;
+    if(y<s||y>e){var p=Math.abs((y-H/2)/(H/2));ch=p>.80?" ":(((x+y*3)%9===0)?".":" ");if(ch===" "&&rnd(x,y,(tt*40)|0)>.9955)ch="·";}
+    else{var si=Math.floor(c.d/16*(SHADE.length-1));if(c.side===1)si++;if(si<0)si=0;if(si>=SHADE.length)si=SHADE.length-1;ch=SHADE[si];
+      if(c.door){var t=(y-s)/Math.max(1,e-s);ch=((y-s)%3===0)?(c.side===0?"|":"]"):ch;if(t>.46&&t<.54)ch="o";if(t>.9)ch="_";
+        if(c.target){if(t>.9&&doorOpen<.05)ch="=";if(doorOpen>0){var op=t>(.5-.5*doorOpen)&&t<(.5+.5*doorOpen);if(op)ch=LIGHT[(rnd(x,y,(tt*30)|0)*LIGHT.length)|0];}}}}
+    r+=ch;}out+=r+"\n";}screen.textContent=out;}
 
-/* ---- glide tween ---- */
-var WP=[{x:2.5,y:1.5,ang:Math.PI/2},{x:2.5,y:5.5,ang:Math.PI/2},{x:2.5,y:9.2,ang:Math.PI/2},{x:2.5,y:11.5,ang:0}];
-var wpIdx=0,tween=null,lastY=1.5;
-function easeInOut(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
-function lerpAng(a,b,t){var d=((b-a+Math.PI)%(2*Math.PI))-Math.PI;return a+d*t;}
-function glideTo(i,dur,done){var from={x:cam.x,y:cam.y,ang:cam.ang},to=WP[i],t0=null;
-  tween={fn:function(ts){if(t0===null)t0=ts;var k=Math.min(1,(ts-t0)/dur),e=easeInOut(k);
-    cam.x=from.x+(to.x-from.x)*e;cam.y=from.y+(to.y-from.y)*e;cam.ang=lerpAng(from.ang,to.ang,e);
-    if(Math.floor(cam.y)!==Math.floor(lastY)){ if(isDoor(0,cam.y|0)||isDoor(MW-1,cam.y|0)) creak(); lastY=cam.y; }
-    if(k>=1){tween=null;if(done)done();}}};
-}
-function loop(ts){ now=ts;
-  if(tween)tween.fn(ts); else bob=Math.sin(ts*0.0016)*0.35;
-  if(opening&&doorOpen<1) doorOpen=Math.min(1,doorOpen+0.006);
-  render(); requestAnimationFrame(loop);
-}
+/* the void + growing point of light */
+var lightGrow=0;
+function renderVoid(){var out="",cx=W/2,cy=H/2,rad=lightGrow*Math.max(W,H)*0.62,tt=now*.00016;
+  for(var y=0;y<H;y++){var r="";for(var x=0;x<W;x++){var dxp=(x-cx)*0.55,dyp=(y-cy),dist=Math.sqrt(dxp*dxp+dyp*dyp),ch=" ";
+    if(dist<rad){var k=1-dist/Math.max(1,rad);ch=LIGHT[Math.min(LIGHT.length-1,(k*LIGHT.length)|0)];}
+    else if(rnd(x,y,(tt*40)|0)>.997)ch="·";
+    r+=ch;}out+=r+"\n";}screen.textContent=out;}
 
-/* ---- narration ---- */
-var state="intro";
+/* narration */
 function showCap(h){cap.classList.remove("on");setTimeout(function(){cap.innerHTML=h;cap.classList.add("on");},140);}
-function acts(list){act.classList.remove("on");act.innerHTML="";
-  list.forEach(function(a){if(a.input){act.appendChild(a.el);return;}var b=document.createElement("button");b.className="b";b.textContent=a.t;b.onclick=function(){audio();a.f();};act.appendChild(b);});
-  setTimeout(function(){act.classList.add("on");},220);}
+function hideCap(){cap.classList.remove("on");}
+function acts(list){act.classList.remove("on");act.innerHTML="";list.forEach(function(a){var b=document.createElement("button");b.className="b";b.textContent=a.t;b.onclick=function(){audio();a.f();};act.appendChild(b);});setTimeout(function(){act.classList.add("on");},220);}
 function esc(s){return s.replace(/[&<>\"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function seedColor(seed){var hue=seed%360;document.documentElement.style.setProperty("--ink","hsl("+hue+",52%,64%)");screen.style.textShadow="0 0 7px hsla("+hue+",60%,60%,.22)";}
+function hash(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0);}
 
-function intro(){showCap("Let the room go quiet. Breathe out once, all the way.");acts([{t:"I have",f:voidBeat}]);}
-function voidBeat(){showCap("A black void. No walls, no floor, no light. You look down: no body, no memory. Nothing here.");acts([{t:"Wait",f:materialize}]);}
-function materialize(){
-  cap.classList.remove("on");act.classList.remove("on");
-  showCap("<span class='said'>And then — something. A hallway.</span>");screen.classList.add("on");
-  setTimeout(function(){state="walk";
-    showCap("You have a body now. The hall runs ahead. Far down it, on the left, a door is knocking. Move toward it.");knock();
-    acts([{t:"↓ move forward",f:step}]);
-    var kt=setInterval(function(){if(state!=="walk"){clearInterval(kt);return;}knock(0.2);},2800);
-  },2700);
+/* ---- flow ---- */
+var phase="intro", railT=0, roomIndex=0, capMarks;
+function intro(){ phase="intro"; showCap("Let the room go quiet. Breathe out once, all the way."); acts([{t:"I have",f:toVoid}]); }
+function toVoid(){ phase="void"; lightGrow=0; act.classList.remove("on");
+  showCap("A black void. No walls, no floor, no light. And then — far off — a single point of light.");
+  fwd.classList.add("on");
 }
-var lines=["A door on your left drifts past, its light leaking under the frame. The knock is nearer.","Dust turns in the air. Another door, shut tight. Closer now — you feel it in your chest."];
-function step(){
-  if(tween)return; wpIdx++;
-  act.classList.remove("on");cap.classList.remove("on");
-  if(wpIdx>=WP.length-1){ approach(); return; }
-  glideTo(wpIdx,1900,function(){knock(0.3);showCap(lines[wpIdx-1]);acts([{t:"↓ move forward",f:step}]);});
+function boom(){ phase="booming"; fwd.classList.remove("on"); chord();
+  flash.style.opacity=.9; setTimeout(function(){ flash.style.opacity=0; },90);
+  makeCorridor(); cam={x:2.5,y:1.5,ang:Math.PI/2}; doorOpen=0; opening=false; railT=0; roomIndex=0;
+  setTimeout(function(){ phase="hall"; capMarks=[[.02,"You have a body now. The hall runs ahead — a door is knocking, far down on the left."],[.4,"A door drifts past on your left, light leaking under it."],[.7,"Dust turns in the air. The knock is in your chest now."]]; showCap(capMarks[0][1]); knock(); fwd.classList.add("on"); },260);
 }
-function approach(){
-  state="approach";
-  showCap("As you near it, the knob turns on its own. <span class='said'>click… click… click…</span> and the door swings open ahead of you — light spilling out into the hall.");
-  clik();setTimeout(clik,650);setTimeout(clik,1300);
-  opening=true;                                        // the door animates open AHEAD, while you glide in
-  glideTo(WP.length-1, 3200, function(){ threshold(); });
-}
-function threshold(){
-  state="open";
-  showCap("You reach the threshold, standing in the light. On the other side, you see —");
-  var inp=document.createElement("input");inp.id="see";inp.type="text";inp.placeholder="what's behind the door?";inp.autocomplete="off";
-  inp.addEventListener("keydown",function(e){if(e.key==="Enter"&&inp.value.trim())receive(inp.value.trim());});
-  acts([{input:true,el:inp},{t:"that's what I see",f:function(){if(inp.value.trim())receive(inp.value.trim());else inp.focus();}}]);
-  setTimeout(function(){inp.focus();},500);
-}
-function receive(w){window._saw=w;state="reflect";
-  showCap("You saw: <span class='said'>"+esc(w)+"</span>. Don't explain it yet. Let it be true for a second.");
-  acts([{t:"okay",f:function(){showCap("It points at something you already carry. What in your waking life has the shape of <span class='said'>"+esc(window._saw)+"</span>? You don't have to tell me. You already know.");
-    acts([{t:"walk it again",f:function(){location.reload();}},{t:"play for real",f:function(){location.href="https://sleepyplanet.studio";}}]);}}]);
-}
-addEventListener("keydown",function(e){var k=e.key.toLowerCase();if((k==="w"||k==="arrowup"||k===" ")&&state==="walk"&&!tween){e.preventDefault();step();}});
+var WP=[{x:2.5,y:1.5,a:Math.PI/2},{x:2.5,y:5.5,a:Math.PI/2},{x:2.5,y:9.2,a:Math.PI/2},{x:2.5,y:11.5,a:0}];
+function pathAt(t){var seg=Math.min(2.999,t*3),i=seg|0,f=seg-i,A=WP[i],B=WP[i+1];cam.x=A.x+(B.x-A.x)*f;cam.y=A.y+(B.y-A.y)*f;
+  var da=((B.a-A.a+Math.PI)%(2*Math.PI))-Math.PI;cam.ang=A.a+da*f;}
 
-intro();requestAnimationFrame(loop);
+/* the one forward control */
+var holding=false;
+function setHold(v){holding=v;fwd.classList.toggle("push",v);if(v)audio();}
+fwd.addEventListener("pointerdown",function(e){e.preventDefault();setHold(true);});
+fwd.addEventListener("pointerup",function(e){e.preventDefault();setHold(false);});
+fwd.addEventListener("pointerleave",function(){setHold(false);});
+fwd.addEventListener("pointercancel",function(){setHold(false);});
+addEventListener("keydown",function(e){var k=e.key.toLowerCase();if(k==="w"||k==="arrowup"||k===" "){e.preventDefault();setHold(true);}});
+addEventListener("keyup",function(e){var k=e.key.toLowerCase();if(k==="w"||k==="arrowup"||k===" ")setHold(false);});
+
+/* type moment */
+function askDoor(){ phase="type"; fwd.classList.remove("on"); hideCap();
+  document.getElementById("tq").textContent = roomIndex===0 ? "The door opens. What do you see?" : "Another door. What's on the other side?";
+  see.value=""; typebox.classList.add("on"); setTimeout(function(){see.focus();},350); }
+function submitDoor(){ var w=see.value.trim(); if(!w){see.focus();return;} typebox.classList.remove("on"); walkThrough(w); }
+see.addEventListener("keydown",function(e){if(e.key==="Enter")submitDoor();});
+document.getElementById("tgo").addEventListener("click",function(){audio();submitDoor();});
+
+function walkThrough(word){
+  window._last=word; roomIndex++;
+  chord(); flash.style.opacity=.85; setTimeout(function(){flash.style.opacity=0;},120);
+  seedColor(hash(word));
+  makeCorridor(); cam={x:2.5,y:1.5,ang:Math.PI/2}; doorOpen=0; opening=false; railT=0; phase="hall";
+  capMarks=[[.02,"You step through, into <span class='said'>"+esc(word)+"</span>. It builds itself around you as you move — same strange grain, a new shape."],[.55,"It keeps going. Another door waits ahead."]];
+  setTimeout(function(){ showCap(capMarks[0][1]); fwd.classList.add("on"); },300);
+}
+
+/* loop */
+function loop(ts){ now=ts;
+  if(phase==="void"){
+    if(holding){ lightGrow=Math.min(1,lightGrow+0.0055); if(lightGrow>=1){ boom(); } }
+    renderVoid();
+  } else if(phase==="hall"){
+    if(holding){ railT=Math.min(1,railT+0.0021);
+      if(railT>0.6) opening=true;
+      // captions by position
+      if(capMarks) for(var i=capMarks.length-1;i>=0;i--){ if(railT>=capMarks[i][0] && !capMarks[i][2]){ capMarks[i][2]=true; showCap(capMarks[i][1]); if(i>0)knock(0.3); break; } }
+      if(railT>=1){ askDoor(); }
+    }
+    pathAt(railT);
+    if(opening&&doorOpen<1) doorOpen=Math.min(1,doorOpen+0.02);
+    renderHall();
+  } else if(phase==="booming"){ renderHall(); }
+  else if(phase==="intro"){ renderVoid(); }
+  else { renderHall(); }
+  requestAnimationFrame(loop);
+}
+intro(); requestAnimationFrame(loop);
 })();
 </script>
 </body>
