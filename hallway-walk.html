@@ -54,7 +54,8 @@
 (function(){
 "use strict";
 document.addEventListener("gesturestart",function(e){e.preventDefault();},{passive:false});
-var _lt=0;document.addEventListener("touchend",function(e){var n=Date.now();if(n-_lt<=350)e.preventDefault();_lt=n;},{passive:false});
+/* (removed the touchend double-tap blocker — it was swallowing legit forward taps.
+   touch-action:manipulation on <body> already disables double-tap zoom.) */
 var screen=document.getElementById("screen"),cap=document.getElementById("cap"),fwd=document.getElementById("fwd"),
     act=document.getElementById("act"),flash=document.getElementById("flash"),typebox=document.getElementById("typebox"),see=document.getElementById("see");
 
@@ -97,12 +98,14 @@ function renderHall(){var out="",col=[];for(var x=0;x<W;x++)col[x]=cast(x);var t
         if(c.target){if(t>.9&&doorOpen<.05)ch="=";if(doorOpen>0){var op=t>(.5-.5*doorOpen)&&t<(.5+.5*doorOpen);if(op)ch=LIGHT[(rnd(x,y,(tt*30)|0)*LIGHT.length)|0];}}}}
     r+=ch;}out+=r+"\n";}screen.textContent=out;}
 
-/* the void + growing point of light */
+/* pure black — nothing at all */
+function renderBlack(){ var row=new Array(W+1).join(" ")+"\n"; screen.textContent=new Array(H+1).join(row); }
+/* the point of light: appears small/far, grows closer with each tap; dust thickens as it nears */
 var lightGrow=0;
-function renderVoid(){var out="",cx=W/2,cy=H/2,rad=lightGrow*Math.max(W,H)*0.62,tt=now*.00016;
+function renderVoid(){var out="",cx=W/2,cy=H/2,rad=lightGrow*Math.max(W,H)*0.62,tt=now*.00016,dustThresh=0.999-lightGrow*0.03;
   for(var y=0;y<H;y++){var r="";for(var x=0;x<W;x++){var dxp=(x-cx)*0.55,dyp=(y-cy),dist=Math.sqrt(dxp*dxp+dyp*dyp),ch=" ";
     if(dist<rad){var k=1-dist/Math.max(1,rad);ch=LIGHT[Math.min(LIGHT.length-1,(k*LIGHT.length)|0)];}
-    else if(rnd(x,y,(tt*40)|0)>.997)ch="·";
+    else if(lightGrow>0.05 && rnd(x,y,(tt*40)|0)>dustThresh)ch="·";
     r+=ch;}out+=r+"\n";}screen.textContent=out;}
 
 /* narration */
@@ -115,9 +118,14 @@ function hash(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i)
 
 /* ---- flow ---- */
 var phase="intro", railT=0, roomIndex=0, capMarks;
-function intro(){ phase="intro"; showCap("Let the room go quiet. Breathe out once, all the way."); acts([{t:"I have",f:toVoid}]); }
-function toVoid(){ phase="void"; lightGrow=0; act.classList.remove("on");
-  showCap("A black void. No walls, no floor, no light. And then — far off — a single point of light.");
+function intro(){ phase="intro"; showCap("Let the room go quiet. Breathe out once, all the way."); acts([{t:"I have",f:toBlack}]); }
+function toBlack(){ phase="black"; lightGrow=0; act.classList.remove("on"); hideCap();
+  setTimeout(function(){ showCap("A black void. No walls, no floor. Nothing at all."); },1400);
+  setTimeout(function(){ hideCap(); },5200);
+  setTimeout(function(){ lightPoint(); },6000);          // black for ~6s, then the point appears
+}
+function lightPoint(){ phase="void"; lightGrow=0.06;      // a small, distant point
+  showCap("And then — far off — <span class='said'>a single point of light.</span>");
   fwd.classList.add("on");
 }
 function boom(){ phase="booming"; fwd.classList.remove("on"); chord();
@@ -170,7 +178,7 @@ function loop(ts){ now=ts;
     if(opening&&doorOpen<1) doorOpen=Math.min(1,doorOpen+0.02);
     renderHall();
   } else if(phase==="booming"){ renderHall(); }
-  else if(phase==="intro"){ renderVoid(); }
+  else if(phase==="intro"||phase==="black"){ renderBlack(); }
   else { renderHall(); }
   requestAnimationFrame(loop);
 }
