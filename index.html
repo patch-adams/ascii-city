@@ -2,36 +2,65 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>ascii city — walkable proof</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2305080c'/%3E%3Ctext x='16' y='23' font-size='22' text-anchor='middle' fill='%2340e0d0' font-family='monospace'%3E%23%3C/text%3E%3C/svg%3E">
 <style>
-  html,body{margin:0;height:100%;background:#05080c;overflow:hidden}
+  html,body{margin:0;height:100%;background:#05080c;overflow:hidden;
+    touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
   #screen{
-    position:absolute;inset:0;margin:auto;
+    position:absolute;inset:0;margin:0;
     font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
     color:#3fe0cf; background:#05080c;
-    font-size:11px; line-height:0.92em; letter-spacing:0;
-    white-space:pre; user-select:none; text-shadow:0 0 6px rgba(63,224,207,.25);
+    line-height:0.92em; letter-spacing:0; white-space:pre;
+    text-shadow:0 0 6px rgba(63,224,207,.22);
     display:flex;align-items:center;justify-content:center;
   }
-  #hud{position:fixed;left:14px;bottom:12px;font-family:ui-monospace,Menlo,monospace;
-    font-size:11px;letter-spacing:.08em;color:#2b6f68}
-  #hud b{color:#3fe0cf;font-weight:600}
-  #title{position:fixed;left:14px;top:12px;font-family:ui-monospace,Menlo,monospace;
-    font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#2b6f68}
+  #title{position:fixed;left:14px;top:calc(env(safe-area-inset-top) + 12px);
+    font-family:ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;color:#2b6f68;pointer-events:none}
+  #hint{position:fixed;left:14px;top:calc(env(safe-area-inset-top) + 30px);
+    font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.06em;color:#1f5049;pointer-events:none}
+
+  /* touch controls */
+  .pad{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 20px);z-index:5;
+    display:grid;gap:8px;opacity:.85}
+  .pad.left{left:18px;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(2,54px);
+    grid-template-areas:". up ." "lft dn rgt"}
+  .pad.right{right:18px;grid-template-columns:repeat(3,54px);grid-template-rows:54px;
+    grid-template-areas:"tl tt tr"}
+  .btn{width:54px;height:54px;border:1px solid rgba(63,224,207,.45);border-radius:12px;
+    background:rgba(63,224,207,.06);color:#3fe0cf;font-family:ui-monospace,monospace;
+    font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .btn:active,.btn.on{background:rgba(63,224,207,.22);border-color:#3fe0cf}
+  .up{grid-area:up}.dn{grid-area:dn}.lft{grid-area:lft}.rgt{grid-area:rgt}
+  .tl{grid-area:tl}.tt{grid-area:tt}.tr{grid-area:tr}
+  @media (min-width:900px){ .pad{opacity:.5} }
 </style>
 </head>
 <body>
 <pre id="screen"></pre>
 <div id="title">ascii city · proof</div>
-<div id="hud"><b>W A S D</b> / arrows — walk &amp; turn · <b>Q E</b> strafe</div>
+<div id="hint">keys: WASD / arrows · Q E strafe</div>
+
+<!-- left thumb: move + strafe -->
+<div class="pad left">
+  <div class="btn up"  data-k="w">▲</div>
+  <div class="btn lft" data-k="q">‹</div>
+  <div class="btn dn"  data-k="s">▼</div>
+  <div class="btn rgt" data-k="e">›</div>
+</div>
+<!-- right thumb: turn -->
+<div class="pad right">
+  <div class="btn tl" data-k="a">◀</div>
+  <div class="btn tt" data-k="w">▲</div>
+  <div class="btn tr" data-k="d">▶</div>
+</div>
 
 <script>
 (function(){
 "use strict";
 
-/* ---- the city: # = building, . = street ---- */
 var MAP = [
 "########################",
 "#......................#",
@@ -61,78 +90,97 @@ var MAP = [
 var MH = MAP.length, MW = MAP[0].length;
 function wall(x,y){ if(x<0||y<0||x>=MW||y>=MH) return true; return MAP[y|0][x|0] === "#"; }
 
-/* ---- screen buffer ---- */
-var W = 104, H = 60;
 var screen = document.getElementById("screen");
-
-/* near -> far ramp for walls (dense to sparse) */
 var SHADE = "@N#WH=+~:-,. ";
-var VIEW = 22;                       // max view distance for shading
+var VIEW = 22;
 
-/* ---- player ---- */
-var px = 2.5, py = 1.5;              // on the top avenue
-var dx = 1, dy = 0;                  // facing +x
-var plane = 0.66, planeX = 0, planeY = 0.66;
+/* responsive grid — fill the viewport at a legible char size on any device */
+var W, H, FS;
+function sizeGrid(){
+  var vw = innerWidth, vh = innerHeight;
+  FS = Math.max(7, Math.min(13, Math.round(Math.min(vw, vh) / 46)));
+  screen.style.fontSize = FS + "px";
+  var charW = FS * 0.60, charH = FS * 0.92;
+  W = Math.max(44, Math.min(140, Math.floor(vw / charW)));
+  H = Math.max(30, Math.min(84,  Math.floor(vh / charH)));
+}
+sizeGrid();
+addEventListener("resize", sizeGrid);
+addEventListener("orientationchange", function(){ setTimeout(sizeGrid, 200); });
 
-/* deterministic star for the night sky */
+/* player */
+var px = 2.5, py = 1.5, dx = 1, dy = 0, planeX = 0, planeY = 0.66;
 function star(x,y){ var h = ((x*73856093) ^ (y*19349663)) >>> 0; return (h % 29) === 0; }
 
 function render(){
-  var buf = new Array(H);
-  for(var y=0;y<H;y++) buf[y] = new Array(W);
+  var out = "";
+  for(var y=0; y<H; y++){
+    var row = "";
+    for(var x=0; x<W; x++){
+      // cast once per column, reuse across rows via a small cache
+      row += columnChar(x, y);
+    }
+    out += row + "\n";
+  }
+  screen.textContent = out;
+}
 
+/* per-frame column cache so we ray-cast W times, not W*H times */
+var colDist = new Float32Array(0), colStart = new Int16Array(0), colEnd = new Int16Array(0), colSide = new Int8Array(0), colShade = [];
+function castColumns(){
+  if(colDist.length !== W){
+    colDist = new Float32Array(W); colStart = new Int16Array(W); colEnd = new Int16Array(W);
+    colSide = new Int8Array(W); colShade = new Array(W);
+  }
   for(var x=0; x<W; x++){
     var camX = 2*x/W - 1;
-    var rdx = dx + planeX*camX;
-    var rdy = dy + planeY*camX;
-
+    var rdx = dx + planeX*camX, rdy = dy + planeY*camX;
     var mapX = px|0, mapY = py|0;
     var ddx = Math.abs(1/rdx), ddy = Math.abs(1/rdy);
     var stepX, stepY, sdx, sdy;
     if(rdx<0){ stepX=-1; sdx=(px-mapX)*ddx; } else { stepX=1; sdx=(mapX+1-px)*ddx; }
     if(rdy<0){ stepY=-1; sdy=(py-mapY)*ddy; } else { stepY=1; sdy=(mapY+1-py)*ddy; }
-
     var side=0, hit=false, guard=0;
     while(!hit && guard++ < 400){
-      if(sdx<sdy){ sdx+=ddx; mapX+=stepX; side=0; }
-      else       { sdy+=ddy; mapY+=stepY; side=1; }
+      if(sdx<sdy){ sdx+=ddx; mapX+=stepX; side=0; } else { sdy+=ddy; mapY+=stepY; side=1; }
       if(wall(mapX,mapY)) hit=true;
     }
-    var dist = (side===0) ? (sdx-ddx) : (sdy-ddy);
-    if(dist<0.0001) dist=0.0001;
-
+    var dist = (side===0) ? (sdx-ddx) : (sdy-ddy); if(dist<0.0001) dist=0.0001;
     var lh = Math.floor(H/dist);
-    var start = ((H-lh)/2)|0, end = ((H+lh)/2)|0;
-
-    var shadeIdx = Math.floor(dist/VIEW*(SHADE.length-1));
-    if(side===1) shadeIdx++;                 // one darker on y-faces = edge contrast
-    if(shadeIdx<0) shadeIdx=0; if(shadeIdx>=SHADE.length) shadeIdx=SHADE.length-1;
-    var wc = SHADE[shadeIdx];
-
-    for(var y=0;y<H;y++){
-      var ch;
-      if(y<start){                            // sky: sparse stars
-        ch = star(x, y) ? "." : " ";
-      } else if(y<=end){                       // building face, with faint window bands
-        ch = wc;
-        if(wc!==" " && ((y - start) % 4 === 1) && dist < VIEW*0.6) ch = (side===0? "=" : "-");
-      } else {                                 // street, denser toward you
-        var p = (y - H/2) / (H/2);
-        ch = " .,:;+"[Math.min(5, Math.max(0, (p*6)|0))];
-      }
-      buf[y][x] = ch;
-    }
+    colStart[x] = ((H-lh)/2)|0; colEnd[x] = ((H+lh)/2)|0; colDist[x]=dist; colSide[x]=side;
+    var si = Math.floor(dist/VIEW*(SHADE.length-1)); if(side===1) si++;
+    if(si<0) si=0; if(si>=SHADE.length) si=SHADE.length-1;
+    colShade[x] = SHADE[si];
   }
-  var out = "";
-  for(var yy=0; yy<H; yy++) out += buf[yy].join("") + "\n";
-  screen.textContent = out;
+}
+function columnChar(x,y){
+  var s = colStart[x], e = colEnd[x];
+  if(y < s){ return star(x,y) ? "." : " "; }
+  if(y <= e){
+    var wc = colShade[x];
+    if(wc!==" " && ((y - s) % 4 === 1) && colDist[x] < VIEW*0.6) return (colSide[x]===0? "=" : "-");
+    return wc;
+  }
+  var p = (y - H/2) / (H/2);
+  return " .,:;+"[Math.min(5, Math.max(0, (p*6)|0))];
 }
 
-/* ---- movement ---- */
+/* input */
 var keys = {};
-addEventListener("keydown", function(e){ keys[e.key.toLowerCase()]=true;
-  if(["arrowup","arrowdown","arrowleft","arrowright"].indexOf(e.key.toLowerCase())>=0) e.preventDefault(); });
+addEventListener("keydown", function(e){ var k=e.key.toLowerCase(); keys[k]=true;
+  if(k.indexOf("arrow")===0) e.preventDefault(); });
 addEventListener("keyup", function(e){ keys[e.key.toLowerCase()]=false; });
+
+/* touch/click buttons drive the same keys */
+[].forEach.call(document.querySelectorAll(".btn"), function(b){
+  var k = b.dataset.k;
+  var on  = function(e){ e.preventDefault(); keys[k]=true;  b.classList.add("on"); };
+  var off = function(e){ e.preventDefault(); keys[k]=false; b.classList.remove("on"); };
+  b.addEventListener("pointerdown", on);
+  b.addEventListener("pointerup", off);
+  b.addEventListener("pointerleave", off);
+  b.addEventListener("pointercancel", off);
+});
 
 function move(fx,fy){
   var nx = px + fx, ny = py + fy;
@@ -141,22 +189,21 @@ function move(fx,fy){
 }
 function rotate(a){
   var c=Math.cos(a), s=Math.sin(a);
-  var ndx = dx*c - dy*s, ndy = dx*s + dy*c; dx=ndx; dy=ndy;
-  var npx = planeX*c - planeY*s, npy = planeX*s + planeY*c; planeX=npx; planeY=npy;
+  var ndx=dx*c-dy*s, ndy=dx*s+dy*c; dx=ndx; dy=ndy;
+  var npx=planeX*c-planeY*s, npy=planeX*s+planeY*c; planeX=npx; planeY=npy;
 }
-
-var MOVE = 0.09, TURN = 0.05;
+var MOVE=0.09, TURN=0.05;
 function tick(){
   if(keys["w"]||keys["arrowup"])    move(dx*MOVE, dy*MOVE);
   if(keys["s"]||keys["arrowdown"])  move(-dx*MOVE, -dy*MOVE);
   if(keys["a"]||keys["arrowleft"])  rotate(-TURN);
   if(keys["d"]||keys["arrowright"]) rotate(TURN);
-  if(keys["q"]) move(dy*MOVE, -dx*MOVE);   // strafe left
-  if(keys["e"]) move(-dy*MOVE, dx*MOVE);   // strafe right
+  if(keys["q"]) move(dy*MOVE, -dx*MOVE);
+  if(keys["e"]) move(-dy*MOVE, dx*MOVE);
+  castColumns();
   render();
   requestAnimationFrame(tick);
 }
-render();
 tick();
 })();
 </script>
