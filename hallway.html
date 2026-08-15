@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>The Hallway</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0a0d'/%3E%3Crect x='12' y='7' width='9' height='18' rx='1' fill='none' stroke='%23c9a15a' stroke-width='1.6'/%3E%3Ccircle cx='19' cy='16' r='1' fill='%23c9a15a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;background:#0a0a0d;color:#e9e4d8;overflow:hidden;
+    font-family:"Newsreader",Georgia,serif;-webkit-user-select:none;user-select:none;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+  #veil{position:fixed;inset:0;background:#000;z-index:20;transition:opacity 1.6s ease;pointer-events:none;opacity:0}
+  .wrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:32px 26px calc(env(safe-area-inset-bottom) + 40px);text-align:center;gap:26px}
+  #art{font-family:"Space Mono",monospace;font-size:13px;line-height:1.15;color:#7a6a44;white-space:pre;min-height:56px;
+    opacity:.0;transition:opacity 1s ease}
+  #art.on{opacity:.85}
+  #line{font-size:clamp(1.35rem,4.6vw,2rem);line-height:1.5;font-weight:300;max-width:20em;
+    opacity:0;transform:translateY(6px);transition:opacity .9s ease,transform .9s ease;min-height:3em}
+  #line.on{opacity:1;transform:none}
+  #line .said{color:#c9a15a;font-style:italic}
+  #act{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;min-height:52px;opacity:0;transition:opacity .6s ease}
+  #act.on{opacity:1}
+  button.b{font-family:"Space Mono",monospace;font-size:13px;letter-spacing:.06em;color:#e9e4d8;
+    background:transparent;border:1px solid #4a4432;border-radius:999px;padding:13px 22px;cursor:pointer;
+    transition:border-color .2s,color .2s,background .2s}
+  button.b:hover{border-color:#c9a15a;color:#c9a15a}
+  button.b:active{transform:translateY(1px)}
+  input#see{font-family:"Newsreader",serif;font-style:italic;font-size:1.15rem;background:transparent;color:#e9e4d8;
+    border:0;border-bottom:1px solid #4a4432;text-align:center;width:min(20em,80vw);padding:8px 4px;outline:none}
+  input#see:focus{border-color:#c9a15a}
+  #note{position:fixed;bottom:14px;left:0;right:0;text-align:center;font-family:"Space Mono",monospace;
+    font-size:10px;letter-spacing:.14em;color:#3a3628}
+</style>
+</head>
+<body>
+<div id="veil"></div>
+<div class="wrap">
+  <div id="art"></div>
+  <div id="line"></div>
+  <div id="act"></div>
+</div>
+<div id="note">a door you open yourself</div>
+
+<script>
+(function(){
+"use strict";
+var artEl=document.getElementById("art"), lineEl=document.getElementById("line"),
+    actEl=document.getElementById("act"), veil=document.getElementById("veil");
+
+/* ---- sound (built on first tap, so autoplay allows it) ---- */
+var AC=null;
+function audio(){ if(!AC){ try{ AC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return AC; }
+function tone(freq,dur,type,vol){ var a=audio(); if(!a) return; var o=a.createOscillator(),g=a.createGain();
+  o.type=type||"sine"; o.frequency.value=freq; g.gain.value=vol||0.15;
+  o.connect(g); g.connect(a.destination); var t=a.currentTime; o.start(t);
+  g.gain.setValueAtTime(vol||0.15,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.stop(t+dur+0.02); }
+function knock(){ tone(90,0.16,"sine",0.28); setTimeout(function(){tone(70,0.18,"sine",0.22);},70); }
+function click(){ tone(1400,0.04,"square",0.09); }
+
+/* ---- helpers ---- */
+function setArt(s){ if(!s){ artEl.classList.remove("on"); return; } artEl.textContent=s; artEl.classList.add("on"); }
+function say(html){ lineEl.classList.remove("on"); setTimeout(function(){ lineEl.innerHTML=html; lineEl.classList.add("on"); },160); }
+function acts(list){ actEl.classList.remove("on"); actEl.innerHTML="";
+  list.forEach(function(a){ if(a.input){ actEl.appendChild(a.el); return; }
+    var b=document.createElement("button"); b.className="b"; b.textContent=a.t;
+    b.onclick=function(){ audio(); a.f(); }; actEl.appendChild(b); });
+  setTimeout(function(){ actEl.classList.add("on"); },260); }
+function veilTo(o){ veil.style.opacity=o; }
+
+/* ---- art fragments (suggestion, not depiction) ---- */
+var A_HALL = "        .            .\n     |     |      |     |\n     |  [] |      | []  |\n     |_____|      |_____|\n            \\    /\n             \\  /\n              \\/";
+var A_DOOR = "        ______\n       |  __  |\n       | |  | |\n       | |  | |o\n       | |__| |\n       |______|";
+var A_VOID = "";
+
+/* ---- the sequence ---- */
+function begin(){
+  setArt(A_VOID); veilTo(0);
+  say("This one you do yourself. Wherever you are, let the room go quiet, and breathe out once, all the way.");
+  acts([{t:"I have",f:s_void}]);
+}
+function s_void(){
+  veilTo(0.65);
+  say("Now let there be a black void. No walls. No floor. No light. Nothing at all.");
+  acts([{t:"Look down",f:s_nobody}]);
+}
+function s_nobody(){
+  veilTo(0.82);
+  say("You look down. There's no body there. And you notice you have no memory either. There is only this.");
+  acts([{t:"Wait",f:s_arrive}]);
+}
+function s_arrive(){
+  veilTo(0.15);
+  say("And then — <span class='said'>something.</span>");
+  setTimeout(function(){ setArt(A_HALL); },600);
+  setTimeout(function(){ say("A hallway."); acts([{t:"I see it",f:s_body}]); },1400);
+}
+function s_body(){
+  say("You look down again. This time you have a body. And there are doors along both sides, with windows between them.");
+  acts([{t:"Start walking",f:s_walk_init}]);
+}
+var steps=0;
+function s_walk_init(){ steps=0; setArt(A_HALL);
+  say("You walk. Somewhere ahead of you — <span class='said'>a knock.</span>"); knock();
+  acts([{t:"Take a step",f:s_step}]); }
+function s_step(){
+  steps++; knock();
+  var lines=[
+    "Closer now. It's on the left. Four doors up.",
+    "Three doors. The knock is patient, like it's been waiting.",
+    "Two doors. You can feel it in your chest now.",
+    "You're here. The door that knocked."
+  ];
+  say(lines[Math.min(steps-1,3)]);
+  if(steps>=4){ acts([{t:"Stand at the door",f:s_door}]); }
+  else { acts([{t:"Take a step",f:s_step}]); }
+}
+function s_door(){
+  setArt(A_DOOR);
+  say("You can see it clearly — the grain of the wood, the handle, a thin line of light beneath. And from behind it, faintly, a smell you almost recognize.");
+  acts([{t:"Reach for the knob",f:s_knob_init}]);
+}
+var turns=0;
+function s_knob_init(){ turns=0; say("The knob is cold. It begins to turn under your hand. Slowly."); acts([{t:"Turn it",f:s_turn}]); }
+function s_turn(){
+  turns++; click();
+  if(turns<3){ say("<span class='said'>"+("click. ".repeat(turns)).trim()+"</span>"); acts([{t:"Keep turning",f:s_turn}]); }
+  else { say("<span class='said'>click, click, click</span> — and on the third, it gives, and swings inward."); acts([{t:"Push it open",f:s_open}]); }
+}
+function s_open(){
+  setArt(A_VOID);
+  say("You push the door open. And on the other side, you see —");
+  var inp=document.createElement("input"); inp.id="see"; inp.type="text"; inp.placeholder="what's behind the door?";
+  inp.autocomplete="off"; inp.autocapitalize="off";
+  inp.addEventListener("keydown",function(e){ if(e.key==="Enter" && inp.value.trim()) s_receive(inp.value.trim()); });
+  var go={input:true,el:inp};
+  var btn={t:"That's what I see",f:function(){ if(inp.value.trim()) s_receive(inp.value.trim()); else inp.focus(); }};
+  acts([go,btn]);
+  setTimeout(function(){ inp.focus(); },400);
+}
+function s_receive(what){
+  window._saw=what;
+  say("You saw: <span class='said'>"+escapeHtml(what)+"</span>");
+  acts([{t:"Don't explain it yet",f:s_hold}]);
+}
+function s_hold(){
+  say("Good. Don't reach for what it means. Just let it be true for one more second.");
+  acts([{t:"Okay",f:s_duck}]);
+}
+function s_duck(){
+  say("The last traveler through here found a rubber duck in a cowboy hat, leading the way. It made no sense — until later, when they realized the duck was them.");
+  acts([{t:"Go on",f:s_bridge}]);
+}
+function s_bridge(){
+  say("Yours is doing the same thing. It's pointing at something you already carry. So: what in your waking life has the shape of <span class='said'>"+escapeHtml(window._saw||"what you saw")+"</span>? You don't have to tell me. You already know.");
+  acts([{t:"Close the door",f:s_end},{t:"Walk it again",f:begin}]);
+}
+function s_end(){
+  setArt(A_VOID); veilTo(0);
+  say("That was a taste. The real thing is played slowly, with a person holding the other end. When you're ready, there's a hallway that isn't a metaphor.");
+  acts([{t:"Play Sleepy Planet",f:function(){ location.href="https://sleepyplanet.studio"; }},{t:"Again",f:begin}]);
+}
+function escapeHtml(s){ return s.replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+begin();
+})();
+</script>
+</body>
+</html>
