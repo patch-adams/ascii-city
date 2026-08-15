@@ -46,7 +46,7 @@
 <div id="flash"></div>
 <div id="panel"></div>
 <div id="cap"></div>
-<div id="fwd"><span class="arw">↑</span> hold to move forward</div>
+<div id="fwd"><span class="arw">↑</span> tap to move forward</div>
 <div id="act"></div>
 <div id="typebox"><div class="q" id="tq">The door opens. What do you see?</div><input id="see" type="text" autocomplete="off" autocapitalize="off" placeholder="type it — anything that comes"><button class="go" id="tgo">step through →</button></div>
 
@@ -129,15 +129,17 @@ var WP=[{x:2.5,y:1.5,a:Math.PI/2},{x:2.5,y:5.5,a:Math.PI/2},{x:2.5,y:9.2,a:Math.
 function pathAt(t){var seg=Math.min(2.999,t*3),i=seg|0,f=seg-i,A=WP[i],B=WP[i+1];cam.x=A.x+(B.x-A.x)*f;cam.y=A.y+(B.y-A.y)*f;
   var da=((B.a-A.a+Math.PI)%(2*Math.PI))-Math.PI;cam.ang=A.a+da*f;}
 
-/* the one forward control */
-var holding=false;
-function setHold(v){holding=v;fwd.classList.toggle("push",v);if(v)audio();}
-fwd.addEventListener("pointerdown",function(e){e.preventDefault();setHold(true);});
-fwd.addEventListener("pointerup",function(e){e.preventDefault();setHold(false);});
-fwd.addEventListener("pointerleave",function(){setHold(false);});
-fwd.addEventListener("pointercancel",function(){setHold(false);});
-addEventListener("keydown",function(e){var k=e.key.toLowerCase();if(k==="w"||k==="arrowup"||k===" "){e.preventDefault();setHold(true);}});
-addEventListener("keyup",function(e){var k=e.key.toLowerCase();if(k==="w"||k==="arrowup"||k===" ")setHold(false);});
+/* the one forward control — TAP: each tap glides the scene one beat */
+var anim=null;
+function easeInOut(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+function pushValue(get,set,delta,cap,dur,done){ if(anim)return; anim={from:get(),to:Math.min(cap,get()+delta),dur:dur,t0:null,set:set,done:done}; }
+function onTap(){ audio(); if(anim)return;
+  if(phase==="void"){ pushValue(function(){return lightGrow;},function(v){lightGrow=v;},0.27,1,700,function(){ if(lightGrow>=0.999) boom(); }); }
+  else if(phase==="hall"){ knock(0.28); pushValue(function(){return railT;},function(v){railT=v;},0.24,1,1050,function(){ if(railT>=0.999) askDoor(); }); }
+}
+fwd.addEventListener("click",function(e){e.preventDefault();onTap();});
+screen.addEventListener("click",function(){ if(phase==="void"||phase==="hall") onTap(); });
+addEventListener("keydown",function(e){var k=e.key.toLowerCase();if((k==="w"||k==="arrowup"||k===" ")&&(phase==="void"||phase==="hall")){e.preventDefault();onTap();}});
 
 /* type moment */
 function askDoor(){ phase="type"; fwd.classList.remove("on"); hideCap();
@@ -158,16 +160,12 @@ function walkThrough(word){
 
 /* loop */
 function loop(ts){ now=ts;
-  if(phase==="void"){
-    if(holding){ lightGrow=Math.min(1,lightGrow+0.0055); if(lightGrow>=1){ boom(); } }
-    renderVoid();
-  } else if(phase==="hall"){
-    if(holding){ railT=Math.min(1,railT+0.0021);
-      if(railT>0.6) opening=true;
-      // captions by position
-      if(capMarks) for(var i=capMarks.length-1;i>=0;i--){ if(railT>=capMarks[i][0] && !capMarks[i][2]){ capMarks[i][2]=true; showCap(capMarks[i][1]); if(i>0)knock(0.3); break; } }
-      if(railT>=1){ askDoor(); }
-    }
+  if(anim){ if(anim.t0===null)anim.t0=ts; var k=Math.min(1,(ts-anim.t0)/anim.dur), e=easeInOut(k);
+    anim.set(anim.from+(anim.to-anim.from)*e); if(k>=1){ var d=anim.done; anim=null; if(d)d(); } }
+  if(phase==="void"){ renderVoid(); }
+  else if(phase==="hall"){
+    if(railT>0.6) opening=true;
+    if(capMarks) for(var i=capMarks.length-1;i>=0;i--){ if(railT>=capMarks[i][0] && !capMarks[i][2]){ capMarks[i][2]=true; showCap(capMarks[i][1]); break; } }
     pathAt(railT);
     if(opening&&doorOpen<1) doorOpen=Math.min(1,doorOpen+0.02);
     renderHall();
