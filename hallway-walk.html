@@ -118,15 +118,10 @@ function hash(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i)
 
 /* ---- flow ---- */
 var phase="intro", railT=0, roomIndex=0, capMarks;
-function intro(){ phase="intro"; showCap("Let the room go quiet. Breathe out once, all the way."); acts([{t:"I have",f:toBlack}]); }
-function toBlack(){ phase="black"; lightGrow=0; act.classList.remove("on"); hideCap();
-  setTimeout(function(){ showCap("A black void. No walls, no floor. Nothing at all."); },1400);
-  setTimeout(function(){ hideCap(); },5200);
-  setTimeout(function(){ lightPoint(); },6000);          // black for ~6s, then the point appears
-}
-function lightPoint(){ phase="void"; lightGrow=0.06;      // a small, distant point
-  showCap("And then — far off — <span class='said'>a single point of light.</span>");
-  fwd.classList.add("on");
+function intro(){ phase="intro"; showCap("Let the room go quiet. Breathe out once, all the way."); acts([{t:"I have",f:toVoid}]); }
+function toVoid(){ phase="void"; lightGrow=0; act.classList.remove("on");
+  showCap("A black void. No walls, no floor. Nothing at all. <span class='said'>Move forward into it.</span>");
+  fwd.classList.add("on");   /* control present from the start — nothing to get stuck behind */
 }
 function boom(){ phase="booming"; fwd.classList.remove("on"); chord();
   flash.style.opacity=.9; setTimeout(function(){ flash.style.opacity=0; },90);
@@ -142,7 +137,9 @@ var anim=null;
 function easeInOut(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
 function pushValue(get,set,delta,cap,dur,done){ if(anim)return; anim={from:get(),to:Math.min(cap,get()+delta),dur:dur,t0:null,set:set,done:done}; }
 function onTap(){ audio(); if(anim)return;
-  if(phase==="void"){ pushValue(function(){return lightGrow;},function(v){lightGrow=v;},0.27,1,700,function(){ if(lightGrow>=0.999) boom(); }); }
+  if(phase==="void"){
+    if(lightGrow<0.05){ lightGrow=0.06; showCap("And then — far off — <span class='said'>a single point of light.</span>"); return; }  // first tap: the point appears
+    pushValue(function(){return lightGrow;},function(v){lightGrow=v;},0.27,1,700,function(){ if(lightGrow>=0.999) boom(); }); }
   else if(phase==="hall"){ knock(0.28); pushValue(function(){return railT;},function(v){railT=v;},0.24,1,1050,function(){ if(railT>=0.999) askDoor(); }); }
 }
 fwd.addEventListener("click",function(e){e.preventDefault();onTap();});
