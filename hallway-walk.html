@@ -13,38 +13,25 @@
     touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
   #screen{position:absolute;inset:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
     color:var(--ink);background:var(--paper);line-height:0.92em;white-space:pre;
-    display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 2.4s ease;
+    display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 2.6s ease;
     text-shadow:0 0 5px rgba(216,184,120,.16)}
   #screen.on{opacity:1}
-  /* comic panel frame + ink vignette */
   #panel{position:fixed;inset:10px;z-index:3;pointer-events:none;border:2px solid rgba(216,184,120,.28);border-radius:4px;
-    box-shadow:inset 0 0 120px 30px rgba(0,0,0,.7)}
-  /* narration caption box, comic-style */
+    box-shadow:inset 0 0 120px 34px rgba(0,0,0,.72)}
   #cap{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 108px);z-index:6;
     max-width:min(30em,86vw);background:#efe7d2;color:#20180c;border:1.5px solid #20180c;border-radius:3px;
     padding:13px 18px;font-family:"Newsreader",Georgia,serif;font-size:clamp(1.05rem,3.4vw,1.35rem);line-height:1.42;
     box-shadow:4px 4px 0 rgba(0,0,0,.55);opacity:0;transition:opacity .55s ease;text-align:center}
   #cap.on{opacity:1}
   #cap .said{font-style:italic;color:#7a5a1e}
-  /* action buttons + input */
   #act{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 40px);z-index:6;
     display:flex;gap:12px;justify-content:center;flex-wrap:wrap;opacity:0;transition:opacity .5s ease}
   #act.on{opacity:1}
   button.b{font-family:"Space Mono",monospace;font-size:13px;letter-spacing:.05em;color:#efe7d2;background:rgba(20,16,10,.6);
-    border:1px solid var(--ink);border-radius:999px;padding:12px 20px;cursor:pointer}
+    border:1px solid var(--ink);border-radius:999px;padding:13px 22px;cursor:pointer}
   button.b:active{transform:translateY(1px)}
   input#see{font-family:"Newsreader",serif;font-style:italic;font-size:1.15rem;background:transparent;color:var(--ink);
     border:0;border-bottom:1px solid var(--ink);text-align:center;width:min(20em,80vw);padding:8px 4px;outline:none}
-  /* touch move pad (only in walk phase) */
-  #pads{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 18px);left:0;right:0;z-index:5;display:none;justify-content:space-between;padding:0 18px;pointer-events:none}
-  #pads.on{display:flex}
-  .pad{display:grid;gap:8px;pointer-events:auto;opacity:.55}
-  .pad.left{grid-template-columns:repeat(3,48px);grid-template-rows:48px;grid-template-areas:"l u r"}
-  .pad.right{grid-template-columns:48px;grid-template-rows:repeat(2,48px)}
-  .btn{width:48px;height:48px;border:1px solid var(--ink);border-radius:11px;background:rgba(20,16,10,.5);color:var(--ink);
-    font-family:ui-monospace,monospace;font-size:17px;display:flex;align-items:center;justify-content:center}
-  .btn:active,.btn.on{background:rgba(216,184,120,.25)}
-  .u{grid-area:u}.l{grid-area:l}.r{grid-area:r}
 </style>
 </head>
 <body>
@@ -52,10 +39,6 @@
 <div id="panel"></div>
 <div id="cap"></div>
 <div id="act"></div>
-<div id="pads">
-  <div class="pad left"><div class="btn l" data-k="a">◀</div><div class="btn u" data-k="w">▲</div><div class="btn r" data-k="d">▶</div></div>
-  <div class="pad right"><div class="btn" data-k="w">▲</div><div class="btn" data-k="s">▼</div></div>
-</div>
 
 <script>
 (function(){
@@ -63,140 +46,130 @@
 document.addEventListener("gesturestart",function(e){e.preventDefault();},{passive:false});
 var _lt=0;document.addEventListener("touchend",function(e){var n=Date.now();if(n-_lt<=350)e.preventDefault();_lt=n;},{passive:false});
 
-var screen=document.getElementById("screen"), cap=document.getElementById("cap"),
-    act=document.getElementById("act"), pads=document.getElementById("pads");
+var screen=document.getElementById("screen"), cap=document.getElementById("cap"), act=document.getElementById("act");
 
 /* ---- sound ---- */
-var AC=null; function audio(){ if(!AC){ try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){} } return AC; }
-function tone(f,d,t,v){ var a=audio(); if(!a)return; var o=a.createOscillator(),g=a.createGain(); o.type=t||"sine";o.frequency.value=f;
-  o.connect(g);g.connect(a.destination); var s=a.currentTime; g.gain.setValueAtTime(v||0.15,s); g.gain.exponentialRampToValueAtTime(0.0001,s+d); o.start(s);o.stop(s+d+0.02); }
-function knock(){ tone(88,0.16,"sine",0.26); setTimeout(function(){tone(66,0.18,"sine",0.2);},70); }
+var AC=null; function audio(){ if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}} return AC; }
+function tone(f,d,t,v){var a=audio();if(!a)return;var o=a.createOscillator(),g=a.createGain();o.type=t||"sine";o.frequency.value=f;
+  o.connect(g);g.connect(a.destination);var s=a.currentTime;g.gain.setValueAtTime(v||0.15,s);g.gain.exponentialRampToValueAtTime(0.0001,s+d);o.start(s);o.stop(s+d+0.02);}
+function knock(v){tone(88,0.16,"sine",v||0.26);setTimeout(function(){tone(66,0.18,"sine",(v||0.26)*0.8);},70);}
 
-/* ---- the corridor: # wall, . floor, D door(closed) ; target door marked separately ---- */
-var MAP=[
-"#####","#...#","#...#","#...#","D...#","#...#","#...#","#...D","#...#","#...#",
-"#...#","#..T#","#...#","#...#","D...#","#...#","#...#","#...#","#...#","#####"];
-var MH=MAP.length, MW=MAP[0].length;
-var TARGET={x:4,y:11};              // the door that knocks (the 'T')
-var doorOpen=0;                      // 0..1 animation of the target door
-function cellAt(x,y){ if(x<0||y<0||x>=MW||y>=MH) return "#"; return MAP[y|0][x|0]; }
-function solid(x,y){ var c=cellAt(x,y); return c==="#"||c==="D"||c==="T"; }
-function isDoor(x,y){ var c=cellAt(x,y); return c==="D"||c==="T"; }
+/* ---- corridor: # wall, . floor, D door, T target door ---- */
+var MAP=["#####","#...#","#...#","#...#","D...#","#...#","#...#","#...D","#...#","#...#","#...#","#...T","#...#","#...#","#...#","#...#","#...#","#...#","#...#","#####"];
+var MH=MAP.length, MW=MAP[0].length, TARGET={x:4,y:11}, doorOpen=0;
+function C(x,y){ if(x<0||y<0||x>=MW||y>=MH)return "#"; return MAP[y|0][x|0]; }
+function solid(x,y){var c=C(x,y);return c==="#"||c==="D"||c==="T";}
+function isDoor(x,y){var c=C(x,y);return c==="D"||c==="T";}
 
-/* ---- responsive grid ---- */
+/* ---- grid ---- */
 var W,H,FS;
 function sizeGrid(){var vw=innerWidth,vh=innerHeight;FS=Math.max(7,Math.min(13,Math.round(Math.min(vw,vh)/46)));screen.style.fontSize=FS+"px";
   W=Math.max(44,Math.min(150,Math.floor(vw/(FS*0.60))));H=Math.max(30,Math.min(88,Math.floor(vh/(FS*0.92))));}
 sizeGrid();addEventListener("resize",sizeGrid);addEventListener("orientationchange",function(){setTimeout(sizeGrid,200);});
 
-/* ---- player + raycaster ---- */
-var px=2.5,py=1.5,dx=0,dy=1,planeX=0.66,planeY=0;   // facing +y down the corridor
+/* ---- camera on rails: x, y, ang. Player triggers glides; the space performs. ---- */
+var cam={x:2.5,y:1.5,ang:Math.PI/2}, FOV=0.66, bob=0;
 var SHADE="@N#WkHm=+~:-. ";
-function cast(x){
-  var camX=2*x/W-1, rdx=dx+planeX*camX, rdy=dy+planeY*camX;
-  var mx=px|0,my=py|0,ddx=Math.abs(1/rdx),ddy=Math.abs(1/rdy),stepX,stepY,sdx,sdy;
-  if(rdx<0){stepX=-1;sdx=(px-mx)*ddx;}else{stepX=1;sdx=(mx+1-px)*ddx;}
-  if(rdy<0){stepY=-1;sdy=(py-my)*ddy;}else{stepY=1;sdy=(my+1-py)*ddy;}
+function cast(sx){
+  var dx=Math.cos(cam.ang), dy=Math.sin(cam.ang), pX=-dy*FOV, pY=dx*FOV;
+  var camX=2*sx/W-1, rdx=dx+pX*camX, rdy=dy+pY*camX;
+  var mx=cam.x|0,my=cam.y|0,ddx=Math.abs(1/rdx),ddy=Math.abs(1/rdy),stepX,stepY,dX,dY;
+  if(rdx<0){stepX=-1;dX=(cam.x-mx)*ddx;}else{stepX=1;dX=(mx+1-cam.x)*ddx;}
+  if(rdy<0){stepY=-1;dY=(cam.y-my)*ddy;}else{stepY=1;dY=(my+1-cam.y)*ddy;}
   var side=0,hit=false,g=0;
-  while(!hit&&g++<300){ if(sdx<sdy){sdx+=ddx;mx+=stepX;side=0;}else{sdy+=ddy;my+=stepY;side=1;} if(solid(mx,my))hit=true; }
-  var d=(side===0)?(sdx-ddx):(sdy-ddy); if(d<0.0001)d=0.0001;
+  while(!hit&&g++<300){if(dX<dY){dX+=ddx;mx+=stepX;side=0;}else{dY+=ddy;my+=stepY;side=1;}if(solid(mx,my))hit=true;}
+  var d=(side===0)?(dX-ddx):(dY-ddy);if(d<0.0001)d=0.0001;
   return {d:d,side:side,door:isDoor(mx,my),target:(mx===TARGET.x&&my===TARGET.y)};
 }
 function render(){
-  var out="";
-  var col=[];
+  var out="", col=[];
   for(var x=0;x<W;x++) col[x]=cast(x);
-  for(var y=0;y<H;y++){ var r="";
-    for(var x=0;x<W;x++){ var c=col[x], lh=Math.floor(H/c.d), s=((H-lh)/2)|0, e=((H+lh)/2)|0, ch;
-      if(y<s || y>e){ // ceiling/floor: faint receding lines
-        var p=Math.abs((y-H/2)/(H/2)); ch = p>0.75? " " : (((x+ (y*3))%9===0)? "." : " ");
-      } else {
-        var si=Math.floor(c.d/16*(SHADE.length-1)); if(c.side===1)si++; if(si<0)si=0; if(si>=SHADE.length)si=SHADE.length-1;
-        ch=SHADE[si];
-        if(c.door){                 // draw doors as framed rectangles
-          var t=(y-s)/(Math.max(1,e-s));
-          var frame = (t<0.06||t>0.94||(y-s)%1<0)?ch:ch;
-          ch = ((y-s)%3===0)? (c.side===0?"|":"[") : ch;
-          if(t>0.44&&t<0.56) ch="o";          // the knob line
-          if(c.target){                         // the knocking door — opens to void
-            if(doorOpen>0){ var opened = t> (0.5-0.5*doorOpen) && t< (0.5+0.5*doorOpen);
-              if(opened) ch = (Math.random()<0.04*doorOpen)?".":" "; }
-          }
-        }
-      }
-      r+=ch;
-    }
-    out+=r+"\n";
-  }
+  var hb=Math.round(bob);
+  for(var y=0;y<H;y++){var r="";
+    for(var x=0;x<W;x++){var c=col[x],lh=Math.floor(H/c.d),s=(((H-lh)/2)|0)+hb,e=(((H+lh)/2)|0)+hb,ch;
+      if(y<s||y>e){var p=Math.abs((y-H/2)/(H/2)); ch=p>0.78?" ":(((x+y*3)%9===0)?".":" ");}
+      else{var si=Math.floor(c.d/16*(SHADE.length-1));if(c.side===1)si++;if(si<0)si=0;if(si>=SHADE.length)si=SHADE.length-1;ch=SHADE[si];
+        if(c.door){var t=(y-s)/Math.max(1,e-s); ch=((y-s)%3===0)?(c.side===0?"|":"]"):ch; if(t>0.45&&t<0.55)ch="o";
+          if(c.target&&doorOpen>0){var op=t>(0.5-0.5*doorOpen)&&t<(0.5+0.5*doorOpen); if(op)ch=(Math.random()<0.05*doorOpen)?".":" ";}}}
+      r+=ch;}
+    out+=r+"\n";}
   screen.textContent=out;
 }
 
-/* ---- movement ---- */
-var keys={}, canMove=false;
-addEventListener("keydown",function(e){var k=e.key.toLowerCase();keys[k]=true;if(k.indexOf("arrow")===0)e.preventDefault();});
-addEventListener("keyup",function(e){keys[e.key.toLowerCase()]=false;});
-[].forEach.call(document.querySelectorAll(".btn"),function(b){var k=b.dataset.k;
-  var on=function(e){e.preventDefault();keys[k]=true;b.classList.add("on");};var off=function(e){e.preventDefault();keys[k]=false;b.classList.remove("on");};
-  b.addEventListener("pointerdown",on);b.addEventListener("pointerup",off);b.addEventListener("pointerleave",off);b.addEventListener("pointercancel",off);});
-function move(fx,fy){var nx=px+fx,ny=py+fy;if(!solid(nx+Math.sign(fx)*0.2,py))px=nx;if(!solid(px,ny+Math.sign(fy)*0.2))py=ny;}
-function rot(a){var c=Math.cos(a),s=Math.sin(a);var n1=dx*c-dy*s,n2=dx*s+dy*c;dx=n1;dy=n2;var p1=planeX*c-planeY*s,p2=planeX*s+planeY*c;planeX=p1;planeY=p2;}
-var reached=false;
-function loop(){
-  if(canMove){
-    if(keys["w"]||keys["arrowup"])move(dx*0.06,dy*0.06);
-    if(keys["s"]||keys["arrowdown"])move(-dx*0.06,-dy*0.06);
-    if(keys["a"]||keys["arrowleft"])rot(-0.04);
-    if(keys["d"]||keys["arrowright"])rot(0.04);
-    // near the target door & roughly facing it?
-    var dist=Math.hypot(px-(TARGET.x+0.5),py-(TARGET.y+0.5));
-    if(!reached && dist<1.7){ reached=true; atDoor(); }
-  }
-  if(state==="open" && doorOpen<1){ doorOpen=Math.min(1,doorOpen+0.012); }
+/* ---- glide tween between authored waypoints ---- */
+var WP=[{x:2.5,y:1.5,ang:Math.PI/2},{x:2.5,y:5.5,ang:Math.PI/2},{x:2.5,y:9.4,ang:Math.PI/2},{x:2.5,y:11.5,ang:0}];
+var wpIdx=0, tween=null;
+function easeInOut(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+function lerpAng(a,b,t){var d=((b-a+Math.PI)%(2*Math.PI))-Math.PI;return a+d*t;}
+function glideTo(i,dur,done){
+  var from={x:cam.x,y:cam.y,ang:cam.ang}, to=WP[i], t0=null;
+  tween={done:done,fn:function(ts){ if(t0===null)t0=ts; var k=Math.min(1,(ts-t0)/dur), e=easeInOut(k);
+    cam.x=from.x+(to.x-from.x)*e; cam.y=from.y+(to.y-from.y)*e; cam.ang=lerpAng(from.ang,to.ang,e);
+    if(k>=1){ tween=null; if(done)done(); } }};
+}
+
+function loop(ts){
+  if(tween) tween.fn(ts);
+  else bob = Math.sin(ts*0.0016)*0.35;      // gentle breath when still
+  if(state==="open"&&doorOpen<1) doorOpen=Math.min(1,doorOpen+0.011);
   render(); requestAnimationFrame(loop);
 }
 
-/* ---- narration state machine ---- */
+/* ---- narration ---- */
 var state="intro";
-function showCap(html){ cap.classList.remove("on"); setTimeout(function(){ cap.innerHTML=html; cap.classList.add("on"); },140); }
-function acts(list){ act.classList.remove("on"); act.innerHTML="";
-  list.forEach(function(a){ if(a.input){ act.appendChild(a.el); return; }
-    var b=document.createElement("button"); b.className="b"; b.textContent=a.t; b.onclick=function(){ audio(); a.f(); }; act.appendChild(b); });
-  setTimeout(function(){ act.classList.add("on"); },220); }
+function showCap(h){cap.classList.remove("on");setTimeout(function(){cap.innerHTML=h;cap.classList.add("on");},140);}
+function acts(list){act.classList.remove("on");act.innerHTML="";
+  list.forEach(function(a){if(a.input){act.appendChild(a.el);return;}var b=document.createElement("button");b.className="b";b.textContent=a.t;b.onclick=function(){audio();a.f();};act.appendChild(b);});
+  setTimeout(function(){act.classList.add("on");},220);}
+function esc(s){return s.replace(/[&<>\"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
-function intro(){ showCap("Let the room go quiet. Breathe out once, all the way."); acts([{t:"I have",f:voidBeat}]); }
-function voidBeat(){ showCap("Now — a black void. No walls, no floor, no light. You look down: no body, no memory. Nothing here."); acts([{t:"Wait",f:materialize}]); }
+function intro(){showCap("Let the room go quiet. Breathe out once, all the way.");acts([{t:"I have",f:voidBeat}]);}
+function voidBeat(){showCap("A black void. No walls, no floor, no light. You look down: no body, no memory. Nothing here.");acts([{t:"Wait",f:materialize}]);}
 function materialize(){
-  cap.classList.remove("on"); act.classList.remove("on");
+  cap.classList.remove("on");act.classList.remove("on");
   showCap("<span class='said'>And then — something. A hallway.</span>");
-  screen.classList.add("on");                 // the 3D world fades up behind the words
-  setTimeout(function(){ state="walk"; canMove=true; pads.classList.add("on");
-    showCap("You have a body now. Doors line both sides. Somewhere ahead — a knock. Walk, and find it."); knock();
-    var kt=setInterval(function(){ if(state!=="walk"){clearInterval(kt);return;} knock(); },2600);
-  }, 2600);
+  screen.classList.add("on");
+  setTimeout(function(){ state="walk";
+    showCap("You have a body now. The hall runs ahead, and somewhere down it — a knock. Move toward it when you're ready.");
+    knock(); acts([{t:"↓ move forward",f:step}]);
+    var kt=setInterval(function(){ if(state!=="walk"){clearInterval(kt);return;} knock(0.22); },2800);
+  },2700);
+}
+var lines=["The knock is nearer now. The left side, further down.","Closer. You can feel it landing in your chest.","You've arrived. The door that has been knocking."];
+function step(){
+  if(tween) return;
+  wpIdx++;
+  act.classList.remove("on"); cap.classList.remove("on");
+  glideTo(wpIdx, 1900, function(){
+    if(wpIdx>=WP.length-1){ atDoor(); }
+    else { knock(0.3); showCap(lines[wpIdx-1]); acts([{t:"↓ move forward",f:step}]); }
+  });
 }
 function atDoor(){
-  state="atdoor"; canMove=false; pads.classList.remove("on");
-  showCap("You're here. You can see the grain, the handle, a line of light beneath. Something behind it has a smell you almost know.");
-  acts([{t:"Turn the knob",f:openDoor}]);
+  state="atdoor";
+  showCap("You can see it clearly — the grain of the wood, the handle, a line of light beneath. From behind it, faintly, a smell you almost know.");
+  acts([{t:"turn the knob",f:openDoor}]);
 }
 function openDoor(){
   state="open";
   showCap("<span class='said'>click, click, click</span> — and it gives, swinging inward.");
   setTimeout(function(){ showCap("You push it open. On the other side, you see —");
-    var inp=document.createElement("input"); inp.id="see"; inp.type="text"; inp.placeholder="what's behind the door?"; inp.autocomplete="off";
-    inp.addEventListener("keydown",function(e){ if(e.key==="Enter"&&inp.value.trim()) receive(inp.value.trim()); });
-    acts([{input:true,el:inp},{t:"that's what I see",f:function(){ if(inp.value.trim())receive(inp.value.trim()); else inp.focus(); }}]);
+    var inp=document.createElement("input");inp.id="see";inp.type="text";inp.placeholder="what's behind the door?";inp.autocomplete="off";
+    inp.addEventListener("keydown",function(e){if(e.key==="Enter"&&inp.value.trim())receive(inp.value.trim());});
+    acts([{input:true,el:inp},{t:"that's what I see",f:function(){if(inp.value.trim())receive(inp.value.trim());else inp.focus();}}]);
     setTimeout(function(){inp.focus();},400);
-  }, 1900);
+  },1900);
 }
-function receive(w){ window._saw=w; state="reflect";
-  showCap("You saw: <span class='said'>"+esc(w)+"</span>. Don't explain it yet. Just let it be true for a second.");
-  acts([{t:"okay",f:function(){ showCap("It's pointing at something you already carry. What in your waking life has the shape of <span class='said'>"+esc(window._saw)+"</span>? You don't have to tell me. You already know.");
-    acts([{t:"walk it again",f:function(){location.reload();}},{t:"play for real",f:function(){location.href="https://sleepyplanet.studio";}}]); }}]);
+function receive(w){window._saw=w;state="reflect";
+  showCap("You saw: <span class='said'>"+esc(w)+"</span>. Don't explain it yet. Let it be true for a second.");
+  acts([{t:"okay",f:function(){showCap("It points at something you already carry. What in your waking life has the shape of <span class='said'>"+esc(window._saw)+"</span>? You don't have to tell me. You already know.");
+    acts([{t:"walk it again",f:function(){location.reload();}},{t:"play for real",f:function(){location.href="https://sleepyplanet.studio";}}]);}}]);
 }
-function esc(s){return s.replace(/[&<>\"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
-intro(); render(); loop();
+/* allow W / up / space to also trigger "move forward" during the walk */
+addEventListener("keydown",function(e){var k=e.key.toLowerCase(); if((k==="w"||k==="arrowup"||k===" ")&&state==="walk"&&!tween){e.preventDefault();step();}});
+
+intro(); requestAnimationFrame(loop);
 })();
 </script>
 </body>
