@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>the screening room · na koja abad</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b0a0b'/%3E%3Crect x='6' y='8' width='20' height='13' rx='1.5' fill='none' stroke='%23e6c98a' stroke-width='1.4'/%3E%3Ccircle cx='16' cy='14.5' r='2' fill='%23e6c98a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#e6c98a;--pap:#0b0a0b;--soft:#161318;--edge:rgba(230,201,138,.22);--text:#e9e2d4}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--pap);color:var(--text);font-family:"Newsreader",Georgia,serif;font-weight:300;-webkit-text-size-adjust:100%}
+  body{max-width:1120px;margin:0 auto;padding:26px 20px 80px}
+  .mono{font-family:"Space Mono",ui-monospace,monospace}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;border-bottom:1px solid var(--edge);padding-bottom:16px;margin-bottom:22px;flex-wrap:wrap}
+  h1{font-style:italic;font-weight:300;font-size:clamp(26px,5vw,40px);margin:0;letter-spacing:.01em}
+  header .sub{font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:rgba(233,226,212,.5)}
+  .wrap{display:grid;grid-template-columns:1fr;gap:26px}
+  @media(min-width:880px){ .wrap{grid-template-columns:1.55fr 1fr} }
+  /* stage */
+  .stage{position:relative;border:1px solid var(--edge);border-radius:14px;overflow:hidden;background:#050405;box-shadow:0 0 60px rgba(230,201,138,.06),inset 0 0 40px rgba(0,0,0,.6)}
+  .stage .framebox{position:relative;width:100%;height:min(64vh,560px);background:#050405}
+  .stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+  .stage .placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;color:rgba(233,226,212,.55)}
+  .stage .placeholder .big{font-style:italic;font-size:22px;color:var(--text);margin-bottom:8px}
+  .hint{position:absolute;left:0;right:0;bottom:0;z-index:3;text-align:center;padding:8px;font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(230,201,138,.75);background:linear-gradient(0deg,rgba(5,4,5,.85),transparent);pointer-events:none;opacity:0;transition:opacity .5s}
+  .hint.show{opacity:1}
+  /* now strip */
+  .now{display:flex;align-items:center;gap:12px;margin-top:12px;font-family:"Space Mono",monospace;font-size:12px;color:rgba(233,226,212,.8)}
+  .now .dot{width:8px;height:8px;border-radius:50%;background:#4a4038;transition:background .3s}
+  .now .dot.live{background:#e6c98a;box-shadow:0 0 10px #e6c98a}
+  .now .title{color:var(--ink)}
+  .now .scene{font-style:normal;color:rgba(233,226,212,.55);font-family:"Newsreader",serif;font-style:italic;font-size:14px}
+  .prog{height:2px;background:rgba(230,201,138,.14);border-radius:2px;margin-top:8px;overflow:hidden}
+  .prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,transparent,var(--ink))}
+  /* panels */
+  .panel{border:1px solid var(--edge);border-radius:14px;background:var(--soft);padding:16px 16px 18px}
+  .panel h2{font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:rgba(233,226,212,.55);margin:0 0 12px;font-weight:400}
+  /* notepad */
+  .padrow{display:flex;gap:8px}
+  #note{flex:1;background:#0b0a0b;border:1px solid var(--edge);border-radius:9px;color:var(--text);font-family:"Newsreader",serif;font-size:16px;padding:11px 12px;outline:none}
+  #note::placeholder{color:rgba(233,226,212,.32);font-style:italic}
+  .btn{font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);background:transparent;border:1px solid var(--ink);border-radius:9px;padding:0 14px;cursor:pointer;white-space:nowrap}
+  .btn:active{background:rgba(230,201,138,.15)}
+  .btn.solid{background:rgba(230,201,138,.14)}
+  .stamp{font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.08em;color:rgba(230,201,138,.6);margin-top:8px;min-height:14px}
+  ul.notes{list-style:none;margin:14px 0 0;padding:0;max-height:38vh;overflow:auto}
+  ul.notes li{border-top:1px solid rgba(230,201,138,.12);padding:10px 0;display:flex;gap:10px;align-items:flex-start}
+  ul.notes li .tag{font-family:"Space Mono",monospace;font-size:10px;color:var(--ink);white-space:nowrap;padding-top:3px;min-width:44px}
+  ul.notes li .body{flex:1}
+  ul.notes li .body .sc{display:block;font-size:11px;color:rgba(233,226,212,.4);font-style:italic}
+  ul.notes li .x{cursor:pointer;color:rgba(233,226,212,.3);font-family:"Space Mono",monospace;font-size:13px}
+  ul.notes li .x:active{color:#e88}
+  .tools{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .empty{color:rgba(233,226,212,.35);font-style:italic;font-size:15px;padding:8px 0}
+  /* programme */
+  .prog-list{list-style:none;margin:0;padding:0}
+  .prog-list li{border-top:1px solid rgba(230,201,138,.12);padding:12px 0;cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .prog-list li:first-child{border-top:0}
+  .prog-list li .t{font-style:italic;font-size:19px;color:var(--text)}
+  .prog-list li.sel .t{color:var(--ink)}
+  .prog-list li .m{font-family:"Space Mono",monospace;font-size:10px;color:rgba(233,226,212,.4);letter-spacing:.06em}
+  .prog-list li:hover .t{color:var(--ink)}
+  .rooms{margin-top:6px}
+  .rooms a{display:flex;justify-content:space-between;text-decoration:none;color:rgba(233,226,212,.72);padding:9px 0;border-top:1px solid rgba(230,201,138,.1);font-size:15px}
+  .rooms a .go{font-family:"Space Mono",monospace;font-size:10px;color:rgba(230,201,138,.5)}
+  .rooms a:hover{color:var(--ink)}
+  footer{margin-top:26px;font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.1em;color:rgba(233,226,212,.3);text-align:center}
+</style>
+</head>
+<body>
+<header>
+  <h1>the screening room</h1>
+  <div class="sub">na koja abad · films by Patch</div>
+</header>
+
+<div class="wrap">
+  <div class="left">
+    <div class="stage">
+      <div class="framebox">
+        <iframe id="stage" title="film" allow="autoplay" style="display:none"></iframe>
+        <div class="placeholder" id="ph"><div class="big"><em>pick a film below</em></div><div class="mono" style="font-size:11px;letter-spacing:.14em">it plays here · tap it to begin</div></div>
+        <div class="hint" id="hint">tap the film to begin · sound on</div>
+      </div>
+    </div>
+    <div class="now">
+      <span class="dot" id="dot"></span>
+      <span class="title" id="nTitle">—</span>
+      <span class="mono" id="nTime">0:00 / 0:00</span>
+      <span class="scene" id="nScene"></span>
+    </div>
+    <div class="prog"><i id="progBar"></i></div>
+
+    <div class="panel" style="margin-top:18px">
+      <h2>notepad — stamped to the moment</h2>
+      <div class="padrow">
+        <input id="note" placeholder="note this moment…" autocomplete="off">
+        <button class="btn solid" id="mark">mark ⏱</button>
+      </div>
+      <div class="stamp" id="stamp"></div>
+      <ul class="notes" id="notes"></ul>
+      <div class="tools">
+        <button class="btn" id="dl">download json</button>
+        <button class="btn" id="cp">copy json</button>
+        <button class="btn" id="clr">clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="panel">
+      <h2>programme — the films</h2>
+      <ul class="prog-list" id="films"></ul>
+    </div>
+    <div class="panel" style="margin-top:18px">
+      <h2>rooms you can enter</h2>
+      <div class="rooms" id="rooms"></div>
+    </div>
+  </div>
+</div>
+<footer>send the json to Patch and we build from your notes.</footer>
+
+<script>
+(function(){
+"use strict";
+var BASE="https://patch-adams.github.io/ascii-city/";
+var FILMS=[
+ {id:"na-koja-abad", title:"na koja abad", meta:"a wordless passage · ~3 min", file:"film.html"},
+ {id:"study-of-mike", title:"a study of Mike", meta:"his life as architecture · ~3½ min", file:"mike.html"}
+];
+var ROOMS=[
+ {title:"the study — portrait", file:"study.html"},
+ {title:"gallery tunnel", file:"tunnel.html"},
+ {title:"enter the image — depth", file:"depth.html"},
+ {title:"the hallway — a walk", file:"hallway-walk.html"},
+ {title:"century", file:"century.html"}
+];
+var $=function(id){return document.getElementById(id);};
+var stage=$("stage"), ph=$("ph"), hint=$("hint");
+var cur={film:null, title:"—", t:0, total:0, scene:"", playing:false};
+var current=null;
+var KEY="nka-screening-notes";
+var notes=[];
+try{ notes=JSON.parse(localStorage.getItem(KEY)||"[]"); }catch(e){ notes=[]; }
+
+function fmt(s){ s=Math.max(0,Math.floor(s||0)); var m=Math.floor(s/60); return m+":"+("0"+(s%60)).slice(-2); }
+
+/* programme */
+var fl=$("films");
+FILMS.forEach(function(f){ var li=document.createElement("li"); li.dataset.id=f.id;
+  li.innerHTML='<span class="t"><em>'+f.title+'</em></span><span class="m">'+f.meta+'</span>';
+  li.addEventListener("click",function(){ loadFilm(f); }); fl.appendChild(li); });
+function loadFilm(f){
+  current=f; cur={film:f.id,title:f.title,t:0,total:0,scene:"",playing:false};
+  ph.style.display="none"; stage.style.display="block";
+  stage.src=BASE+f.file+"?screening=1";
+  [].forEach.call(fl.children,function(li){ li.classList.toggle("sel",li.dataset.id===f.id); });
+  hint.classList.add("show"); setTimeout(function(){hint.classList.remove("show");},4200);
+  $("nTitle").textContent=f.title; $("nScene").textContent=""; $("nTime").textContent="0:00 / 0:00";
+}
+var rm=$("rooms");
+ROOMS.forEach(function(r){ var a=document.createElement("a"); a.href=BASE+r.file; a.target="_blank"; a.rel="noopener";
+  a.innerHTML='<span>'+r.title+'</span><span class="go">open ↗</span>'; rm.appendChild(a); });
+
+/* beacons from the film iframe */
+window.addEventListener("message",function(e){ var d=e.data; if(!d||d.type!=="nkafilm")return;
+  cur.t=d.t||0; cur.total=d.total||0; cur.scene=d.scene||""; cur.playing=!!d.playing;
+  if(d.film) cur.film=d.film;
+  $("dot").classList.toggle("live", cur.playing);
+  $("nTitle").textContent=current?current.title:(cur.film||"—");
+  $("nTime").textContent=fmt(cur.t)+" / "+fmt(cur.total);
+  $("nScene").textContent=cur.scene?("· "+cur.scene):"";
+  $("progBar").style.width=(cur.total? Math.min(100,cur.t/cur.total*100):0)+"%";
+});
+
+/* notepad */
+var noteEl=$("note"), stamp=$("stamp");
+function refreshStamp(){ stamp.textContent = current ? ("will stamp: "+fmt(cur.t)+(cur.scene?" · "+cur.scene:"")) : "load a film to stamp your notes to the moment"; }
+setInterval(refreshStamp,400); refreshStamp();
+function addNote(){ var txt=noteEl.value.trim(); if(!txt)return;
+  notes.push({ film:cur.film||(current&&current.id)||"—", t:Math.round(cur.t*10)/10, ts:fmt(cur.t), scene:cur.scene||"", text:txt, at:new Date().toISOString() });
+  noteEl.value=""; save(); render();
+}
+$("mark").addEventListener("click",addNote);
+noteEl.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); addNote(); } });
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify(notes)); }catch(e){} }
+function render(){ var ul=$("notes"); ul.innerHTML="";
+  if(!notes.length){ ul.innerHTML='<div class="empty">no notes yet — jot something and hit mark.</div>'; return; }
+  notes.slice().reverse().forEach(function(n){ var realIdx=notes.indexOf(n); var li=document.createElement("li");
+    var fname=(FILMS.filter(function(f){return f.id===n.film;})[0]||{}).title||n.film;
+    li.innerHTML='<span class="tag">'+n.ts+'</span><span class="body">'+esc(n.text)+'<span class="sc">'+esc(fname)+(n.scene?" · "+esc(n.scene):"")+'</span></span><span class="x">✕</span>';
+    li.querySelector(".x").addEventListener("click",function(){ notes.splice(realIdx,1); save(); render(); });
+    ul.appendChild(li); });
+}
+function esc(s){ return (s+"").replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
+function payload(){ return JSON.stringify({ exportedAt:new Date().toISOString(), count:notes.length, notes:notes }, null, 2); }
+$("dl").addEventListener("click",function(){ var b=new Blob([payload()],{type:"application/json"});
+  var a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download="screening-notes-"+Date.now()+".json"; a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);},1000); });
+$("cp").addEventListener("click",function(){ var t=payload();
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(function(){flash($("cp"),"copied ✓");},function(){legacy(t);}); } else legacy(t);
+  function legacy(x){ var ta=document.createElement("textarea"); ta.value=x; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");flash($("cp"),"copied ✓");}catch(e){} document.body.removeChild(ta); } });
+$("clr").addEventListener("click",function(){ if(confirm("clear all notes?")){ notes=[]; save(); render(); } });
+function flash(btn,txt){ var old=btn.textContent; btn.textContent=txt; setTimeout(function(){btn.textContent=old;},1400); }
+render();
+})();
+</script>
+</body>
+</html>

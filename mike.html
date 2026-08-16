@@ -205,6 +205,7 @@ var MV=[
  {f:mThreshold, d:32, c:[134,220,234]},
  {f:mCarry,     d:26, c:[243,224,176]}
 ];
+var NAMES=["overture — a light on the altar","the cathedral he left","he rebuilds it in the dark","the gate that won’t flatter","his voice becomes the ground","na koja abad","the threshold","he carries the rooms"];
 var OV=1.8, starts=[0], i2;
 for(i2=1;i2<MV.length;i2++) starts[i2]=starts[i2-1]+MV[i2-1].d-OV;
 var TOTAL=starts[MV.length-1]+MV[MV.length-1].d;
@@ -263,6 +264,7 @@ function frame(ts){
   flush(mf,col);
   caps(T);
   bar.style.width=(Math.min(1,T/TOTAL)*100)+"%";
+  if(window.parent!==window){ try{ parent.postMessage({type:"nkafilm",film:"study-of-mike",t:T,total:TOTAL,scene:(NAMES[active]||""),playing:playing,ended:ended},"*"); }catch(e){} }
   requestAnimationFrame(frame);
 }
 

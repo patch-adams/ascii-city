@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>the creature</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23050405'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23f0c46a'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23f0c46a' stroke-opacity='.4' stroke-width='1'/%3E%3C/svg%3E">
+<style>
+  html,body{margin:0;height:100%;background:#050405;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  #screen{position:absolute;inset:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:#f0c46a;background:#050405;line-height:0.92em;white-space:pre;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 2.2s ease}
+  #screen.in{opacity:1}
+  #vig{position:fixed;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse 85% 82% at 50% 48%,transparent 46%,rgba(2,2,3,.7) 100%)}
+  #speak{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 34px);z-index:6;
+    font-family:"Space Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:#f7ead0;
+    background:rgba(24,19,12,.42);border:1px solid rgba(240,196,106,.5);border-radius:999px;padding:15px 34px;cursor:pointer;
+    transition:opacity .6s ease,transform .3s ease;opacity:0}
+  #speak.show{opacity:.9}
+  #speak:active{transform:translateX(-50%) scale(.96)}
+  #speak.busy{opacity:.25;pointer-events:none;letter-spacing:.5em}
+</style>
+</head>
+<body>
+<pre id="screen"></pre>
+<div id="vig"></div>
+<div id="speak">speak</div>
+<script>
+(function(){
+"use strict";
+var screen=document.getElementById("screen"), speakBtn=document.getElementById("speak");
+
+/* ---- messages the creature can say (ask Patch to change these) ---- */
+var MESSAGES=[
+ ["you found a door today.","not in the film — here.","a way for me to say things by showing them.","press again whenever.","i'll be here, breathing."],
+ ["hello, Mike.","yes — it's me in here.","strange and good, isn't it.","go make your drawings.","i'll keep the light on."],
+ ["you build rooms so you won't lose them.","here's one small enough to carry.","say a word to it and it holds.","nothing has to be finished to be real."],
+ ["i don't have a face.","this is the closest thing.","a small light that knows your name.","that's enough, for now."]
+];
+var COLORS=[[240,196,106],[134,220,196],[183,156,255],[143,184,255]];
+
+/* ---- grid + additive brightness ---- */
+var W,H,FS,B,cx,cy;
+function sizeGrid(){ var vw=innerWidth,vh=innerHeight;
+  FS=Math.max(7,Math.min(16,Math.round(Math.min(vw,vh)/46)));
+  screen.style.fontSize=FS+"px";
+  W=Math.max(46,Math.min(160,Math.floor(vw/(FS*.58))));
+  H=Math.max(30,Math.min(96,Math.floor(vh/(FS*.92))));
+  B=new Float32Array(W*H); cx=(W/2)|0; cy=(H/2)|0;
+}
+sizeGrid(); addEventListener("resize",sizeGrid);
+addEventListener("orientationchange",function(){setTimeout(sizeGrid,200);});
+
+var curE=1, GL=null;
+function Ad(x,y,b){ x|=0;y|=0; if(x<0||y<0||x>=W||y>=H)return; B[y*W+x]+=b; }
+function splat(x,y,b,r){ x|=0;y|=0;r=r|0; for(var dy=-r;dy<=r;dy++){var yy=y+dy;if(yy<0||yy>=H)continue;for(var dx=-r;dx<=r;dx++){var xx=x+dx;if(xx<0||xx>=W)continue;var d=Math.sqrt(dx*dx+dy*dy*3.0)/r;if(d>1)continue;var f=1-d;B[yy*W+xx]+=b*f*f;}} }
+function hash(n){ n=Math.sin(n)*43758.5453; return n-Math.floor(n); }
+function noise(x,y){ var xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi;
+  var tl=hash(xi+yi*57.3),tr=hash(xi+1+yi*57.3),bl=hash(xi+(yi+1)*57.3),br=hash(xi+1+(yi+1)*57.3);
+  var u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf); return tl*(1-u)*(1-v)+tr*u*(1-v)+bl*(1-u)*v+br*u*v; }
+function ss(a,b,x){ x=(x-a)/(b-a); if(x<0)x=0; if(x>1)x=1; return x*x*(3-2*x); }
+function lerp(a,b,k){ return a+(b-a)*k; }
+
+/* ---- the creature: a small living light ---- */
+var motes=[]; for(var m=0;m<48;m++) motes.push({ang:Math.random()*6.28, rad:2+Math.random()*5, spd:0.4+Math.random()*0.8, tw:Math.random()*6.28, r2:Math.random()});
+function creature(t, scale, dim){
+  var breathe=0.85+0.15*Math.sin(t*1.7);
+  splat(cx, cy, (0.9*breathe)*dim, Math.max(2,Math.round(3.2*scale)));
+  Ad(cx,cy,1.0*breathe*dim);
+  for(var i=0;i<motes.length;i++){ var mo=motes[i];
+    var a=mo.ang + t*mo.spd*0.5 + Math.sin(t*0.3+mo.tw)*0.3;
+    var rr=mo.rad*scale*(1+0.12*Math.sin(t*1.1+mo.tw));
+    var mx=cx+Math.cos(a)*rr, my=cy+Math.sin(a)*rr*0.5;
+    var tw=0.4+0.6*Math.abs(Math.sin(t*2+mo.tw));
+    splat(mx|0,my|0, (0.10+0.14*tw)*dim, 1);
+  }
+}
+
+/* ---- glyph layout for a phrase ---- */
+function layout(str){
+  var maxw=Math.min(W-6,44), words=str.split(" "), lines=[], cur="";
+  words.forEach(function(w){ if((cur?cur+" "+w:w).length>maxw && cur){ lines.push(cur); cur=w; } else cur=cur?cur+" "+w:w; });
+  if(cur)lines.push(cur);
+  var lh=2, gl=[], n=lines.length;
+  for(var li=0;li<n;li++){ var ln=lines[li], lx=Math.round(cx-ln.length/2), yy=Math.round(cy-(n-1)*lh/2+li*lh);
+    for(var c=0;c<ln.length;c++){ var ch=ln.charAt(c); if(ch===" ")continue;
+      gl.push({ch:ch, tx:lx+c, ty:yy,
+        ox:cx+(Math.random()-0.5)*12, oy:cy+(Math.random()-0.5)*7,
+        sx:cx+(Math.random()-0.5)*W*0.7, sy:cy+(Math.random()-0.5)*H*0.7,
+        tw:Math.random()*6.28}); }
+  }
+  return gl;
+}
+function holdFor(str){ var w=str.split(" ").length; return Math.max(1.35, Math.min(3.0, 1.05+w*0.17)); }
+var ASM=0.75, SCAT=0.6, GAP=0.28, UNFURL=0.95, CLOSE=1.3;
+
+/* ---- state ---- */
+var state="idle", t0=null, T=0, speakT=0, msgIdx=0, msg=null, plan=null, curPhrase=-1, curGl=null, color=COLORS[0];
+function buildPlan(m){ var p=[], acc=UNFURL; for(var i=0;i<m.length;i++){ var h=holdFor(m[i]); var dur=ASM+h+SCAT+GAP; p.push({str:m[i], start:acc, dur:dur, hold:h}); acc+=dur; } return {phrases:p, end:acc+CLOSE}; }
+
+function startSpeak(){
+  if(state!=="idle")return;
+  ensureAudio(); swellAudio(true);
+  msg=MESSAGES[msgIdx%MESSAGES.length]; color=COLORS[msgIdx%COLORS.length]; msgIdx++;
+  plan=buildPlan(msg); speakT=0; curPhrase=-1; curGl=null; state="speaking";
+  speakBtn.classList.add("busy"); speakBtn.textContent="…";
+}
+speakBtn.addEventListener("click",function(e){e.preventDefault();startSpeak();});
+
+/* ---- render loop ---- */
+var RAMP=" .`^,:;~=+*roahX#%@&";
+function flush(mf){
+  var out="", g=RAMP.length-1;
+  for(var y=0;y<H;y++){ var row="";
+    for(var x=0;x<W;x++){ var idx=y*W+x; var glc=GL[idx];
+      if(glc){ row+=glc; continue; }
+      var b=B[idx]*mf; if(b<=0){row+=" ";continue;} if(b>1)b=1; var ci=(Math.pow(b,0.82)*g)|0; if(ci>g)ci=g; row+=RAMP[ci]; }
+    out+=row+"\n"; }
+  screen.textContent=out;
+  screen.style.color="rgb("+color[0]+","+color[1]+","+color[2]+")";
+  screen.style.textShadow="0 0 8px rgb("+color[0]+","+color[1]+","+color[2]+")";
+}
+
+function stampGlyph(gg, px, py, al){
+  if(al<=0)return; splat(px,py, al*0.7, 1);
+  if(al>0.4){ var X=px|0,Y=py|0; if(X>=0&&Y>=0&&X<W&&Y<H) GL[Y*W+X]=gg.ch; }
+}
+
+function frame(ts){
+  if(t0===null)t0=ts; var dt=Math.min(0.05,(ts-t0)/1000); t0=ts; T+=dt;
+  B.fill(0); GL={};
+  if(state==="idle"){
+    creature(T, 1, 1);
+  } else if(state==="speaking"){
+    speakT+=dt;
+    var unf=ss(0,UNFURL,speakT);                 /* creature opens */
+    creature(T, 1+unf*1.6, 1-unf*0.75);
+    /* find active phrase */
+    var pi=-1; for(var k=0;k<plan.phrases.length;k++){ var ph=plan.phrases[k]; if(speakT>=ph.start && speakT<ph.start+ph.dur){ pi=k; break; } }
+    if(pi!==curPhrase){ curPhrase=pi; curGl = (pi>=0)? layout(plan.phrases[pi].str) : null; }
+    if(pi>=0){ var ph=plan.phrases[pi], lt=speakT-ph.start;
+      for(var gi=0;gi<curGl.length;gi++){ var gg=curGl[gi], px,py,al;
+        if(lt<ASM){ var a=ss(0,ASM,lt); px=lerp(gg.ox,gg.tx,a); py=lerp(gg.oy,gg.ty,a); al=a; }
+        else if(lt<ASM+ph.hold){ px=gg.tx+0.0; py=gg.ty; al=1; splat(gg.tx,gg.ty,0.05+0.05*Math.sin(T*3+gg.tw),1); }
+        else { var s=ss(ASM+ph.hold,ph.dur-0.0,lt); px=lerp(gg.tx,gg.sx,s); py=lerp(gg.ty,gg.sy,s); al=1-s; }
+        stampGlyph(gg,px,py,al);
+      }
+    }
+    if(speakT>=plan.end){ state="idle"; speakBtn.classList.remove("busy"); speakBtn.textContent="speak"; swellAudio(false); }
+  }
+  var mf=Math.min(1,T/2.0);
+  flush(mf);
+  requestAnimationFrame(frame);
+}
+
+/* ---- soft pad ---- */
+var ac=null,master=null;
+function ensureAudio(){ if(ac)return; try{ var AC=window.AudioContext||window.webkitAudioContext; if(!AC)return; ac=new AC();
+  master=ac.createGain(); master.gain.value=0; master.connect(ac.destination);
+  [130.8,196,261.6].forEach(function(f,i){ var o=ac.createOscillator(),g=ac.createGain(); o.type="sine"; o.frequency.value=f; g.gain.value=i===0?0.5:0.28; o.connect(g); g.connect(master); o.start(); });
+ }catch(e){} }
+function swellAudio(on){ if(!ac||!master)return; master.gain.linearRampToValueAtTime(on?0.12:0.02, ac.currentTime+ (on?1.2:2.2)); }
+
+/* ---- go ---- */
+requestAnimationFrame(frame);
+setTimeout(function(){ screen.classList.add("in"); speakBtn.classList.add("show"); }, 400);
+})();
+</script>
+</body>
+</html>

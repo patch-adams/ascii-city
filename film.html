@@ -110,10 +110,12 @@ function frame(ts){
   if(playing){ if(last!==null) T+=Math.min(0.05,(ts-last)/1000); last=ts; if(T>=TOTAL){ T=TOTAL; playing=false; } }
   else last=ts;
   clear();
-  for(var i=0;i<SC.length;i++){ var st=starts[i], en=st+SC[i].d; if(T>=st-0.01 && T<en){ var lt=T-st; ALPHA=Math.max(0,Math.min(1,envelope(lt,SC[i].d))); SC[i].f(lt, lt/SC[i].d);
+  var actI=0;
+  for(var i=0;i<SC.length;i++){ var st=starts[i], en=st+SC[i].d; if(T>=st-0.01 && T<en){ actI=i; var lt=T-st; ALPHA=Math.max(0,Math.min(1,envelope(lt,SC[i].d))); SC[i].f(lt, lt/SC[i].d);
     (SC[i].cap||[]).forEach(function(c,ci){ var key=i+"_"+ci; if(lt>=c[0] && !capShown[key]){ capShown[key]=true; showCap(c[1]); } }); } }
   ALPHA=1; flush();
   bar.style.width=(T/TOTAL*100)+"%";
+  if(window.parent!==window){ try{ parent.postMessage({type:"nkafilm",film:"na-koja-abad",t:T,total:TOTAL,scene:(SC[actI].cap&&SC[actI].cap[0]?SC[actI].cap[0][1]:""),playing:playing},"*"); }catch(e){} }
   requestAnimationFrame(frame);
 }
 var capTimer=null;
