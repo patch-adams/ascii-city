@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>na koja abad — an ascii film</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23070608'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='%23e7cf9a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;1,6..72,300&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#e7cf9a}
+  html,body{margin:0;height:100%;background:#070608;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  #screen{position:absolute;inset:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);background:#070608;line-height:0.92em;white-space:pre;display:flex;align-items:center;justify-content:center;text-shadow:0 0 6px rgba(231,207,154,.22)}
+  #vig{position:fixed;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 160px 50px rgba(0,0,0,.72)}
+  #cap{position:fixed;left:50%;bottom:12%;transform:translateX(-50%);z-index:4;font-family:"Newsreader",Georgia,serif;font-style:italic;
+    font-size:clamp(1.2rem,4vw,1.9rem);color:#f2e7cb;text-align:center;max-width:22em;opacity:0;transition:opacity 1.6s ease;pointer-events:none;text-shadow:0 2px 18px rgba(0,0,0,.9)}
+  #cap.on{opacity:1}
+  #start{position:fixed;inset:0;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;background:#070608;cursor:pointer}
+  #start .t{font-family:"Newsreader",serif;font-style:italic;font-size:clamp(1.6rem,6vw,2.6rem);color:var(--ink);letter-spacing:.02em}
+  #start .s{font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:#7a6a44}
+  #bar{position:fixed;left:0;bottom:0;height:3px;background:rgba(231,207,154,.55);width:0;z-index:5;transition:width .1s linear}
+  #ctl{position:fixed;bottom:14px;right:16px;z-index:6;font-family:"Space Mono",monospace;font-size:12px;color:#7a6a44;cursor:pointer;opacity:.6}
+</style>
+</head>
+<body>
+<pre id="screen"></pre>
+<div id="vig"></div>
+<div id="cap"></div>
+<div id="bar"></div>
+<div id="ctl">❚❚</div>
+<div id="start"><div class="t">na koja abad</div><div class="s">tap to begin · 3 min</div></div>
+<script>
+(function(){
+"use strict";
+var screen=document.getElementById("screen"), capEl=document.getElementById("cap"), bar=document.getElementById("bar"), ctl=document.getElementById("ctl"), startEl=document.getElementById("start");
+
+/* grid */
+var W,H,FS;
+function sizeGrid(){var vw=innerWidth,vh=innerHeight;FS=Math.max(6,Math.min(14,Math.round(Math.min(vw,vh)/50)));screen.style.fontSize=FS+"px";
+  W=Math.max(50,Math.min(180,Math.floor(vw/(FS*.60))));H=Math.max(36,Math.min(110,Math.floor(vh/(FS*.92))));}
+sizeGrid();addEventListener("resize",sizeGrid);addEventListener("orientationchange",function(){setTimeout(sizeGrid,200);});
+
+var buf, ALPHA=1, RAMP=" .`:-=+*coaX#%@";
+function clear(){ var n=W*H; if(!buf||buf.length!==n)buf=new Array(n); for(var k=0;k<n;k++)buf[k]=" "; }
+function put(x,y,ch){ x|=0;y|=0; if(x<0||y<0||x>=W||y>=H)return; if(ALPHA<1&&Math.random()>ALPHA)return; buf[y*W+x]=ch; }
+function bright(x,y,b){ var ci=Math.min(RAMP.length-1,Math.max(0,(b*(RAMP.length-1))|0)); if(ci>0)put(x,y,RAMP[ci]); }
+function flush(){ var o=""; for(var y=0;y<H;y++)o+=buf.slice(y*W,y*W+W).join("")+"\n"; screen.textContent=o; }
+function hash(x,y){var h=((x*73856093)^(y*19349663))>>>0;return (h%1000)/1000;}
+
+/* ---------- scenes (t = seconds within scene, p = 0..1 progress) ---------- */
+var stars=[]; function initStars(){ stars=[]; for(var i=0;i<420;i++)stars.push({x:(Math.random()*2-1)*W,y:(Math.random()*2-1)*H,z:Math.random()*60+2}); }
+function scStars(t,p){ var cx=W/2,cy=H/2,f=W*0.5;
+  for(var i=0;i<stars.length;i++){var s=stars[i]; s.z-=0.14; if(s.z<1){s.z=60;s.x=(Math.random()*2-1)*W;s.y=(Math.random()*2-1)*H;}
+    var sx=s.x/s.z*f+cx, sy=s.y/s.z*f*0.52+cy, b=Math.min(1,(60-s.z)/60*1.2); bright(sx,sy,b*0.9);} }
+
+function scLight(t,p){ scStars(t,p);                       /* stars fade as a point of light approaches */
+  var cx=W/2,cy=H/2, rad=Math.pow(p,2.2)*Math.max(W,H)*0.7;
+  for(var y=0;y<H;y++)for(var x=0;x<W;x++){ var dx=(x-cx)*0.55,dy=y-cy,d=Math.sqrt(dx*dx+dy*dy);
+    if(d<rad){ bright(x,y,1-d/Math.max(1,rad)); } } }
+
+/* raycaster hallway */
+var MAP=["#####","#...#","#...#","#...#","D...#","#...#","#...#","#...#","#...D","#...#","#...#","#...T","#...#","#...#","#...#","#...#","#...#","#...#","#...#","#####"];
+function solid(x,y){if(x<0||y<0||x>=5||y>=MAP.length)return true;var c=MAP[y|0][x|0];return c==="#"||c==="D"||c==="T";}
+function isDoor(x,y){var c=(x<0||y<0||x>=5||y>=MAP.length)?"#":MAP[y|0][x|0];return c==="D"||c==="T";}
+function hall(camY,ang,doorOpen){ var SH="@N#WkHm=+~:-. ",LI="@8&%$#*o",cx=Math.cos(ang),cy=Math.sin(ang),pX=-cy*0.66,pY=cx*0.66,px=2.5,py=camY;
+  for(var x=0;x<W;x++){ var camX=2*x/W-1,rdx=cx+pX*camX,rdy=cy+pY*camX,mx=px|0,my=py|0,ddx=Math.abs(1/rdx),ddy=Math.abs(1/rdy),sX,sY,dX,dY;
+    if(rdx<0){sX=-1;dX=(px-mx)*ddx;}else{sX=1;dX=(mx+1-px)*ddx;} if(rdy<0){sY=-1;dY=(py-my)*ddy;}else{sY=1;dY=(my+1-py)*ddy;}
+    var side=0,hit=false,g=0;while(!hit&&g++<200){if(dX<dY){dX+=ddx;mx+=sX;side=0;}else{dY+=ddy;my+=sY;side=1;}if(solid(mx,my))hit=true;}
+    var d=(side===0)?(dX-ddx):(dY-ddy);if(d<.001)d=.001;var lh=Math.floor(H/d),s=((H-lh)/2)|0,e=((H+lh)/2)|0,door=isDoor(mx,my),tgt=(mx===4&&my===11);
+    for(var y=Math.max(0,s);y<=Math.min(H-1,e);y++){var si=Math.floor(d/16*(SH.length-1));if(side===1)si++;if(si<0)si=0;if(si>=SH.length)si=SH.length-1;var ch=SH[si];
+      if(door){var tt=(y-s)/Math.max(1,e-s);ch=((y-s)%3===0)?"]":ch;if(tt>.46&&tt<.54)ch="o"; if(tgt&&doorOpen>0){var op=tt>(.5-.5*doorOpen)&&tt<(.5+.5*doorOpen);if(op)ch=LI[(Math.random()*LI.length)|0];}}
+      put(x,y,ch);} }
+}
+function scHall(t,p){ hall(1.5+p*8.4, Math.PI/2, 0); }
+function scDoor(t,p){ hall(Math.min(11.4,9.9+p*3), p<.5?Math.PI/2:(Math.PI/2*(1-(p-.5)*2)), Math.min(1,p*1.6)); }
+
+function scWaves(t,p){ var horizon=(H*0.42)|0, sun=(H*0.30)|0, sx=(W*0.5)|0;
+  for(var y=0;y<H;y++)for(var x=0;x<W;x++){
+    if(y<horizon){ var d=Math.hypot((x-sx)*0.55,y-sun); if(d<6+2*Math.sin(t))bright(x,y,1-d/12); else if(hash(x,y+((t*2)|0))>0.992)put(x,y,"."); }
+    else { var v=Math.sin(x*0.22+y*0.5+t*1.1)+0.6*Math.sin(x*0.06-t*0.7); var q=(v*0.5+0.5); var pp=(y-horizon)/(H-horizon); bright(x,y, q*(0.4+0.6*pp) ); if(Math.random()<0.004)put(x,y,"*"); } } }
+
+function scRise(t,p){ var cx=W/2, cy=H*(0.8-p*0.55), rad=6+p*10;   /* an orb rises, light blooms */
+  for(var y=0;y<H;y++)for(var x=0;x<W;x++){ var d=Math.hypot((x-cx)*0.55,y-cy);
+    if(d<rad)bright(x,y,1-d/rad); else { var g=Math.max(0,1-d/(rad*4))*p; if(g>0.02)bright(x,y,g*0.5); if(hash(x,y)>0.985&&y>cy)put(x,y,"."); } } }
+
+var motes=null;
+function scDissolve(t,p){ if(!motes||p<0.02){ motes=[]; for(var i=0;i<900;i++)motes.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-0.5)*0.4,vy:-Math.random()*0.5-0.1,l:Math.random()}); }
+  for(var i=0;i<motes.length;i++){var m=motes[i]; m.x+=m.vx; m.y+=m.vy; var b=m.l*(1-p); if(Math.random()<b) bright(m.x,m.y,b); } }
+
+function scEnd(t,p){ var cx=W/2,cy=H/2,rad=Math.max(0.6,(1-p)*7); for(var y=0;y<H;y++)for(var x=0;x<W;x++){var d=Math.hypot((x-cx)*0.55,y-cy);if(d<rad)bright(x,y,(1-d/rad)*(1-p*0.7));} }
+
+/* ---------- timeline ---------- */
+var SC=[
+  {f:scStars,   d:24, cap:[[2,"There is a place that is nowhere."]]},
+  {f:scLight,   d:22, cap:[[3,"And then — a light, far off."]]},
+  {f:scHall,    d:28, cap:[[4,"You have a body again. A hall runs ahead."]]},
+  {f:scDoor,    d:16, cap:[[2,"A door. It opens on its own."]]},
+  {f:scWaves,   d:30, cap:[[3,"Everything you left behind is still here,"]]},
+  {f:scRise,    d:22, cap:[[3,"lit by something rising."]]},
+  {f:scDissolve,d:20, cap:[[3,"Nothing is kept but the shape of it."]]},
+  {f:scEnd,     d:16, cap:[[3,"and you were the one dreaming it."]]}
+];
+var OV=1.4;                                   /* cross-dissolve overlap (s) */
+var starts=[],tot=0; for(var i=0;i<SC.length;i++){ starts.push(tot); tot+=SC[i].d - (i<SC.length-1?OV:0); }
+var TOTAL=tot;
+
+var playing=false, T=0, last=null, capShown={};
+function envelope(lt,dur){ return Math.min(1, lt/1.2, (dur-lt)/1.2); }
+function frame(ts){
+  if(playing){ if(last!==null) T+=Math.min(0.05,(ts-last)/1000); last=ts; if(T>=TOTAL){ T=TOTAL; playing=false; } }
+  else last=ts;
+  clear();
+  for(var i=0;i<SC.length;i++){ var st=starts[i], en=st+SC[i].d; if(T>=st-0.01 && T<en){ var lt=T-st; ALPHA=Math.max(0,Math.min(1,envelope(lt,SC[i].d))); SC[i].f(lt, lt/SC[i].d);
+    (SC[i].cap||[]).forEach(function(c,ci){ var key=i+"_"+ci; if(lt>=c[0] && !capShown[key]){ capShown[key]=true; showCap(c[1]); } }); } }
+  ALPHA=1; flush();
+  bar.style.width=(T/TOTAL*100)+"%";
+  requestAnimationFrame(frame);
+}
+var capTimer=null;
+function showCap(txt){ capEl.textContent=txt; capEl.classList.add("on"); clearTimeout(capTimer); capTimer=setTimeout(function(){capEl.classList.remove("on");},5200); }
+
+/* ---------- ambient sound ---------- */
+var AC=null,master=null;
+function startAudio(){ try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){return;} master=AC.createGain(); master.gain.value=0.0; master.connect(AC.destination);
+  master.gain.linearRampToValueAtTime(0.16, AC.currentTime+4);
+  var freqs=[110,165,220,277]; freqs.forEach(function(fq,i){ var o=AC.createOscillator(),g=AC.createGain(); o.type="sine"; o.frequency.value=fq; g.gain.value=0.16;
+    var lfo=AC.createOscillator(),lg=AC.createGain(); lfo.frequency.value=0.03+i*0.017; lg.gain.value=0.08; lfo.connect(lg); lg.connect(g.gain); lfo.start();
+    o.connect(g); g.connect(master); o.start(); });
+}
+
+/* ---------- controls ---------- */
+function begin(){ startEl.style.display="none"; initStars(); playing=true; startAudio(); }
+startEl.addEventListener("click",begin);
+ctl.addEventListener("click",function(){ if(T>=TOTAL){ T=0; capShown={}; } playing=!playing; ctl.textContent=playing?"❚❚":"▶"; if(AC){ if(playing)AC.resume(); else AC.suspend(); } });
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
