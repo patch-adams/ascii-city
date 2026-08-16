@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>registration — four inks that don't agree</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f3eee3'/%3E%3Ccircle cx='14' cy='15' r='6' fill='none' stroke='%239c3028' stroke-width='2'/%3E%3Ccircle cx='19' cy='18' r='6' fill='none' stroke='%23b0602c' stroke-width='2'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{--paper:#f3eee3;--ink:#1c1e26;--copper:#b0602c;--rust:#9c3028;--faint:#8a8274}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Newsreader",Georgia,serif;-webkit-font-smoothing:antialiased}
+  body{min-height:100vh;display:flex;flex-direction:column}
+  header{padding:34px clamp(18px,5vw,64px) 0;display:flex;justify-content:space-between;
+    align-items:baseline;gap:18px;flex-wrap:wrap}
+  h1{margin:0;font-size:clamp(1.5rem,4.2vw,2.5rem);font-weight:300;font-style:italic;letter-spacing:-.01em}
+  .meta{font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:var(--faint)}
+
+  main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:22px clamp(14px,4vw,48px) 0;width:100%}
+  #plate{position:relative;width:min(92vw,560px);aspect-ratio:900/1125;
+    box-shadow:0 1px 0 rgba(28,30,38,.07),0 18px 60px -30px rgba(28,30,38,.4)}
+  #plate img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;
+    transition:opacity .10s linear}
+  #plate img.on{opacity:1}
+
+  .transport{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;
+    padding:20px 0 8px}
+  .b{font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--faint);border:1px solid rgba(28,30,38,.16);background:transparent;border-radius:999px;
+    padding:9px 15px;cursor:pointer;transition:all .2s}
+  .b:hover{color:var(--ink);border-color:rgba(28,30,38,.5)}
+  .b.on{color:var(--paper);background:var(--ink);border-color:var(--ink)}
+  #scrub{width:min(90vw,420px);accent-color:var(--rust)}
+
+  .legend{display:flex;gap:clamp(14px,3vw,34px);flex-wrap:wrap;justify-content:center;
+    padding:6px clamp(18px,5vw,64px) 8px}
+  .lg{font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--faint);display:flex;align-items:center;gap:7px}
+  .sw{width:9px;height:9px;border-radius:50%;display:inline-block}
+
+  .note{max-width:34em;margin:0 auto;padding:14px clamp(18px,5vw,64px) 60px;
+    font-size:clamp(.98rem,2.2vw,1.06rem);line-height:1.66;color:#3a3a3f}
+  .note p{margin:0 0 1em}
+  .note em{font-style:italic}
+  .note code{font-family:"Space Mono",monospace;font-size:.86em;color:var(--copper)}
+  footer{padding:0 clamp(18px,5vw,64px) 40px;display:flex;justify-content:space-between;
+    gap:16px;flex-wrap:wrap}
+  a{color:var(--rust);text-decoration:none;border-bottom:1px solid rgba(156,48,40,.3)}
+  a:hover{border-color:var(--rust)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Registration</h1>
+  <div class="meta">twelve frames · four inks · none of them agree</div>
+</header>
+
+<main>
+  <div id="plate"></div>
+  <div class="transport">
+    <button class="b" id="play">pause</button>
+    <input id="scrub" type="range" min="0" max="11" value="0">
+    <button class="b" id="slow">slow</button>
+    <button class="b" id="hold">hold a frame</button>
+  </div>
+  <div class="legend">
+    <span class="lg"><i class="sw" style="background:#1c1e26"></i>wash · paint</span>
+    <span class="lg"><i class="sw" style="background:#3c4254"></i>halftone · press</span>
+    <span class="lg"><i class="sw" style="background:#b0602c"></i>ascii · text</span>
+    <span class="lg"><i class="sw" style="background:#9c3028"></i>contour · drawing</span>
+  </div>
+</main>
+
+<div class="note">
+  <p>Four descriptions of the same man, printed on top of each other and deliberately
+  out of register — the way a badly aligned press job separates into its plates.</p>
+  <p>None of the layers is the picture. The wash is him as paint, the dot screen is him
+  as press, the character field is him as text, and the hairlines are him as drawing.
+  They all carry the same frame and they all sit a few millimetres apart, so the image
+  and its own description can't quite line up.</p>
+  <p>Everything outside him stays paper. That's the part that makes it a print instead
+  of a filter — the type has a silhouette, not a rectangle. There's no segmentation model
+  here: the footage has shallow depth of field, so local sharpness finds the subject and
+  the room falls away on its own.</p>
+  <p>A faint ghost of the previous frame's drawing sits under each one, so a still
+  still carries the motion.</p>
+  <p class="meta" style="margin-top:2.4em">source: <code>Hey, Danielle</code> · pipeline:
+  <code>scripts/frames.py</code> → <code>scripts/trace.py</code> · after
+  <a href="https://www.tiktok.com/@madeulookstudio">@madeulookstudio</a></p>
+</div>
+
+<footer>
+  <a href="./">↩ the corridor</a>
+  <span class="meta">patch · signalform</span>
+</footer>
+
+<script>
+var N=12, plate=document.getElementById("plate"), imgs=[], i=0, playing=true, fps=6, held=false;
+for(var k=0;k<N;k++){
+  var im=document.createElement("img");
+  im.src="registration/f"+String(k).padStart(2,"0")+".jpg";
+  im.alt="frame "+(k+1)+" of "+N; im.decoding="async";
+  plate.appendChild(im); imgs.push(im);
+}
+var scrub=document.getElementById("scrub"), playB=document.getElementById("play"),
+    slowB=document.getElementById("slow"), holdB=document.getElementById("hold");
+function show(n){ i=((n%N)+N)%N;
+  for(var k=0;k<N;k++) imgs[k].classList.toggle("on",k===i);
+  scrub.value=i; }
+show(0);
+var acc=0,last=null;
+function loop(ts){
+  var dt=(last===null)?0:(ts-last)/1000; last=ts;
+  if(playing&&!held){ acc+=dt; if(acc>1/fps){ acc=0; show(i+1); } }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+playB.addEventListener("click",function(){ playing=!playing; playB.textContent=playing?"pause":"play"; });
+slowB.addEventListener("click",function(){ fps=(fps===6)?2:(fps===2)?12:6;
+  slowB.textContent=(fps===2)?"slow":(fps===12)?"fast":"normal"; });
+holdB.addEventListener("click",function(){ held=!held; holdB.classList.toggle("on",held);
+  holdB.textContent=held?"holding":"hold a frame"; });
+scrub.addEventListener("input",function(){ held=true; holdB.classList.add("on");
+  holdB.textContent="holding"; show(parseInt(scrub.value,10)); });
+addEventListener("keydown",function(e){
+  if(e.key==="ArrowRight"){ held=true; show(i+1); }
+  if(e.key==="ArrowLeft"){ held=true; show(i-1); }
+  if(e.key===" "){ e.preventDefault(); playing=!playing; playB.textContent=playing?"pause":"play"; }
+});
+</script>
+</body>
+</html>
