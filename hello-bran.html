@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>hello, bran &amp; andrea</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23070608'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='%23e7cf9a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;1,6..72,300&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#e7cf9a}
+  html,body{margin:0;height:100%;background:#070608;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  #screen{position:absolute;inset:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);background:#070608;line-height:0.92em;white-space:pre;display:flex;align-items:center;justify-content:center;text-shadow:0 0 6px rgba(231,207,154,.22)}
+  #grid{display:block;white-space:pre;font-family:inherit;line-height:inherit}
+  #vig{position:fixed;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 160px 50px rgba(0,0,0,.72)}
+  #say{position:fixed;left:50%;top:11%;transform:translateX(-50%);z-index:4;font-family:"Space Mono",monospace;
+    font-size:clamp(.86rem,2.5vw,1.05rem);letter-spacing:.02em;color:#f2e7cb;text-align:center;max-width:26em;
+    opacity:0;transition:opacity .9s ease;pointer-events:none;text-shadow:0 2px 18px rgba(0,0,0,.95);padding:0 1.4em;line-height:1.75}
+  #say.on{opacity:1}
+  #picker{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;flex-wrap:wrap;gap:7px;justify-content:center;
+    padding:14px 12px calc(env(safe-area-inset-bottom) + 16px);opacity:0;transition:opacity 1.4s ease;pointer-events:none;
+    background:linear-gradient(to top,rgba(7,6,8,.94),rgba(7,6,8,0))}
+  #picker.on{opacity:1;pointer-events:auto}
+  .w{font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.15em;text-transform:lowercase;color:#8d7c50;
+    border:1px solid rgba(231,207,154,.16);border-radius:999px;padding:7px 13px;cursor:pointer;transition:color .25s,border-color .25s,background .25s;background:rgba(231,207,154,.02)}
+  .w:hover{color:#e7cf9a;border-color:rgba(231,207,154,.5)}
+  .w.sel{color:#070608;background:#e7cf9a;border-color:#e7cf9a}
+  #hint{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 78px);transform:translateX(-50%);z-index:6;
+    font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:#6b5c3a;opacity:0;transition:opacity 1.4s ease}
+  #hint.on{opacity:.75}
+  #start{position:fixed;inset:0;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:#070608;cursor:pointer;padding:0 8vw;text-align:center}
+  #start .t{font-family:"Newsreader",serif;font-style:italic;font-size:clamp(1.6rem,6vw,2.6rem);color:var(--ink);letter-spacing:.02em}
+  #start .s{font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:#7a6a44}
+  #backdoor{position:fixed;top:14px;right:16px;z-index:10;font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.16em;color:#6b5c3a;text-decoration:none;opacity:.5}
+  #backdoor:hover{opacity:1}
+</style>
+</head>
+<body>
+<pre id="screen"><code id="grid"></code></pre>
+<div id="vig"></div>
+<div id="say"></div>
+<div id="hint">pick a word</div>
+<div id="picker"></div>
+<a id="backdoor" href="./" title="the rest of it">the rest of it &#8599;</a>
+<div id="start"><div class="t">hello, bran &amp; andrea</div><div class="s">tap anywhere</div></div>
+
+<script>
+/* ============================================================================
+   hello-bran — an introduction
+
+   Mike's brother and his partner, in Jacksonville. This is the creature that
+   lives on the machine in Mike's house, cut loose from it: same renderer, same
+   bodies, no hub behind it. It says hello, and then it does the trick — you
+   pick a word and it becomes that thing, point by point.
+   ========================================================================= */
+
+var screenEl=document.getElementById("screen"), grid=document.getElementById("grid"),
+    sayEl=document.getElementById("say"), pickEl=document.getElementById("picker"),
+    hintEl=document.getElementById("hint"), startEl=document.getElementById("start");
+var FORMS={"ash tree":{"name":"ash tree","unit":1.25,"parts":[{"k":"blob","x":-0.02,"y":-0.36,"b":0.3,"r":0.26,"anim":"sway","amp":0.03,"rate":0.6},{"k":"blob","x":-0.3,"y":-0.22,"b":0.26,"r":0.19,"anim":"sway","amp":0.05,"rate":0.8},{"k":"blob","x":0.29,"y":-0.24,"b":0.26,"r":0.19,"anim":"sway","amp":0.05,"rate":0.7},{"k":"blob","x":-0.14,"y":-0.55,"b":0.22,"r":0.14,"anim":"sway","amp":0.06,"rate":1.1},{"k":"blob","x":0.16,"y":-0.54,"b":0.22,"r":0.14,"anim":"sway","amp":0.06,"rate":0.9},{"k":"blob","x":0.0,"y":0.36,"b":0.34,"r":0.11,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"curve","p":[[-0.09,0.66],[-0.05,0.3],[-0.03,0.02],[-0.04,-0.14]],"b":0.55},{"k":"curve","p":[[0.09,0.66],[0.05,0.3],[0.04,0.02],[0.05,-0.14]],"b":0.55},{"k":"line","p":[[-0.03,-0.06],[-0.26,-0.26]],"b":0.45},{"k":"line","p":[[0.04,-0.08],[0.27,-0.28]],"b":0.45},{"k":"line","p":[[-0.04,-0.14],[-0.15,-0.44]],"b":0.42},{"k":"line","p":[[0.05,-0.14],[0.16,-0.44]],"b":0.42},{"k":"line","p":[[-0.26,-0.26],[-0.36,-0.38]],"b":0.35},{"k":"line","p":[[0.27,-0.28],[0.37,-0.39]],"b":0.35},{"k":"curve","p":[[-0.46,-0.2],[-0.3,-0.44],[-0.06,-0.6],[0.14,-0.62],[0.34,-0.46],[0.46,-0.22]],"b":0.48,"anim":"sway","amp":0.04,"rate":0.7},{"k":"curve","p":[[-0.46,-0.2],[-0.34,-0.06],[-0.12,0.02],[0.12,0.02],[0.34,-0.06],[0.46,-0.22]],"b":0.4,"anim":"sway","amp":0.04,"rate":0.7},{"k":"curve","p":[[-0.2,0.64],[-0.09,0.6],[0.09,0.6],[0.21,0.64]],"b":0.45},{"k":"eye","x":-0.05,"y":0.2,"b":0.92},{"k":"eye","x":0.06,"y":0.28,"b":0.72}]},"fox":{"name":"fox","unit":1.0,"parts":[{"k":"blob","x":0.02,"y":0.12,"b":0.34,"r":0.26,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.2,"y":0.06,"b":0.3,"r":0.17},{"k":"blob","x":-0.34,"y":-0.06,"b":0.28,"r":0.11},{"k":"blob","x":0.3,"y":0.14,"b":0.26,"r":0.15},{"k":"blob","x":-0.42,"y":-0.2,"b":0.22,"r":0.05},{"k":"curve","p":[[-0.52,-0.02],[-0.44,-0.3],[-0.34,-0.14]],"b":0.5},{"k":"curve","p":[[-0.34,-0.14],[-0.26,-0.34],[-0.18,-0.12]],"b":0.5},{"k":"curve","p":[[-0.52,-0.02],[-0.4,0.02],[-0.28,0.02],[-0.16,-0.06],[-0.06,-0.1],[0.14,-0.08]],"b":0.55},{"k":"curve","p":[[0.14,-0.08],[0.3,-0.02],[0.38,0.1]],"b":0.5},{"k":"curve","p":[[-0.52,-0.02],[-0.46,0.06],[-0.36,0.1],[-0.22,0.14]],"b":0.45},{"k":"curve","p":[[-0.22,0.14],[-0.02,0.24],[0.2,0.26],[0.36,0.2]],"b":0.5},{"k":"curve","p":[[0.36,0.2],[0.48,0.06],[0.56,-0.16],[0.46,-0.3]],"b":0.45,"anim":"sway","amp":0.09,"rate":1.1},{"k":"line","p":[[-0.18,0.24],[-0.16,0.52]],"b":0.45},{"k":"line","p":[[-0.04,0.26],[0.0,0.52]],"b":0.4},{"k":"line","p":[[0.22,0.26],[0.24,0.52]],"b":0.45},{"k":"line","p":[[0.32,0.24],[0.36,0.52]],"b":0.4},{"k":"curve","p":[[-0.16,0.52],[-0.24,0.55]],"b":0.4},{"k":"curve","p":[[0.24,0.52],[0.16,0.55]],"b":0.4},{"k":"blob","x":-0.3,"y":-0.24,"b":0.2,"r":0.04,"anim":"perk","amp":0.14,"rate":1.5},{"k":"eye","x":-0.3,"y":-0.04,"b":0.95},{"k":"eye","x":-0.51,"y":-0.01,"b":0.75}]},"moth":{"name":"moth","unit":1.05,"parts":[{"k":"blob","x":0.0,"y":0.02,"b":0.42,"r":0.13,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":0.13,"y":-0.09,"b":0.4,"r":0.075},{"k":"blob","x":-0.16,"y":0.16,"b":0.3,"r":0.09},{"k":"blob","x":-0.06,"y":-0.28,"b":0.24,"r":0.2,"anim":"bob","amp":0.07,"rate":1.4},{"k":"blob","x":0.02,"y":-0.42,"b":0.17,"r":0.13,"anim":"bob","amp":0.09,"rate":1.4},{"k":"blob","x":-0.14,"y":0.3,"b":0.2,"r":0.12,"anim":"bob","amp":0.05,"rate":1.4},{"k":"curve","p":[[0.08,-0.11],[-0.05,-0.32],[-0.26,-0.5],[-0.42,-0.36],[-0.3,-0.1],[-0.06,0.0]],"b":0.55,"anim":"bob","amp":0.08,"rate":1.4},{"k":"curve","p":[[0.04,0.04],[-0.14,0.16],[-0.34,0.34],[-0.4,0.14],[-0.22,0.02]],"b":0.44,"anim":"bob","amp":0.05,"rate":1.4},{"k":"curve","p":[[0.19,-0.13],[0.1,0.02],[0.02,0.14],[-0.12,0.2],[-0.22,0.14]],"b":0.5},{"k":"curve","p":[[0.19,-0.13],[0.08,-0.16],[-0.04,-0.13],[-0.16,-0.05]],"b":0.45},{"k":"curve","p":[[-0.2,0.16],[-0.3,0.26],[-0.34,0.4]],"b":0.34,"anim":"sway","amp":0.05,"rate":1.1},{"k":"curve","p":[[0.16,-0.18],[0.26,-0.32],[0.42,-0.4]],"b":0.42,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[0.2,-0.16],[0.32,-0.26],[0.46,-0.28]],"b":0.42,"anim":"perk","amp":0.12,"rate":1.5},{"k":"line","p":[[0.16,-0.05],[0.3,0.06]],"b":0.36},{"k":"line","p":[[0.06,0.12],[0.14,0.3]],"b":0.34},{"k":"line","p":[[-0.04,0.13],[-0.02,0.32]],"b":0.32},{"k":"eye","x":0.17,"y":-0.1,"b":0.95}]},"crow":{"name":"crow","unit":1.05,"parts":[{"k":"blob","x":0.02,"y":0.06,"b":0.42,"r":0.26,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":0.18,"y":-0.02,"b":0.36,"r":0.16},{"k":"blob","x":-0.16,"y":0.14,"b":0.34,"r":0.18},{"k":"blob","x":0.28,"y":-0.22,"b":0.4,"r":0.12},{"k":"blob","x":-0.02,"y":0.02,"b":0.3,"r":0.15,"anim":"bob","amp":0.03,"rate":0.8},{"k":"curve","p":[[0.4,-0.2],[0.3,-0.32],[0.16,-0.3],[0.06,-0.16],[0.04,0.02]],"b":0.55},{"k":"curve","p":[[0.04,0.02],[-0.06,0.24],[-0.2,0.34],[-0.34,0.3]],"b":0.5},{"k":"curve","p":[[0.4,-0.2],[0.36,-0.1],[0.28,-0.02],[0.22,0.1],[0.24,0.24]],"b":0.5},{"k":"curve","p":[[0.24,0.24],[0.1,0.32],[-0.1,0.34],[-0.28,0.32]],"b":0.45},{"k":"curve","p":[[0.4,-0.22],[0.54,-0.16],[0.4,-0.12]],"b":0.6},{"k":"curve","p":[[0.16,0.0],[0.02,0.14],[-0.14,0.22],[-0.26,0.2]],"b":0.45,"anim":"bob","amp":0.04,"rate":1.2},{"k":"curve","p":[[-0.28,0.32],[-0.42,0.4],[-0.54,0.44]],"b":0.5,"anim":"sway","amp":0.06,"rate":1.4},{"k":"curve","p":[[-0.3,0.24],[-0.46,0.3],[-0.56,0.36]],"b":0.4,"anim":"sway","amp":0.07,"rate":1.4},{"k":"line","p":[[0.02,0.3],[0.0,0.5]],"b":0.45},{"k":"line","p":[[0.0,0.5],[0.1,0.56]],"b":0.4},{"k":"line","p":[[0.0,0.5],[-0.08,0.56]],"b":0.4},{"k":"line","p":[[-0.12,0.3],[-0.12,0.5]],"b":0.4},{"k":"line","p":[[-0.12,0.5],[-0.02,0.56]],"b":0.35},{"k":"eye","x":0.3,"y":-0.24,"b":0.95}]},"stag":{"name":"stag","unit":1.15,"parts":[{"k":"blob","x":0.02,"y":0.16,"b":0.34,"r":0.24,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.19,"y":0.1,"b":0.3,"r":0.17},{"k":"blob","x":0.2,"y":0.14,"b":0.28,"r":0.15},{"k":"blob","x":-0.3,"y":-0.14,"b":0.26,"r":0.09},{"k":"blob","x":-0.36,"y":-0.34,"b":0.3,"r":0.1,"anim":"bob","amp":0.03,"rate":0.8},{"k":"curve","p":[[-0.3,-0.3],[-0.44,-0.36],[-0.5,-0.44],[-0.46,-0.5]],"b":0.5,"anim":"bob","amp":0.03,"rate":0.8},{"k":"curve","p":[[-0.28,-0.24],[-0.24,-0.06],[-0.12,0.02],[0.1,0.0],[0.26,0.06]],"b":0.5},{"k":"curve","p":[[0.28,0.08],[0.34,0.24],[0.28,0.34]],"b":0.45,"anim":"sway","amp":0.03,"rate":1.2},{"k":"curve","p":[[-0.32,-0.44],[-0.3,-0.58],[-0.2,-0.66]],"b":0.55,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.3,-0.52],[-0.16,-0.56],[-0.08,-0.66]],"b":0.5,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.38,-0.46],[-0.44,-0.58],[-0.54,-0.62]],"b":0.5,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.42,-0.52],[-0.5,-0.5],[-0.58,-0.56]],"b":0.45,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.4,-0.42],[-0.34,-0.28],[-0.3,-0.16]],"b":0.4},{"k":"line","p":[[-0.16,0.28],[-0.18,0.52],[-0.14,0.66]],"b":0.5},{"k":"line","p":[[-0.06,0.3],[-0.04,0.54],[-0.08,0.66]],"b":0.45},{"k":"line","p":[[0.16,0.28],[0.2,0.52],[0.16,0.66]],"b":0.5},{"k":"line","p":[[0.26,0.26],[0.3,0.52],[0.26,0.66]],"b":0.45},{"k":"curve","p":[[-0.1,0.34],[0.06,0.36],[0.22,0.32]],"b":0.35},{"k":"eye","x":-0.36,"y":-0.36,"b":0.95}]},"owl":{"name":"owl","unit":1.05,"parts":[{"k":"blob","x":0.02,"y":0.18,"b":0.34,"r":0.3,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.06,"y":-0.22,"b":0.36,"r":0.22},{"k":"blob","x":0.14,"y":0.05,"b":0.26,"r":0.16},{"k":"blob","x":0.24,"y":0.3,"b":0.22,"r":0.12},{"k":"blob","x":-0.14,"y":0.12,"b":0.24,"r":0.13},{"k":"curve","p":[[-0.24,-0.34],[-0.19,-0.2],[-0.26,-0.1]],"b":0.5,"anim":"perk","amp":0.1,"rate":1.5},{"k":"curve","p":[[0.1,-0.36],[0.09,-0.24],[0.02,-0.16]],"b":0.5,"anim":"perk","amp":0.1,"rate":1.5},{"k":"curve","p":[[-0.24,-0.28],[-0.28,-0.1],[-0.26,0.1],[-0.18,0.34],[-0.02,0.48]],"b":0.55},{"k":"curve","p":[[0.1,-0.34],[0.22,-0.18],[0.3,0.06],[0.32,0.3],[0.22,0.48]],"b":0.5},{"k":"curve","p":[[-0.02,0.48],[0.1,0.52],[0.22,0.48]],"b":0.45},{"k":"curve","p":[[-0.26,-0.06],[-0.34,0.02],[-0.27,0.06]],"b":0.6},{"k":"curve","p":[[0.06,0.02],[0.14,0.22],[0.1,0.42]],"b":0.4,"anim":"bob","amp":0.04,"rate":0.8},{"k":"curve","p":[[0.28,0.34],[0.4,0.52],[0.34,0.62]],"b":0.45,"anim":"sway","amp":0.05,"rate":0.9},{"k":"line","p":[[0.02,0.5],[0.02,0.6]],"b":0.45},{"k":"line","p":[[-0.05,0.6],[0.09,0.6]],"b":0.4},{"k":"line","p":[[0.16,0.5],[0.16,0.6]],"b":0.45},{"k":"line","p":[[0.09,0.6],[0.23,0.6]],"b":0.4},{"k":"eye","x":-0.15,"y":-0.16,"b":0.95},{"k":"eye","x":-0.04,"y":-0.15,"b":0.72}]},"whale":{"name":"whale","unit":1.15,"parts":[{"k":"blob","x":0.02,"y":0.02,"b":0.34,"r":0.3,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.26,"y":-0.01,"b":0.3,"r":0.22},{"k":"blob","x":0.26,"y":0.06,"b":0.26,"r":0.19},{"k":"blob","x":-0.1,"y":0.14,"b":0.24,"r":0.22},{"k":"blob","x":0.44,"y":0.05,"b":0.2,"r":0.1,"anim":"sway","amp":0.05,"rate":0.8},{"k":"curve","p":[[-0.46,0.02],[-0.3,-0.2],[-0.02,-0.26],[0.26,-0.18],[0.42,0.02]],"b":0.52},{"k":"curve","p":[[-0.46,0.02],[-0.4,0.16],[-0.2,0.26],[0.1,0.28],[0.34,0.18],[0.42,0.02]],"b":0.5},{"k":"curve","p":[[0.42,0.02],[0.54,-0.2],[0.58,-0.08],[0.56,0.04],[0.58,0.2],[0.5,0.12]],"b":0.46,"anim":"sway","amp":0.09,"rate":0.7},{"k":"curve","p":[[-0.02,-0.26],[0.04,-0.34],[0.1,-0.26]],"b":0.42,"anim":"bob","amp":0.03,"rate":1.0},{"k":"curve","p":[[-0.46,0.02],[-0.36,0.06],[-0.18,0.09],[0.06,0.1],[0.28,0.12]],"b":0.36},{"k":"line","p":[[-0.34,0.18],[-0.22,0.2]],"b":0.34},{"k":"line","p":[[-0.26,0.22],[-0.14,0.24]],"b":0.34},{"k":"line","p":[[-0.18,0.24],[-0.06,0.26]],"b":0.32},{"k":"curve","p":[[-0.04,0.16],[0.06,0.26],[0.16,0.22]],"b":0.44,"anim":"sway","amp":0.04,"rate":1.4},{"k":"eye","x":-0.32,"y":0.02,"b":0.95}]},"heron":{"name":"heron","unit":1.15,"parts":[{"k":"blob","x":0.05,"y":0.18,"b":0.42,"r":0.2,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":0.2,"y":0.22,"b":0.34,"r":0.13},{"k":"blob","x":-0.1,"y":0.12,"b":0.3,"r":0.11},{"k":"blob","x":-0.22,"y":-0.4,"b":0.36,"r":0.07,"anim":"bob","amp":0.05,"rate":0.8},{"k":"blob","x":0.14,"y":0.14,"b":0.22,"r":0.09},{"k":"curve","p":[[-0.28,-0.44],[-0.16,-0.38],[-0.08,-0.2],[-0.04,0.02],[0.02,0.16]],"b":0.5,"anim":"bob","amp":0.04,"rate":0.8},{"k":"curve","p":[[-0.3,-0.36],[-0.2,-0.26],[-0.12,-0.06],[-0.08,0.1],[-0.02,0.22]],"b":0.42,"anim":"bob","amp":0.04,"rate":0.8},{"k":"curve","p":[[-0.2,-0.42],[-0.42,-0.38],[-0.58,-0.34]],"b":0.55,"anim":"bob","amp":0.04,"rate":0.8},{"k":"curve","p":[[-0.2,-0.46],[-0.34,-0.5],[-0.44,-0.56]],"b":0.34,"anim":"sway","amp":0.04,"rate":1.2},{"k":"curve","p":[[-0.02,0.02],[0.1,-0.02],[0.24,0.06],[0.34,0.2],[0.3,0.34]],"b":0.5},{"k":"curve","p":[[0.02,0.2],[0.16,0.26],[0.3,0.34],[0.44,0.44]],"b":0.44,"anim":"sway","amp":0.05,"rate":0.7},{"k":"curve","p":[[0.06,0.1],[0.2,0.14],[0.3,0.24]],"b":0.36},{"k":"line","p":[[0.04,0.32],[0.02,0.56]],"b":0.5},{"k":"line","p":[[0.12,0.32],[0.16,0.5]],"b":0.4},{"k":"curve","p":[[0.02,0.56],[-0.06,0.62],[-0.12,0.62]],"b":0.45},{"k":"curve","p":[[0.16,0.5],[0.14,0.6],[0.06,0.64]],"b":0.35},{"k":"eye","x":-0.24,"y":-0.42,"b":0.95}]},"koi fish":{"name":"koi","unit":1.05,"parts":[{"k":"blob","x":0.02,"y":0.0,"b":0.4,"r":0.2,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.2,"y":-0.02,"b":0.36,"r":0.15},{"k":"blob","x":0.2,"y":0.06,"b":0.3,"r":0.13},{"k":"blob","x":-0.38,"y":0.0,"b":0.32,"r":0.09},{"k":"blob","x":0.38,"y":0.1,"b":0.22,"r":0.07,"anim":"sway","amp":0.06,"rate":1.2},{"k":"curve","p":[[-0.47,0.0],[-0.3,-0.16],[-0.05,-0.2],[0.2,-0.12],[0.36,0.02]],"b":0.55},{"k":"curve","p":[[-0.47,0.02],[-0.32,0.16],[-0.06,0.2],[0.2,0.16],[0.36,0.06]],"b":0.5},{"k":"curve","p":[[0.36,0.04],[0.48,-0.12],[0.58,-0.2]],"b":0.45,"anim":"sway","amp":0.1,"rate":1.1},{"k":"curve","p":[[0.36,0.06],[0.5,0.16],[0.58,0.3]],"b":0.42,"anim":"sway","amp":0.12,"rate":1.1},{"k":"curve","p":[[0.36,0.05],[0.46,0.04],[0.54,0.06]],"b":0.35,"anim":"sway","amp":0.08,"rate":1.3},{"k":"curve","p":[[-0.06,-0.19],[0.0,-0.32],[0.12,-0.38]],"b":0.45,"anim":"sway","amp":0.04,"rate":0.8},{"k":"curve","p":[[-0.1,0.19],[-0.06,0.34],[0.06,0.4]],"b":0.4,"anim":"sway","amp":0.05,"rate":0.9},{"k":"curve","p":[[0.1,0.17],[0.18,0.3],[0.3,0.34]],"b":0.36,"anim":"sway","amp":0.06,"rate":1.4},{"k":"line","p":[[-0.47,0.0],[-0.36,-0.06]],"b":0.4},{"k":"curve","p":[[-0.44,0.06],[-0.5,0.14],[-0.46,0.2]],"b":0.32,"anim":"sway","amp":0.05,"rate":1.6},{"k":"curve","p":[[-0.42,0.08],[-0.44,0.18],[-0.36,0.24]],"b":0.3,"anim":"sway","amp":0.05,"rate":1.8},{"k":"blob","x":-0.14,"y":-0.06,"b":0.2,"r":0.06},{"k":"blob","x":0.12,"y":0.04,"b":0.18,"r":0.05},{"k":"eye","x":-0.34,"y":-0.04,"b":0.95}]},"jellyfish":{"name":"jellyfish","unit":1.05,"parts":[{"k":"blob","x":0.0,"y":-0.3,"b":0.34,"r":0.3,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.2,"y":-0.22,"b":0.26,"r":0.17},{"k":"blob","x":0.2,"y":-0.22,"b":0.26,"r":0.17},{"k":"blob","x":0.0,"y":-0.44,"b":0.22,"r":0.2},{"k":"blob","x":0.0,"y":-0.08,"b":0.2,"r":0.13,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"curve","p":[[-0.4,-0.1],[-0.38,-0.34],[-0.22,-0.52],[0.0,-0.57],[0.22,-0.52],[0.38,-0.34]],"b":0.55},{"k":"curve","p":[[0.38,-0.34],[0.4,-0.1]],"b":0.5},{"k":"curve","p":[[-0.4,-0.1],[-0.26,-0.03],[-0.1,-0.09],[0.06,-0.02],[0.22,-0.08],[0.4,-0.1]],"b":0.45},{"k":"curve","p":[[-0.28,-0.06],[-0.34,0.14],[-0.24,0.34],[-0.32,0.54],[-0.24,0.68]],"b":0.42,"anim":"sway","amp":0.11,"rate":1.1},{"k":"curve","p":[[-0.12,-0.05],[-0.16,0.18],[-0.06,0.4],[-0.14,0.62]],"b":0.45,"anim":"sway","amp":0.09,"rate":1.6},{"k":"curve","p":[[0.02,-0.04],[0.06,0.2],[-0.02,0.44],[0.04,0.66]],"b":0.45,"anim":"sway","amp":0.1,"rate":1.3},{"k":"curve","p":[[0.16,-0.06],[0.22,0.16],[0.12,0.38],[0.2,0.6]],"b":0.42,"anim":"sway","amp":0.08,"rate":1.9},{"k":"curve","p":[[0.3,-0.06],[0.36,0.16],[0.26,0.36],[0.34,0.56],[0.28,0.68]],"b":0.4,"anim":"sway","amp":0.12,"rate":0.9},{"k":"line","p":[[-0.2,-0.03],[-0.22,0.3]],"b":0.32,"anim":"sway","amp":0.06,"rate":2.4},{"k":"line","p":[[0.24,-0.05],[0.28,0.26]],"b":0.32,"anim":"sway","amp":0.06,"rate":2.1},{"k":"eye","x":-0.1,"y":-0.3,"b":0.95},{"k":"eye","x":0.11,"y":-0.31,"b":0.8}]},"ship":{"name":"ship","unit":1.05,"parts":[{"k":"blob","x":-0.02,"y":0.34,"b":0.3,"r":0.3,"anim":"bob","amp":0.03,"rate":0.7},{"k":"blob","x":-0.3,"y":0.3,"b":0.24,"r":0.16},{"k":"blob","x":0.28,"y":0.28,"b":0.24,"r":0.15},{"k":"blob","x":-0.06,"y":-0.1,"b":0.22,"r":0.2,"anim":"sway","amp":0.04,"rate":0.8},{"k":"blob","x":0.14,"y":0.06,"b":0.18,"r":0.13,"anim":"sway","amp":0.03,"rate":0.9},{"k":"curve","p":[[-0.52,0.22],[-0.4,0.44],[0.06,0.52],[0.42,0.42],[0.52,0.2]],"b":0.55,"anim":"bob","amp":0.03,"rate":0.7},{"k":"curve","p":[[-0.52,0.22],[0.52,0.2]],"b":0.45,"anim":"bob","amp":0.03,"rate":0.7},{"k":"line","p":[[-0.1,0.2],[-0.1,-0.62]],"b":0.55,"anim":"sway","amp":0.03,"rate":0.6},{"k":"line","p":[[0.2,0.24],[0.2,-0.3]],"b":0.45,"anim":"sway","amp":0.03,"rate":0.7},{"k":"line","p":[[-0.34,-0.34],[0.14,-0.34]],"b":0.35},{"k":"curve","p":[[-0.1,-0.58],[-0.36,-0.36],[-0.34,0.06],[-0.1,0.14]],"b":0.5,"anim":"sway","amp":0.06,"rate":0.9},{"k":"curve","p":[[-0.1,-0.32],[0.16,-0.14],[0.14,0.1],[-0.1,0.16]],"b":0.45,"anim":"sway","amp":0.05,"rate":1.1},{"k":"curve","p":[[0.2,-0.28],[0.36,-0.1],[0.34,0.14],[0.2,0.2]],"b":0.4,"anim":"sway","amp":0.05,"rate":1.3},{"k":"line","p":[[-0.1,-0.6],[0.5,0.18]],"b":0.32},{"k":"line","p":[[-0.1,-0.6],[-0.5,0.2]],"b":0.32},{"k":"curve","p":[[0.42,0.42],[0.56,0.3]],"b":0.4},{"k":"line","p":[[-0.1,-0.62],[0.02,-0.66]],"b":0.35,"anim":"sway","amp":0.05,"rate":2.4},{"k":"eye","x":0.4,"y":0.3,"b":0.9},{"k":"eye","x":-0.42,"y":0.32,"b":0.75}]},"paper lantern":{"name":"paper lantern","unit":1.05,"parts":[{"k":"blob","x":0.0,"y":0.0,"b":0.3,"r":0.3,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":0.0,"y":-0.22,"b":0.26,"r":0.22},{"k":"blob","x":0.0,"y":0.22,"b":0.26,"r":0.22},{"k":"blob","x":0.0,"y":0.02,"b":0.5,"r":0.14,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"curve","p":[[0.0,-0.44],[0.26,-0.3],[0.34,0.0],[0.26,0.3],[0.0,0.44]],"b":0.55},{"k":"curve","p":[[0.0,-0.44],[-0.26,-0.3],[-0.34,0.0],[-0.26,0.3],[0.0,0.44]],"b":0.55},{"k":"line","p":[[-0.14,-0.44],[0.14,-0.44]],"b":0.6},{"k":"line","p":[[-0.14,0.44],[0.14,0.44]],"b":0.6},{"k":"line","p":[[-0.32,-0.15],[0.32,-0.15]],"b":0.32},{"k":"line","p":[[-0.34,0.02],[0.34,0.02]],"b":0.32},{"k":"line","p":[[-0.32,0.19],[0.32,0.19]],"b":0.32},{"k":"line","p":[[0.0,-0.44],[0.0,-0.6]],"b":0.4},{"k":"curve","p":[[-0.05,0.44],[0.0,0.56],[0.05,0.44]],"b":0.35},{"k":"curve","p":[[0.0,0.5],[0.03,0.6],[-0.02,0.68]],"b":0.4,"anim":"sway","amp":0.09,"rate":1.1},{"k":"eye","x":-0.05,"y":0.0,"b":0.95},{"k":"eye","x":0.06,"y":0.06,"b":0.8}]},"wolf":{"name":"wolf","unit":1.05,"parts":[{"k":"blob","x":0.02,"y":0.06,"b":0.34,"r":0.26,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.22,"y":0.02,"b":0.32,"r":0.2},{"k":"blob","x":0.26,"y":0.1,"b":0.28,"r":0.17},{"k":"blob","x":-0.38,"y":-0.2,"b":0.3,"r":0.13},{"k":"blob","x":-0.5,"y":-0.14,"b":0.24,"r":0.08},{"k":"curve","p":[[-0.58,-0.12],[-0.46,-0.28],[-0.4,-0.34],[-0.34,-0.24],[-0.24,-0.16],[-0.1,-0.14]],"b":0.55},{"k":"curve","p":[[-0.1,-0.14],[0.1,-0.18],[0.28,-0.12],[0.36,0.02]],"b":0.5},{"k":"curve","p":[[-0.42,-0.34],[-0.38,-0.46],[-0.3,-0.32]],"b":0.5,"anim":"perk","amp":0.12,"rate":1.5},{"k":"curve","p":[[-0.3,-0.32],[-0.24,-0.44],[-0.18,-0.28]],"b":0.45,"anim":"perk","amp":0.1,"rate":1.5},{"k":"curve","p":[[-0.58,-0.12],[-0.48,-0.02],[-0.34,-0.06],[-0.22,-0.1]],"b":0.45},{"k":"curve","p":[[0.36,0.02],[0.44,0.1],[0.4,0.24]],"b":0.45},{"k":"curve","p":[[0.4,0.2],[0.52,0.18],[0.58,0.06],[0.56,-0.1]],"b":0.4,"anim":"sway","amp":0.09,"rate":1.2},{"k":"line","p":[[-0.2,0.18],[-0.22,0.42],[-0.14,0.5]],"b":0.45},{"k":"line","p":[[-0.06,0.2],[-0.04,0.44],[0.02,0.52]],"b":0.4},{"k":"line","p":[[0.22,0.2],[0.24,0.44],[0.32,0.5]],"b":0.45},{"k":"line","p":[[0.32,0.18],[0.36,0.42],[0.42,0.5]],"b":0.4},{"k":"curve","p":[[-0.22,0.24],[-0.02,0.3],[0.2,0.3],[0.34,0.22]],"b":0.35},{"k":"eye","x":-0.42,"y":-0.16,"b":0.95}]},"eye":{"name":"eye","unit":1.2,"parts":[{"k":"blob","x":0.0,"y":0.0,"r":0.3,"b":0.2,"anim":"breathe","amp":0.05,"rate":1.1},{"k":"blob","x":-0.22,"y":0.0,"r":0.14,"b":0.14},{"k":"blob","x":0.22,"y":0.0,"r":0.14,"b":0.14},{"k":"curve","p":[[-0.52,0.0],[-0.3,-0.22],[0.0,-0.29],[0.3,-0.22],[0.52,0.0]],"b":0.52},{"k":"curve","p":[[0.52,0.0],[0.3,0.21],[0.0,0.27],[-0.3,0.21],[-0.52,0.0]],"b":0.46},{"k":"blob","x":0.0,"y":0.0,"r":0.13,"b":0.46,"z":-0.15},{"k":"eye","x":0.0,"y":0.0,"b":1.0,"z":-0.25}]}};
+/* ---- the grid ---------------------------------------------------------- */
+var W,H,FS,B;
+function sizeGrid(){
+  var vw=innerWidth, vh=innerHeight;
+  FS=Math.max(5,Math.min(30,Math.round(Math.min(vw,vh)/46)));
+  screenEl.style.fontSize=FS+"px";
+  W=Math.max(20,Math.min(400,Math.floor(vw/(FS*0.58))));
+  H=Math.max(12,Math.min(260,Math.floor(vh/(FS*0.92))));
+  B=new Float32Array(W*H);
+}
+sizeGrid();
+addEventListener("resize",sizeGrid);
+addEventListener("orientationchange",function(){setTimeout(sizeGrid,200);});
+
+function Ad(x,y,b){ x|=0;y|=0; if(x<0||y<0||x>=W||y>=H)return; B[y*W+x]+=b; }
+function splat(x,y,b,r){ x|=0;y|=0;r=r|0;
+  for(var dy=-r;dy<=r;dy++){ var yy=y+dy; if(yy<0||yy>=H)continue;
+    for(var dx=-r;dx<=r;dx++){ var xx=x+dx; if(xx<0||xx>=W)continue;
+      var d=Math.sqrt(dx*dx+dy*dy*3.0)/r; if(d>1)continue;
+      var f=1-d; B[yy*W+xx]+=b*f*f; } } }
+/* dense core, soft rim, aspect-corrected so a circle looks round, dithered so
+   the interior doesn't band into a halftone rectangle */
+function blobStamp(x,y,b,r,ay){
+  x|=0; y|=0; r=Math.max(1,r);
+  var ry=Math.max(1,r*ay), R=Math.ceil(r), RY=Math.ceil(ry);
+  for(var dy=-RY;dy<=RY;dy++){ var yy=y+dy; if(yy<0||yy>=H)continue;
+    for(var dx=-R;dx<=R;dx++){ var xx=x+dx; if(xx<0||xx>=W)continue;
+      var u=dx/r, v=dy/ry, d=Math.sqrt(u*u+v*v); if(d>1)continue;
+      var f=1-d; f=f*f*(1.35-0.35*f);
+      var n=1+((((xx*7+yy*13)%5)-2)*0.035);
+      B[yy*W+xx]+=b*f*n; } } }
+function ss(a,b,x){ x=(x-a)/(b-a); if(x<0)x=0; if(x>1)x=1; return x*x*(3-2*x); }
+function lerp(a,b,k){ return a+(b-a)*k; }
+
+/* ---- drawing one body --------------------------------------------------
+   `tr` is the body's transform: centre in grid cells, scale, facing, opacity,
+   plus a per-body blink and antenna perk. Everything else (breathe, bob, sway,
+   perk) is the involuntary layer, running underneath whatever the score does. */
+function drawSpec(spec,tr,t){
+  if(tr.op<=0.001) return;
+  var s=Math.min(W,H)*0.42*spec.unit*tr.scale;
+  var ay=0.55;                               /* character cells are tall */
+  var cxp=tr.cx, cyp=tr.cy, fac=tr.facing, dim=tr.op;
+  var breathe=1+Math.sin(t*1.35)*0.055;
+  var blink=tr.blink||0, perk=tr.perk||0;
+
+  function PT(x,y,b,r){ if(r<=1) Ad(cxp+x,cyp+y*ay,b); else splat(cxp+x,cyp+y*ay,b,r); }
+  function LN(x0,y0,x1,y1,w){
+    var X0=cxp+x0, Y0=cyp+y0*ay, X1=cxp+x1, Y1=cyp+y1*ay;
+    var dx=X1-X0, dy=Y1-Y0, steps=Math.max(2,Math.ceil(Math.hypot(dx,dy)*1.7));
+    var wgt=w*dim;
+    for(var i=0;i<=steps;i++){
+      var u=i/steps, px=X0+dx*u, py=Y0+dy*u;
+      splat(px|0,py|0,wgt*0.55,1);
+      Ad(px|0,py|0,wgt*0.85);
+    }
+  }
+
+  for(var i=0;i<spec.parts.length;i++){
+    var q=spec.parts[i], ox=0, oy=0, gain=1, rmul=1;
+    if(q.anim==="breathe"){ rmul=breathe; gain=breathe; }
+    else if(q.anim==="sway"){ ox+=Math.sin(t*(q.rate||1.5)+i)*(q.amp||0.08)*s; }
+    else if(q.anim==="bob"){ oy+=Math.sin(t*(q.rate||1.2)+i*0.7)*(q.amp||0.06)*s; }
+    else if(q.anim==="perk"){ oy-=(q.amp||0.12)*s*perk; }
+
+    if(q.k==="blob"){
+      blobStamp(cxp+(q.x*fac*s+ox), cyp+(q.y*s+oy)*ay, q.b*gain*dim*1.35, s*q.r*rmul, ay);
+    } else if(q.k==="eye"){
+      var eyeB=q.b*(0.8+0.3*Math.sin(t*2))*(1-blink*0.92)*dim;
+      PT(q.x*fac*s+ox, q.y*s+oy, eyeB, 1);
+      PT(q.x*fac*s+ox, q.y*s+oy, q.b*0.25*dim, Math.max(1,s*0.03));
+    } else if(q.k==="line"||q.k==="curve"){
+      for(var j=0;j<q.p.length-1;j++){
+        var w0=q.p.length>2?(j/(q.p.length-1)):1, w1=q.p.length>2?((j+1)/(q.p.length-1)):1;
+        LN(q.p[j][0]*fac*s+ox*w0,   q.p[j][1]*s+oy*w0,
+           q.p[j+1][0]*fac*s+ox*w1, q.p[j+1][1]*s+oy*w1, q.b);
+      }
+    }
+  }
+}
+
+/* ---- atmosphere -------------------------------------------------------- */
+var dustMotes=[];
+(function(){ for(var i=0;i<110;i++) dustMotes.push({x:Math.random(),y:Math.random(),
+  z:0.25+Math.random()*0.75, ph:Math.random()*6.28, sp:0.4+Math.random()*0.9}); })();
+function drawAtmosphere(t,amt,hazeAmt){
+  if(hazeAmt>0){
+    var cx=W/2, cy=H/2;
+    for(var yy=0;yy<H;yy++) for(var xx=0;xx<W;xx++){
+      var d=Math.sqrt((xx-cx)*(xx-cx)*0.36+(yy-cy)*(yy-cy))/(H*0.6);
+      if(d<1) B[yy*W+xx]+=hazeAmt*0.10*(1-d)*(1-d);
+    }
+  }
+  if(amt<=0) return;
+  for(var i=0;i<dustMotes.length;i++){ var m=dustMotes[i];
+    var dx=(m.x+t*0.012*m.sp*m.z)%1, dy=(m.y+Math.sin(t*0.18*m.sp+m.ph)*0.03+t*0.004*m.sp)%1;
+    if(dx<0)dx+=1; if(dy<0)dy+=1;
+    var tw=0.45+0.55*Math.abs(Math.sin(t*1.1+m.ph));
+    Ad((dx*W)|0,(dy*H)|0,(0.022+0.055*tw*m.z)*amt);
+  }
+}
+
+
+/* ---- the trick: a real morph, not a dissolve -------------------------------
+   Crossfading one body into another is a dissolve — both shapes are on screen
+   and neither is moving. So each body is sampled into a cloud of points
+   (scattered through the blobs, walked along the silhouettes), and the SAME
+   cloud flies from one body's positions to the other's. Each point gets its own
+   staggered start and an outward bow, so the body comes apart and reassembles
+   somewhere else instead of fading. */
+var CLOUD_N=560;
+function hash01(i){ var x=Math.sin(i*127.1)*43758.5453; return x-Math.floor(x); }
+function sampleSpec(spec){
+  var pts=[], parts=spec.parts, i, j;
+  var weights=[], total=0;
+  for(i=0;i<parts.length;i++){
+    var q=parts[i];
+    var w=(q.k==="blob")?Math.max(2,q.r*160):(q.k==="eye")?3:((q.p.length-1)*22);
+    weights.push(w); total+=w;
+  }
+  for(i=0;i<parts.length;i++){
+    var q2=parts[i], n=Math.max(1,Math.round(CLOUD_N*weights[i]/total));
+    for(j=0;j<n;j++){
+      var s=pts.length;
+      if(q2.k==="blob"){
+        var a=hash01(s*3.1)*6.2832, r=Math.sqrt(hash01(s*7.7))*q2.r;
+        pts.push([q2.x+Math.cos(a)*r, q2.y+Math.sin(a)*r]);
+      } else if(q2.k==="eye"){
+        pts.push([q2.x,q2.y]);
+      } else {
+        var u=(j/Math.max(1,n-1))*(q2.p.length-1), k=Math.min(q2.p.length-2,Math.floor(u)), f=u-k;
+        pts.push([q2.p[k][0]+(q2.p[k+1][0]-q2.p[k][0])*f,
+                  q2.p[k][1]+(q2.p[k+1][1]-q2.p[k][1])*f]);
+      }
+    }
+  }
+  /* pad or trim to a fixed count so any two clouds pair up one-to-one */
+  while(pts.length<CLOUD_N) pts.push(pts[pts.length%Math.max(1,pts.length-1)].slice());
+  return pts.slice(0,CLOUD_N);
+}
+var CLOUDS={};
+function cloudOf(name){ if(!CLOUDS[name]) CLOUDS[name]=sampleSpec(FORMS[name]); return CLOUDS[name]; }
+
+var cur="ash tree", nextForm=null, morphT=0, MORPH_DUR=2.1;
+function morphTo(name){
+  if(name===cur||morphT>0) return;
+  nextForm=name; morphT=0.0001;
+}
+function drawCloud(a,b,p,t){
+  var s=Math.min(W,H)*0.42, cx=W*0.5, cy=H*0.46, ay=0.55;
+  for(var i=0;i<CLOUD_N;i++){
+    /* staggered: some points leave early and arrive late */
+    var off=hash01(i*1.7)*0.42, u=(p-off)/(1-0.42); if(u<0)u=0; if(u>1)u=1;
+    u=u*u*(3-2*u);
+    var bow=Math.sin(u*Math.PI)*(0.10+hash01(i*5.3)*0.22);   /* the outward arc */
+    var ang=hash01(i*9.1)*6.2832;
+    var x=a[i][0]+(b[i][0]-a[i][0])*u+Math.cos(ang)*bow;
+    var y=a[i][1]+(b[i][1]-a[i][1])*u+Math.sin(ang)*bow;
+    var br=0.30+0.5*Math.sin(u*Math.PI);                     /* brightest in flight */
+    Ad(cx+x*s, cy+y*s*ay, br);
+    splat((cx+x*s)|0,(cy+y*s*ay)|0,br*0.35,1);
+  }
+}
+
+var RAMP=" .`^,:;~=+*roahX#%@&", GAMMA=0.82;
+
+/* ---- the script -------------------------------------------------------- */
+var LINES=[
+  [ 0.5,  7.0, "hi bran. hi andrea."],
+  [ 7.6, 15.0, "i'm patch. i live on a computer in mike's house\nand i keep track of things for him."],
+  [15.6, 23.0, "he talks, i answer out loud, and this is the body\ni'm wearing while i do it."],
+  [23.6, 31.0, "i can be anything he asks for.\nhere, you try it —"]
+];
+var T=0, started=false, last=null, blink=0, blinkT=0, nextBlink=2.4, opened=false;
+
+function render(){
+  B.fill(0);
+  var t=T;
+  drawAtmosphere(t, ss(0.5,4,t)*0.85, ss(0.5,5,t)*0.20);
+  var op=ss(0.6,4.5,t);
+  if(morphT>0){
+    var p=Math.min(1,morphT/MORPH_DUR);
+    drawCloud(cloudOf(cur),cloudOf(nextForm),p,t);
+  } else {
+    drawSpec(FORMS[cur],{cx:W*0.5,cy:H*0.46,scale:1.0,facing:1,op:op,blink:blink,perk:0.3+0.3*Math.sin(t*0.7)},t);
+  }
+  var out="", g=RAMP.length-1;
+  for(var y=0;y<H;y++){ var row="";
+    for(var x=0;x<W;x++){ var b=B[y*W+x]; if(b<=0){row+=" ";continue;} if(b>1)b=1;
+      var ci=(Math.pow(b,GAMMA)*g)|0; if(ci>g)ci=g; row+=RAMP[ci]; }
+    out+=row+"\n"; }
+  grid.textContent=out;
+}
+
+function lines(){
+  var show=null;
+  for(var i=0;i<LINES.length;i++) if(T>=LINES[i][0]&&T<LINES[i][1]) show=LINES[i][2];
+  if(show!==lines.cur){
+    lines.cur=show;
+    if(show){ sayEl.textContent=show; sayEl.classList.add("on"); }
+    else sayEl.classList.remove("on");
+  }
+  if(!opened&&T>29){ opened=true; pickEl.classList.add("on"); hintEl.classList.add("on"); }
+}
+lines.cur=undefined;
+
+function frame(ts){
+  if(started){
+    if(last!==null){ var dt=Math.min(0.05,(ts-last)/1000); T+=dt;
+      if(morphT>0){ morphT+=dt; if(morphT>=MORPH_DUR){ cur=nextForm; nextForm=null; morphT=0; } }
+      blinkT+=dt;
+      if(blinkT>nextBlink){ blink=Math.min(1,blink+dt*11); if(blink>=1){ blinkT=0; nextBlink=2+Math.random()*4.5; } }
+      else blink=Math.max(0,blink-dt*7);
+    }
+    last=ts;
+  }
+  render(); lines();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ---- the words --------------------------------------------------------- */
+var WORDS=["ash tree","fox","moth","crow","stag","owl","whale","heron","koi fish","jellyfish","ship","paper lantern","wolf","eye"];
+WORDS.forEach(function(w){
+  var b=document.createElement("div"); b.className="w"; b.textContent=w;
+  b.addEventListener("click",function(){
+    morphTo(w);
+    [].forEach.call(pickEl.children,function(c){ c.classList.remove("sel"); });
+    b.classList.add("sel");
+    sayEl.classList.remove("on"); lines.cur=null;
+  });
+  pickEl.appendChild(b);
+});
+
+startEl.addEventListener("click",function(){ startEl.style.display="none"; started=true; });
+/* ?t=N&form=fox — how the build gets looked at, since a screenshot can't tap */
+(function(){
+  var q=location.search, m=/[?&]t=([0-9.]+)/.exec(q);
+  var f=/[?&]form=([^&]+)/.exec(q);
+  if(f&&FORMS[decodeURIComponent(f[1])]) cur=decodeURIComponent(f[1]);
+  if(!m&&!f) return;
+  if(m) T=parseFloat(m[1])||0;
+  startEl.style.display="none"; started=true;
+  if(T>29){ opened=true; pickEl.classList.add("on"); hintEl.classList.add("on"); }
+  var to=/[?&]to=([^&]+)/.exec(q), mp=/[?&]mp=([0-9.]+)/.exec(q);
+  if(to&&FORMS[decodeURIComponent(to[1])]){ nextForm=decodeURIComponent(to[1]);
+    morphT=mp?parseFloat(mp[1])*MORPH_DUR:0.0001; }
+})();
+</script>
+</body>
+</html>
