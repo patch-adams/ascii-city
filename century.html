@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Century — a walk of routes</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0a0f'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%237fd0ff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#8fd6c9;--paper:#0a0a0f}
+  html,body{margin:0;height:100%;background:var(--paper);overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  #screen{position:absolute;inset:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);background:var(--paper);
+    line-height:0.92em;white-space:pre;display:flex;align-items:center;justify-content:center;text-shadow:0 0 6px rgba(143,214,201,.22)}
+  #panel{position:fixed;inset:10px;z-index:3;pointer-events:none;border:2px solid rgba(143,214,201,.24);border-radius:4px;box-shadow:inset 0 0 130px 40px rgba(0,0,0,.72)}
+  #flash{position:fixed;inset:0;background:#fff;opacity:0;z-index:8;pointer-events:none;transition:opacity .5s ease}
+  #tag{position:fixed;left:14px;top:calc(env(safe-area-inset-top) + 12px);z-index:6;font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(143,214,201,.5);pointer-events:none}
+  #cap{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 122px);z-index:6;max-width:min(30em,86vw);
+    background:#eef1ec;color:#141a18;border:1.5px solid #141a18;border-radius:3px;padding:12px 18px;font-family:"Newsreader",Georgia,serif;
+    font-size:clamp(1.05rem,3.4vw,1.32rem);line-height:1.4;box-shadow:4px 4px 0 rgba(0,0,0,.5);opacity:0;transition:opacity .55s ease;text-align:center}
+  #cap.on{opacity:1}
+  #cap .jinx{color:#b8543a;font-style:italic}
+  #cap .grace{color:#2f8a5e;font-style:italic}
+  #act{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 40px);z-index:7;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;opacity:0;transition:opacity .5s ease}
+  #act.on{opacity:1}
+  button.b{font-family:"Space Mono",monospace;font-size:13px;color:#eef1ec;background:rgba(16,16,22,.6);border:1px solid var(--ink);border-radius:999px;padding:13px 20px;cursor:pointer}
+  button.b.ghost{opacity:.7;border-style:dashed}
+  #dbox{position:fixed;inset:0;z-index:9;display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:30px;background:rgba(6,6,10,.6)}
+  #dbox.on{display:flex}
+  #dbox .q{font-family:"Newsreader",serif;font-style:italic;font-size:clamp(1.3rem,4.6vw,1.9rem);color:#eef1ec;text-align:center;max-width:15em}
+  #decl{font-family:"Newsreader",serif;font-size:clamp(1.2rem,4.6vw,1.7rem);background:transparent;color:var(--ink);border:0;border-bottom:2px solid var(--ink);text-align:center;width:min(15em,84vw);padding:9px 4px;outline:none;caret-color:var(--ink)}
+  #decl::placeholder{color:rgba(143,214,201,.4);font-style:italic}
+</style>
+</head>
+<body>
+<pre id="screen"></pre>
+<div id="panel"></div>
+<div id="flash"></div>
+<div id="tag">Century · prototype</div>
+<div id="cap"></div>
+<div id="act"></div>
+<div id="dbox"><div class="q" id="dq">Say where you're headed.</div><input id="decl" type="text" autocomplete="off" placeholder="name it out loud"><button class="b" id="dgo">that's where I'm going →</button></div>
+
+<script>
+(function(){
+"use strict";
+document.addEventListener("gesturestart",function(e){e.preventDefault();},{passive:false});
+var screen=document.getElementById("screen"),cap=document.getElementById("cap"),act=document.getElementById("act"),
+    flash=document.getElementById("flash"),dbox=document.getElementById("dbox"),decl=document.getElementById("decl");
+
+/* sound */
+var AC=null;function audio(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}return AC;}
+function tone(f,d,t,v){var a=audio();if(!a)return;var o=a.createOscillator(),g=a.createGain();o.type=t||"sine";o.frequency.value=f;o.connect(g);g.connect(a.destination);var s=a.currentTime;g.gain.setValueAtTime(v||.13,s);g.gain.exponentialRampToValueAtTime(.0001,s+d);o.start(s);o.stop(s+d+.02);}
+function step(){tone(120,.14,"sine",.14);}
+function jinxSfx(){tone(70,.5,"sawtooth",.10);setTimeout(function(){tone(55,.5,"sawtooth",.08);},110);}
+function graceSfx(){tone(392,1.1,"sine",.10);tone(587,1.1,"sine",.07);}
+
+/* grid */
+var W,H,FS;
+function sizeGrid(){var vw=innerWidth,vh=innerHeight;FS=Math.max(7,Math.min(13,Math.round(Math.min(vw,vh)/46)));screen.style.fontSize=FS+"px";
+  W=Math.max(44,Math.min(150,Math.floor(vw/(FS*.60))));H=Math.max(30,Math.min(84,Math.floor(vh/(FS*.92))));}
+sizeGrid();addEventListener("resize",sizeGrid);addEventListener("orientationchange",function(){setTimeout(sizeGrid,200);});
+
+/* ===== the state graph =====
+   A node is a space you glide through to a fork of two routes (left door / right door).
+   HOW you take the route is the game: DECLARE your destination and the route Jinxes (friction);
+   go without declaring and the route may grant Grace (an unearned gift). Always forward, never seek. */
+var MOODS={
+  neutral:{ink:"#8fd6c9", tag:"", cap:"A space opens ahead. Two ways on."},
+  jinx:{ink:"#c98a6a", tag:"friction", cap:"<span class='jinx'>You were sure. It isn't that.</span> The way narrows, and you go on anyway."},
+  grace:{ink:"#a7e6b0", tag:"grace", cap:"<span class='grace'>You weren't reaching for it — and there it is.</span> The room gives you something."}
+};
+var PLACES=["a long corridor","an overgrown room, green in the grain","rows of empty desks under a dead light","a round room with a hole in its middle","stairs going down into warm dark","a hall of soft mirrors","a kitchen no one has left"];
+
+var MAP,MH,MW,TL,TR;
+function seededRnd(s){s=(s>>>0)||1;return function(){s=(Math.imul(s,1103515245)+12345)>>>0;return s/4294967296;};}
+function makeNode(seed){
+  var R=seededRnd(seed||1), len=15+((R()*10)|0), rows=[];
+  for(var y=0;y<len;y++){
+    if(y===0){ rows.push("#####"); continue; }
+    if(y===len-1){ rows.push("#T#T#"); continue; }         // end wall: two doors (col1 left, col3 right), pillar between
+    var L="#",Rt="#";
+    if(y>2&&y<len-3&&R()<0.13){ if(R()<0.5)L="D"; else Rt="D"; }
+    rows.push(L+"..."+Rt);
+  }
+  MAP=rows; MH=len; MW=5; TL={x:1,y:len-1}; TR={x:3,y:len-1};
+  WP=[{x:2.5,y:1.5,a:Math.PI/2},{x:2.5,y:Math.max(3,(len-2)*0.45),a:Math.PI/2},{x:2.5,y:len-2.4,a:Math.PI/2}];
+}
+function Cc(x,y){if(x<0||y<0||x>=MW||y>=MH)return "#";return MAP[y|0][x|0];}
+function solid(x,y){var c=Cc(x,y);return c==="#"||c==="D"||c==="T";}
+function isDoor(x,y){var c=Cc(x,y);return c==="D"||c==="T";}
+
+/* raycaster */
+var cam={x:2.5,y:1.5,ang:Math.PI/2},FOV=.66,now=0;
+var SHADE="@N#WkHm=+~:-. ",LIGHT="@8&%$#*o";
+var openL=0,openR=0;
+function cast(sx){var dx=Math.cos(cam.ang),dy=Math.sin(cam.ang),pX=-dy*FOV,pY=dx*FOV;var camX=2*sx/W-1,rdx=dx+pX*camX,rdy=dy+pY*camX;
+  var mx=cam.x|0,my=cam.y|0,ddx=Math.abs(1/rdx),ddy=Math.abs(1/rdy),sX,sY,dX,dY;
+  if(rdx<0){sX=-1;dX=(cam.x-mx)*ddx;}else{sX=1;dX=(mx+1-cam.x)*ddx;}
+  if(rdy<0){sY=-1;dY=(cam.y-my)*ddy;}else{sY=1;dY=(my+1-cam.y)*ddy;}
+  var side=0,hit=false,g=0;while(!hit&&g++<300){if(dX<dY){dX+=ddx;mx+=sX;side=0;}else{dY+=ddy;my+=sY;side=1;}if(solid(mx,my))hit=true;}
+  var d=(side===0)?(dX-ddx):(dY-ddy);if(d<.0001)d=.0001;
+  return{d:d,side:side,door:isDoor(mx,my),L:(mx===TL.x&&my===TL.y),R:(mx===TR.x&&my===TR.y)};}
+function rnd(x,y,t){var m=Math.sin(x*12.9898+y*78.233+t)*43758.5453;return m-Math.floor(m);}
+function render(){var out="",col=[];for(var x=0;x<W;x++)col[x]=cast(x);var tt=now*.00016;
+  for(var y=0;y<H;y++){var r="";for(var x=0;x<W;x++){var c=col[x],lh=Math.floor(H/c.d),s=((H-lh)/2)|0,e=((H+lh)/2)|0,ch;
+    if(y<s||y>e){var p=Math.abs((y-H/2)/(H/2));ch=p>.80?" ":(((x+y*3)%9===0)?".":" ");if(ch===" "&&rnd(x,y,(tt*40)|0)>.9968)ch="·";}
+    else{var si=Math.floor(c.d/15*(SHADE.length-1));if(c.side===1)si++;if(si<0)si=0;if(si>=SHADE.length)si=SHADE.length-1;ch=SHADE[si];
+      if(c.door){var t=(y-s)/Math.max(1,e-s);ch=((y-s)%3===0)?"]":ch;if(t>.46&&t<.54)ch="o";
+        var od=c.L?openL:(c.R?openR:0);
+        if(od>0){var op=t>(.5-.5*od)&&t<(.5+.5*od);if(op)ch=LIGHT[(rnd(x,y,(tt*30)|0)*LIGHT.length)|0];}}}
+    r+=ch;}out+=r+"\n";}screen.textContent=out;}
+
+/* glide */
+var WP=[],railT=0;
+function easeInOut(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+function pathAt(t){var seg=Math.min(WP.length-1.001,t*(WP.length-1)),i=seg|0,f=seg-i,A=WP[i],B=WP[i+1];
+  cam.x=A.x+(B.x-A.x)*f;cam.y=A.y+(B.y-A.y)*f;var da=((B.a-A.a+Math.PI)%(2*Math.PI))-Math.PI;cam.ang=A.a+da*f;}
+var anim=null;
+function tween(get,set,to,dur,done){if(anim)return;anim={from:get(),to:to,dur:dur,t0:null,set:set,done:done};}
+
+/* narration */
+function setInk(hex){document.documentElement.style.setProperty("--ink",hex);screen.style.textShadow="0 0 7px "+hex+"3a";}
+function showCap(h){cap.classList.remove("on");setTimeout(function(){cap.innerHTML=h;cap.classList.add("on");},140);}
+function acts(list){act.classList.remove("on");act.innerHTML="";list.forEach(function(a){var b=document.createElement("button");b.className="b"+(a.ghost?" ghost":"");b.textContent=a.t;b.onclick=function(){audio();a.f();};act.appendChild(b);});setTimeout(function(){act.classList.add("on");},220);}
+function esc(s){return s.replace(/[&<>\"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+/* ===== flow ===== */
+var phase="intro", declared=null, node=1, depth=0;
+function intro(){ phase="intro"; showCap("Century is a walk made of routes. You'll come to forks. How you take a route decides what it gives you."); acts([{t:"begin",f:function(){ enterNode(1,"neutral"); }}]); }
+
+function enterNode(seed,mood){
+  node=seed; declared=null; openL=0; openR=0; railT=0; phase="walk";
+  makeNode(seed); cam={x:2.5,y:1.5,ang:Math.PI/2};
+  var m=MOODS[mood]||MOODS.neutral; setInk(m.ink);
+  document.getElementById("tag").textContent = "Century · " + (m.tag||("depth "+depth));
+  showCap( (mood==="neutral"? "You enter "+PLACES[seed%PLACES.length]+"." : m.cap) + " <span style='opacity:.7'>Move forward.</span>");
+  acts([{t:"↑ move forward",f:advance}]);
+}
+function advance(){
+  if(anim||phase!=="walk")return; step();
+  tween(function(){return railT;},function(v){railT=v;},Math.min(1,railT+0.34),1050,function(){ if(railT>=0.999) fork(); });
+}
+function fork(){
+  phase="fork";
+  showCap("Two doors. One left, one right. You can name where you're going, or just go.");
+  acts([
+    {t:"say where I'm headed",ghost:true,f:openDeclare},
+    {t:"← go left",f:function(){ choose("L"); }},
+    {t:"go right →",f:function(){ choose("R"); }}
+  ]);
+}
+function openDeclare(){ dbox.classList.add("on"); decl.value=""; setTimeout(function(){decl.focus();},300); }
+function closeDeclare(){ var w=decl.value.trim(); dbox.classList.remove("on"); if(w){ declared=w; showCap("You said it out loud: <span style='color:var(--ink)'>"+esc(w)+"</span>. Now choose your door."); } }
+decl.addEventListener("keydown",function(e){if(e.key==="Enter")closeDeclare();});
+document.getElementById("dgo").addEventListener("click",function(){audio();closeDeclare();});
+
+function choose(sideChar){
+  if(phase!=="fork")return; phase="opening";
+  depth++;
+  /* Jinx & Grace: the mechanic lives on the route */
+  var R=Math.random(), nextMood="neutral";
+  if(declared){ nextMood="jinx"; jinxSfx(); showCap("<span class='jinx'>You were certain it was "+(sideChar==="L"?"left":"right")+".</span> The knob turns, click, click, click — and it opens on something you didn't order."); }
+  else { if(R<0.34){ nextMood="grace"; graceSfx(); showCap("<span class='grace'>You didn't insist.</span> The door gives easily, and light spills through — more than there should be."); }
+         else { showCap("The door opens. You go through."); } }
+  /* open the chosen door, then transition to the next node */
+  var openSet=(sideChar==="L")?function(v){openL=v;}:function(v){openR=v;};
+  tween(function(){return sideChar==="L"?openL:openR;},openSet,1,1000,function(){
+    flash.style.opacity=(nextMood==="grace")?.7:(nextMood==="jinx"?.25:.5); setTimeout(function(){flash.style.opacity=0;},130);
+    var nextSeed=((node*2654435761)^(sideChar==="L"?1046527:334214459)^(depth*40503))>>>0 || 1;
+    setTimeout(function(){ enterNode(nextSeed,nextMood); },420);
+  });
+}
+
+/* loop */
+function loop(ts){ now=ts;
+  if(anim){ if(anim.t0===null)anim.t0=ts; var k=Math.min(1,(ts-anim.t0)/anim.dur), e=easeInOut(k); anim.set(anim.from+(anim.to-anim.from)*e); if(k>=1){var d=anim.done;anim=null;if(d)d();} }
+  if(phase==="walk"||phase==="fork"||phase==="opening"){ pathAt(railT); render(); }
+  else if(phase==="intro"){ screen.textContent=""; }
+  requestAnimationFrame(loop);
+}
+
+/* forward also on tap-screen / W / space when walking */
+screen.addEventListener("click",function(){ if(phase==="walk") advance(); });
+addEventListener("keydown",function(e){var k=e.key.toLowerCase();if((k==="w"||k==="arrowup"||k===" ")&&phase==="walk"){e.preventDefault();advance();}});
+
+/* expose for headless test */
+globalThis.__C={get phase(){return phase},get railT(){return railT},get depth(){return depth},get anim(){return !!anim},get declared(){return declared},
+  begin:function(){enterNode(1,"neutral");},advance:advance,fork:fork,left:function(){choose("L");},right:function(){choose("R");},declare:function(w){declared=w;}};
+
+intro(); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
