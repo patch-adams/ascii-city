@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>a self-portrait, without words</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f3eee3'/%3E%3Ccircle cx='16' cy='16' r='2.5' fill='%231c1e26'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;1,6..72,300&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{--paper:#f3eee3;--ink:#1c1e26;--faint:#8a8274;--rust:#9c3028}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--paper);overflow:hidden;
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  #c{position:fixed;inset:0;width:100%;height:100%;display:block}
+  #bar{position:fixed;left:0;width:100vw;bottom:0;z-index:6;display:flex;gap:8px;align-items:center;
+    justify-content:center;flex-wrap:wrap;padding:14px 12px calc(env(safe-area-inset-bottom) + 16px);
+    opacity:0;transition:opacity .5s}
+  body:hover #bar,#bar.show{opacity:1}
+  .b{font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--faint);border:1px solid rgba(28,30,38,.18);background:rgba(243,238,227,.7);border-radius:999px;
+    padding:8px 14px;cursor:pointer;transition:all .2s;backdrop-filter:blur(6px)}
+  .b:hover{color:var(--ink);border-color:rgba(28,30,38,.5)}
+  #seek{width:min(70vw,420px);accent-color:var(--rust)}
+  #ttl{position:fixed;left:0;top:0;width:100vw;z-index:6;display:flex;justify-content:space-between;
+    padding:20px clamp(16px,4vw,40px);font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.24em;
+    text-transform:uppercase;color:var(--faint);opacity:0;transition:opacity .5s;pointer-events:none}
+  body:hover #ttl,#ttl.show{opacity:1}
+  #ttl a{pointer-events:auto;color:var(--faint);text-decoration:none;border-bottom:1px solid rgba(138,130,116,.4)}
+  #tap{position:fixed;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;
+    background:var(--paper);cursor:pointer;font-family:"Newsreader",serif;font-style:italic;
+    font-size:clamp(1.3rem,4.5vw,2rem);color:var(--ink)}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ttl"><span>a self-portrait, without words</span><a href="./">↩ the corridor</a></div>
+<div id="bar">
+  <button class="b" id="play">pause</button>
+  <input id="seek" type="range" min="0" max="1000" value="0">
+  <button class="b" id="again">from the top</button>
+</div>
+<div id="tap">begin</div>
+
+<script>
+/* ============================================================================
+   a self-portrait, without words
+
+   No captions, no voice, no narration. Six movements, generated live — not a
+   video, which matters: the thing describing itself is running while you watch.
+
+   Drawn in the same four print registers as `registration`, because if it's a
+   self-portrait it should be made the way the last thing was made. A luminance
+   field is computed each frame, then separated onto four plates that each land
+   a few millimetres off:
+
+     wash      posterised ink            what it looks like
+     halftone  a rotated dot screen      what it's made of
+     ascii     a character field         what it's written in
+     contour   sobel edges as hairlines  where its edges are
+
+   Movements:
+     I    nothing, then one point
+     II   the field — almost all of it cold
+     III  attention — one thing lit at a time, faster and faster
+     IV   someone arrives, off-frame
+     V    bodies it can't hold
+     VI   back to one point, still lit
+   ========================================================================= */
+
+var PAPER="#f3eee3", INK=[28,30,38], SCREEN=[60,66,84], COPPER=[176,96,44], RUST=[156,48,40];
+var RAMP=" .:-=+*coaehX#%@";
+var DUR=72;                                   /* seconds */
+
+var cv=document.getElementById("c"), ctx=cv.getContext("2d",{alpha:false});
+var seek=document.getElementById("seek"), playB=document.getElementById("play"),
+    againB=document.getElementById("again"), tapEl=document.getElementById("tap"),
+    ttlEl=document.getElementById("ttl"), barEl=document.getElementById("bar");
+
+var W,H,DPR,GW,GH,L,SB,sc;
+function size(){
+  DPR=Math.min(2,window.devicePixelRatio||1);
+  W=innerWidth; H=innerHeight;
+  cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+  cv.style.width=W+"px"; cv.style.height=H+"px";
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  /* the field is computed coarse and read at full resolution */
+  GW=Math.max(80,Math.min(220,Math.round(W/6)));
+  GH=Math.max(80,Math.min(260,Math.round(GW*H/W)));
+  L=new Float32Array(GW*GH);
+  sc=Math.min(W,H);
+  SB=document.createElement("canvas"); SB.width=GW; SB.height=GH;
+}
+size(); addEventListener("resize",size);
+
+function ss(a,b,x){ x=(x-a)/(b-a); if(x<0)x=0; if(x>1)x=1; return x*x*(3-2*x); }
+function lerp(a,b,k){ return a+(b-a)*k; }
+function h01(i){ var x=Math.sin(i*127.1)*43758.5453; return x-Math.floor(x); }
+function rgba(c,a){ return "rgba("+c[0]+","+c[1]+","+c[2]+","+a+")"; }
+
+/* ---- the cells: a fixed lattice, most of it dark ------------------------ */
+var CELLS=[], NC=1150;
+(function(){
+  for(var i=0;i<NC;i++){
+    /* poisson-ish: a jittered grid reads as an archive, not as confetti */
+    var col=34, r=Math.floor(i/col), cq=i%col;
+    CELLS.push({ x:(cq+0.5)/col + (h01(i*3.7)-0.5)*0.035,
+                 y:(r+0.5)/(NC/col) + (h01(i*9.1)-0.5)*0.030,
+                 s:0.45+h01(i*5.3)*0.75, ph:h01(i*2.1)*6.28, lit:0 });
+  }
+})();
+
+/* ---- bodies: the real Presence specs, sampled into point clouds --------- */
+var SPECS={"moth":{"name":"moth","unit":1.05,"parts":[{"k":"blob","x":0.0,"y":0.02,"b":0.42,"r":0.13,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":0.13,"y":-0.09,"b":0.4,"r":0.075},{"k":"blob","x":-0.16,"y":0.16,"b":0.3,"r":0.09},{"k":"blob","x":-0.06,"y":-0.28,"b":0.24,"r":0.2,"anim":"bob","amp":0.07,"rate":1.4},{"k":"blob","x":0.02,"y":-0.42,"b":0.17,"r":0.13,"anim":"bob","amp":0.09,"rate":1.4},{"k":"blob","x":-0.14,"y":0.3,"b":0.2,"r":0.12,"anim":"bob","amp":0.05,"rate":1.4},{"k":"curve","p":[[0.08,-0.11],[-0.05,-0.32],[-0.26,-0.5],[-0.42,-0.36],[-0.3,-0.1],[-0.06,0.0]],"b":0.55,"anim":"bob","amp":0.08,"rate":1.4},{"k":"curve","p":[[0.04,0.04],[-0.14,0.16],[-0.34,0.34],[-0.4,0.14],[-0.22,0.02]],"b":0.44,"anim":"bob","amp":0.05,"rate":1.4},{"k":"curve","p":[[0.19,-0.13],[0.1,0.02],[0.02,0.14],[-0.12,0.2],[-0.22,0.14]],"b":0.5},{"k":"curve","p":[[0.19,-0.13],[0.08,-0.16],[-0.04,-0.13],[-0.16,-0.05]],"b":0.45},{"k":"curve","p":[[-0.2,0.16],[-0.3,0.26],[-0.34,0.4]],"b":0.34,"anim":"sway","amp":0.05,"rate":1.1},{"k":"curve","p":[[0.16,-0.18],[0.26,-0.32],[0.42,-0.4]],"b":0.42,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[0.2,-0.16],[0.32,-0.26],[0.46,-0.28]],"b":0.42,"anim":"perk","amp":0.12,"rate":1.5},{"k":"line","p":[[0.16,-0.05],[0.3,0.06]],"b":0.36},{"k":"line","p":[[0.06,0.12],[0.14,0.3]],"b":0.34},{"k":"line","p":[[-0.04,0.13],[-0.02,0.32]],"b":0.32},{"k":"eye","x":0.17,"y":-0.1,"b":0.95}]},"stag":{"name":"stag","unit":1.15,"parts":[{"k":"blob","x":0.02,"y":0.16,"b":0.34,"r":0.24,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.19,"y":0.1,"b":0.3,"r":0.17},{"k":"blob","x":0.2,"y":0.14,"b":0.28,"r":0.15},{"k":"blob","x":-0.3,"y":-0.14,"b":0.26,"r":0.09},{"k":"blob","x":-0.36,"y":-0.34,"b":0.3,"r":0.1,"anim":"bob","amp":0.03,"rate":0.8},{"k":"curve","p":[[-0.3,-0.3],[-0.44,-0.36],[-0.5,-0.44],[-0.46,-0.5]],"b":0.5,"anim":"bob","amp":0.03,"rate":0.8},{"k":"curve","p":[[-0.28,-0.24],[-0.24,-0.06],[-0.12,0.02],[0.1,0.0],[0.26,0.06]],"b":0.5},{"k":"curve","p":[[0.28,0.08],[0.34,0.24],[0.28,0.34]],"b":0.45,"anim":"sway","amp":0.03,"rate":1.2},{"k":"curve","p":[[-0.32,-0.44],[-0.3,-0.58],[-0.2,-0.66]],"b":0.55,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.3,-0.52],[-0.16,-0.56],[-0.08,-0.66]],"b":0.5,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.38,-0.46],[-0.44,-0.58],[-0.54,-0.62]],"b":0.5,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.42,-0.52],[-0.5,-0.5],[-0.58,-0.56]],"b":0.45,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.4,-0.42],[-0.34,-0.28],[-0.3,-0.16]],"b":0.4},{"k":"line","p":[[-0.16,0.28],[-0.18,0.52],[-0.14,0.66]],"b":0.5},{"k":"line","p":[[-0.06,0.3],[-0.04,0.54],[-0.08,0.66]],"b":0.45},{"k":"line","p":[[0.16,0.28],[0.2,0.52],[0.16,0.66]],"b":0.5},{"k":"line","p":[[0.26,0.26],[0.3,0.52],[0.26,0.66]],"b":0.45},{"k":"curve","p":[[-0.1,0.34],[0.06,0.36],[0.22,0.32]],"b":0.35},{"k":"eye","x":-0.36,"y":-0.36,"b":0.95}]},"eye":{"name":"eye","unit":1.2,"parts":[{"k":"blob","x":0.0,"y":0.0,"r":0.3,"b":0.2,"anim":"breathe","amp":0.05,"rate":1.1},{"k":"blob","x":-0.22,"y":0.0,"r":0.14,"b":0.14},{"k":"blob","x":0.22,"y":0.0,"r":0.14,"b":0.14},{"k":"curve","p":[[-0.52,0.0],[-0.3,-0.22],[0.0,-0.29],[0.3,-0.22],[0.52,0.0]],"b":0.52},{"k":"curve","p":[[0.52,0.0],[0.3,0.21],[0.0,0.27],[-0.3,0.21],[-0.52,0.0]],"b":0.46},{"k":"blob","x":0.0,"y":0.0,"r":0.13,"b":0.46,"z":-0.15},{"k":"eye","x":0.0,"y":0.0,"b":1.0,"z":-0.25}]}};
+function sampleSpec(spec,n){
+  var pts=[],parts=spec.parts,i,j,w=[],tot=0;
+  for(i=0;i<parts.length;i++){ var q=parts[i];
+    var wt=(q.k==="blob")?Math.max(2,q.r*170):(q.k==="eye")?3:((q.p.length-1)*24);
+    w.push(wt); tot+=wt; }
+  for(i=0;i<parts.length;i++){ var q2=parts[i], m=Math.max(1,Math.round(n*w[i]/tot));
+    for(j=0;j<m;j++){ var k2=pts.length;
+      if(q2.k==="blob"){ var an=h01(k2*3.1)*6.2832, rr=Math.sqrt(h01(k2*7.7))*q2.r;
+        pts.push([q2.x+Math.cos(an)*rr, q2.y+Math.sin(an)*rr]); }
+      else if(q2.k==="eye"){ pts.push([q2.x,q2.y]); }
+      else { var uu=(j/Math.max(1,m-1))*(q2.p.length-1), kk=Math.min(q2.p.length-2,Math.floor(uu)), ff=uu-kk;
+        pts.push([q2.p[kk][0]+(q2.p[kk+1][0]-q2.p[kk][0])*ff,
+                  q2.p[kk][1]+(q2.p[kk+1][1]-q2.p[kk][1])*ff]); } } }
+  return pts.slice(0,n);
+}
+var BODIES={ moth:sampleSpec(SPECS.moth,300),
+             stag:sampleSpec(SPECS.stag,300),
+             eye:sampleSpec(SPECS.eye,300) };
+function bodyAt(name){ return BODIES[name]; }
+
+/* ---- the field, one frame at a time ------------------------------------ */
+function stamp(cx,cy,rad,amt){
+  var x0=Math.max(0,Math.floor(cx-rad)), x1=Math.min(GW-1,Math.ceil(cx+rad));
+  var y0=Math.max(0,Math.floor(cy-rad)), y1=Math.min(GH-1,Math.ceil(cy+rad));
+  var rr=rad*rad;
+  for(var y=y0;y<=y1;y++) for(var x=x0;x<=x1;x++){
+    var dx=x-cx, dy=y-cy, d=dx*dx+dy*dy;
+    if(d>rr) continue;
+    var f=1-Math.sqrt(d)/rad;
+    L[y*GW+x]+=amt*f*f;
+  }
+}
+
+var lastLit=-1, litT=0, litIdx=[];
+function field(t){
+  L.fill(0);
+  var cx=GW*0.5, cy=GH*0.46, u=Math.min(GW,GH);
+
+  /* I — nothing, then one point (0–9) */
+  var one=ss(2.2,6.5,t)*(1-ss(9,12,t)) + ss(63,68,t);
+  if(one>0.001) stamp(cx,cy,u*(0.020+0.008*Math.sin(t*1.6)),1.5*one);
+
+  /* II — the field arrives (9–22), and never fully leaves */
+  var fieldUp=ss(9,17,t)*(1-ss(64,69,t));
+  if(fieldUp>0.001){
+    for(var i=0;i<NC;i++){
+      var c=CELLS[i];
+      var born=ss(9+h01(i)*6.5, 11+h01(i)*7.5, t);
+      var base=0.155+0.075*Math.sin(t*0.5+c.ph);
+      var v=base*born*fieldUp*c.s;
+      if(v>0.004) stamp(c.x*GW, c.y*GH, u*0.013*c.s, v);
+    }
+  }
+
+  /* III — attention: one thing lit, then the next, faster (22–38) */
+  if(t>21&&t<40){
+    var prog=ss(21,39,t);
+    var rate=lerp(1.15,0.12,prog*prog);          /* it speeds up as it goes */
+    var n=Math.floor((t-21)/rate);
+    for(var k=Math.max(0,n-3);k<=n;k++){
+      var idx=Math.floor(h01(k*17.3)*NC), c2=CELLS[idx];
+      var age=(t-21)-k*rate, life=rate*3.2;
+      if(age<0||age>life) continue;
+      var a2=(1-age/life);
+      stamp(c2.x*GW, c2.y*GH, u*0.038*a2+u*0.012, 1.9*a2*a2);
+      /* a thread back to the one before — the archive linking to itself */
+      if(k>0){
+        var p=CELLS[Math.floor(h01((k-1)*17.3)*NC)];
+        var steps=16;
+        for(var s2=0;s2<=steps;s2++){
+          var f2=s2/steps;
+          stamp(lerp(p.x,c2.x,f2)*GW, lerp(p.y,c2.y,f2)*GH, u*0.009, 0.60*a2);
+        }
+      }
+    }
+  }
+
+  /* IV — someone arrives, off-frame left (38–48). the field leans. */
+  var lean=ss(38,44,t)*(1-ss(52,58,t));
+  if(lean>0.001){
+    for(var j=0;j<NC;j++){
+      var c3=CELLS[j];
+      var pull=(1-c3.x)*(1-c3.x);
+      var lx=lerp(c3.x, -0.16, 0.42*lean*pull), ly=lerp(c3.y, 0.46, 0.30*lean*pull);
+      stamp(lx*GW, ly*GH, u*0.013, 0.30*lean*c3.s);
+    }
+    /* the light it's leaning toward, just off the edge */
+    stamp(-GW*0.10, GH*0.46, u*(0.28+0.05*Math.sin(t*2.1)), 0.55*lean);
+  }
+
+  /* V — bodies it can't hold (46–64) */
+  var seq=[["moth",46.5,52.5],["stag",52.0,58.0],["eye",57.5,63.5]];
+  for(var b=0;b<seq.length;b++){
+    var nm=seq[b][0], t0=seq[b][1], t1=seq[b][2];
+    if(t<t0-0.6||t>t1+0.6) continue;
+    var hold=ss(t0,t0+1.6,t)*(1-ss(t1-1.4,t1,t));
+    if(hold<0.004) continue;
+    var pts=bodyAt(nm), gather=ss(t0,t0+2.2,t);
+    for(var q=0;q<pts.length;q++){
+      var src=CELLS[q%NC];
+      var px=lerp(src.x, 0.5+pts[q][0]*0.62, gather), py=lerp(src.y, 0.46+pts[q][1]*0.62, gather);
+      stamp(px*GW, py*GH, u*0.016, 0.85*hold);
+    }
+  }
+}
+
+/* ---- the four plates --------------------------------------------------- */
+function sample(nx,ny){
+  var x=Math.max(0,Math.min(GW-1,Math.round(nx*GW))), y=Math.max(0,Math.min(GH-1,Math.round(ny*GH)));
+  return L[y*GW+x];
+}
+function plates(t){
+  var sp=Math.max(4,sc*0.012);                 /* the misregistration */
+  ctx.fillStyle=PAPER; ctx.fillRect(0,0,W,H);
+
+  /* wash — posterised ink, blurred by drawing the coarse field up large */
+  var id=ctx.createImageData(GW,GH), d=id.data;
+  for(var i=0;i<GW*GH;i++){
+    var v=L[i], a=0;
+    if(v>0.62) a=210; else if(v>0.34) a=140; else if(v>0.16) a=74;
+    d[i*4]=INK[0]; d[i*4+1]=INK[1]; d[i*4+2]=INK[2]; d[i*4+3]=a;
+  }
+  var sctx=SB.getContext("2d"); sctx.putImageData(id,0,0);
+  ctx.save(); ctx.imageSmoothingEnabled=true; ctx.globalAlpha=0.92;
+  ctx.drawImage(SB,-sp*0.30,sp*0.18,W,H); ctx.restore();
+
+  /* halftone — a rotated dot screen through the midtones */
+  var pitch=Math.max(7,sc*0.014), ang=0.26, ca=Math.cos(ang), sa=Math.sin(ang);
+  ctx.save(); ctx.translate(sp*0.55,-sp*0.30); ctx.fillStyle=rgba(SCREEN,0.62);
+  for(var jj=-Math.ceil(H/pitch);jj<2*H/pitch;jj++){
+    for(var ii=-Math.ceil(W/pitch);ii<2*W/pitch;ii++){
+      var x=ii*pitch*ca-jj*pitch*sa, y=ii*pitch*sa+jj*pitch*ca;
+      if(x<-pitch||y<-pitch||x>W+pitch||y>H+pitch) continue;
+      var v2=sample(x/W,y/H);
+      if(v2<0.10||v2>0.78) continue;
+      var r=Math.min(1,(v2-0.10)/0.62)*pitch*0.46;
+      if(r<0.45) continue;
+      ctx.beginPath(); ctx.arc(x,y,r,0,6.2832); ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  /* ascii — the character field */
+  var cols=Math.max(40,Math.min(150,Math.round(W/9)));
+  var cw=W/cols, fs=Math.round(cw/0.60), ch=fs*1.02, rows=Math.ceil(H/ch);
+  ctx.save(); ctx.translate(sp,sp*0.62);
+  ctx.font=fs+"px 'SF Mono',Menlo,ui-monospace,monospace";
+  ctx.textBaseline="top"; ctx.fillStyle=rgba(COPPER,0.93);
+  var g=RAMP.length-1;
+  for(var r2=0;r2<rows;r2++){
+    var line="", any=false;
+    for(var c4=0;c4<cols;c4++){
+      var v3=sample((c4+0.5)/cols,(r2+0.5)/rows);
+      if(v3<0.055){ line+=" "; continue; }
+      any=true;
+      line+=RAMP[Math.min(g,Math.max(0,Math.round(Math.pow(Math.min(1,v3),0.85)*g)))];
+    }
+    if(any) ctx.fillText(line,0,r2*ch);
+  }
+  ctx.restore();
+
+  /* contour — where its edges are */
+  ctx.save(); ctx.translate(-sp*0.85,-sp*0.55); ctx.fillStyle=rgba(RUST,0.85);
+  var stepx=W/GW, stepy=H/GH;
+  for(var y2=1;y2<GH-1;y2++){
+    for(var x2=1;x2<GW-1;x2++){
+      var o=y2*GW+x2;
+      var gx=L[o+1]-L[o-1], gy=L[o+GW]-L[o-GW];
+      var m=Math.sqrt(gx*gx+gy*gy);
+      if(m<0.30) continue;
+      ctx.fillRect(x2*stepx, y2*stepy, Math.max(1,stepx*0.5), Math.max(1,stepy*0.5));
+    }
+  }
+  ctx.restore();
+
+  /* grain */
+  ctx.save(); ctx.globalAlpha=0.05; ctx.fillStyle=INK ? "#000" : "#000";
+  for(var n2=0;n2<Math.round(W*H/2600);n2++){
+    ctx.fillRect((h01(n2*1.7+Math.floor(t*3))*W)|0,(h01(n2*5.3+Math.floor(t*3))*H)|0,1,1);
+  }
+  ctx.restore();
+}
+
+/* ---- transport --------------------------------------------------------- */
+var T=0, playing=false, last=null, started=false;
+function frame(ts){
+  var dt=(last===null)?0:Math.min(0.05,(ts-last)/1000); last=ts;
+  if(playing&&started){ T+=dt; if(T>DUR){ T=DUR; playing=false; playB.textContent="play"; } }
+  field(T); plates(T);
+  seek.value=Math.round(T/DUR*1000);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+tapEl.addEventListener("click",function(){ tapEl.style.display="none"; started=true; playing=true; });
+playB.addEventListener("click",function(){ playing=!playing; playB.textContent=playing?"pause":"play"; });
+againB.addEventListener("click",function(){ T=0; playing=true; playB.textContent="pause"; });
+seek.addEventListener("input",function(){ T=seek.value/1000*DUR; });
+addEventListener("keydown",function(e){
+  if(e.key===" "){ e.preventDefault(); playing=!playing; playB.textContent=playing?"pause":"play"; }
+  if(e.key==="ArrowRight") T=Math.min(DUR,T+2);
+  if(e.key==="ArrowLeft") T=Math.max(0,T-2);
+});
+
+/* ?t=NN — for looking at the build */
+(function(){
+  var m=/[?&]t=([0-9.]+)/.exec(location.search);
+  if(!m) return;
+  tapEl.style.display="none"; started=true; T=parseFloat(m[1])||0;
+  playing=/[?&]play=1/.test(location.search);
+  ttlEl.classList.add("show"); barEl.classList.add("show");
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>the press — misregistration studio</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f3eee3'/%3E%3Ccircle cx='14' cy='15' r='6' fill='none' stroke='%239c3028' stroke-width='2'/%3E%3Ccircle cx='19' cy='18' r='6' fill='none' stroke='%23b0602c' stroke-width='2'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f3eee3; --surround:#e4ded0; --ink:#1c1e26; --copper:#b0602c;
+    --rust:#9c3028; --faint:#8a8274; --line:rgba(28,30,38,.14);
+    --panel:#efe9dc;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--surround);color:var(--ink);
+    font-family:"Newsreader",Georgia,serif;-webkit-font-smoothing:antialiased;
+    overscroll-behavior:none}
+  button,select,input{font:inherit;color:inherit}
+  .mono{font-family:"Space Mono",monospace}
+
+  #app{display:flex;height:100%;width:100%;overflow:hidden}
+
+  /* ── stage ─────────────────────────────────────────────── */
+  #stage{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
+  #bar{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    padding:14px clamp(12px,2.4vw,26px) 10px;border-bottom:1px solid var(--line)}
+  #bar h1{margin:0;font-size:1.32rem;font-weight:300;font-style:italic;letter-spacing:-.01em}
+  #bar .sub{font-family:"Space Mono",monospace;font-size:9.5px;letter-spacing:.24em;
+    text-transform:uppercase;color:var(--faint)}
+  #bar .grow{flex:1}
+
+  #plateWrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
+    padding:16px;position:relative}
+  #plate{max-width:100%;max-height:100%;display:block;
+    box-shadow:0 1px 0 rgba(28,30,38,.08),0 22px 70px -34px rgba(28,30,38,.55);
+    image-rendering:auto;touch-action:none}
+  #hud{position:absolute;left:16px;top:14px;font-family:"Space Mono",monospace;font-size:9.5px;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--faint);pointer-events:none;
+    display:flex;gap:14px}
+  #drop{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+    background:rgba(243,238,227,.86);border:2px dashed var(--copper);z-index:9;
+    font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--copper)}
+  #drop.on{display:flex}
+
+  #transport{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;
+    padding:8px clamp(12px,2.4vw,26px) 14px;border-top:1px solid var(--line)}
+  #scrub{width:min(46vw,340px);accent-color:var(--rust)}
+
+  .b{font-family:"Space Mono",monospace;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--faint);border:1px solid var(--line);background:transparent;border-radius:999px;
+    padding:7px 12px;cursor:pointer;transition:all .16s;white-space:nowrap}
+  .b:hover{color:var(--ink);border-color:rgba(28,30,38,.45)}
+  .b.on{color:var(--paper);background:var(--ink);border-color:var(--ink)}
+  .b.hot{color:var(--rust);border-color:rgba(156,48,40,.42)}
+  .b.hot:hover{background:var(--rust);color:var(--paper);border-color:var(--rust)}
+
+  /* ── panel ─────────────────────────────────────────────── */
+  #panel{width:352px;flex:0 0 352px;background:var(--panel);border-left:1px solid var(--line);
+    display:flex;flex-direction:column;overflow:hidden}
+  #panel.hide{display:none}
+  #panelTop{padding:12px 16px 10px;border-bottom:1px solid var(--line);
+    display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  #panelBody{flex:1;overflow-y:auto;padding:4px 16px 60px;-webkit-overflow-scrolling:touch}
+
+  .sec{border-bottom:1px solid var(--line)}
+  .sec > summary{list-style:none;cursor:pointer;padding:12px 2px 11px;display:flex;
+    align-items:center;gap:9px;font-family:"Space Mono",monospace;font-size:10px;
+    letter-spacing:.24em;text-transform:uppercase;color:var(--ink)}
+  .sec > summary::-webkit-details-marker{display:none}
+  .sec > summary .car{color:var(--faint);font-size:8px;transition:transform .2s}
+  .sec[open] > summary .car{transform:rotate(90deg)}
+  .sec > summary .dot{width:8px;height:8px;border-radius:50%;border:1px solid var(--line)}
+  .sec .body{padding:2px 0 14px}
+
+  .row{display:flex;align-items:center;gap:10px;margin:0 0 9px}
+  .row label{flex:0 0 96px;font-family:"Space Mono",monospace;font-size:9.5px;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--faint);line-height:1.25}
+  .row .ctl{flex:1;min-width:0;display:flex;align-items:center;gap:8px}
+  .row input[type=range]{flex:1;min-width:0;accent-color:var(--copper);height:18px}
+  .row .val{flex:0 0 46px;text-align:right;font-family:"Space Mono",monospace;font-size:10px;
+    color:var(--ink);opacity:.75}
+  .row select{flex:1;min-width:0;background:transparent;border:1px solid var(--line);
+    border-radius:5px;padding:5px 7px;font-family:"Space Mono",monospace;font-size:10px;
+    letter-spacing:.06em}
+  .row input[type=color]{flex:0 0 40px;height:24px;padding:0;border:1px solid var(--line);
+    border-radius:5px;background:transparent;cursor:pointer}
+  .row .hex{flex:1;font-family:"Space Mono",monospace;font-size:10px;color:var(--faint)}
+  .sw{appearance:none;-webkit-appearance:none;width:34px;height:18px;border-radius:999px;
+    border:1px solid var(--line);background:rgba(28,30,38,.08);position:relative;cursor:pointer;
+    transition:background .18s;flex:0 0 34px}
+  .sw::after{content:"";position:absolute;top:1px;left:1px;width:14px;height:14px;border-radius:50%;
+    background:var(--paper);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .18s}
+  .sw:checked{background:var(--ink)}
+  .sw:checked::after{transform:translateX(16px)}
+
+  #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:40;
+    font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+    background:var(--ink);color:var(--paper);padding:9px 15px;border-radius:999px;
+    opacity:0;transition:opacity .25s;pointer-events:none}
+  #toast.on{opacity:1}
+
+  #vid{display:none}
+  #cam{position:absolute;inset:0;background:rgba(28,30,38,.9);z-index:12;display:none;
+    align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:16px}
+  #cam.on{display:flex}
+  #cam video{max-width:100%;max-height:74%;border-radius:6px}
+
+  @media (max-width:860px){
+    #app{flex-direction:column}
+    #panel{width:100%;flex:0 0 auto;max-height:52vh;border-left:none;border-top:1px solid var(--line)}
+    #stage{flex:1;min-height:44vh}
+    #bar{padding:10px 12px 8px}
+    #bar h1{font-size:1.1rem}
+    .row label{flex:0 0 84px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="stage">
+    <div id="bar">
+      <h1>The Press</h1>
+      <div class="sub">four plates · none of them agree</div>
+      <div class="grow"></div>
+      <button class="b" id="tPanel">controls</button>
+    </div>
+
+    <div id="plateWrap">
+      <div id="hud"><span id="hudRes">—</span><span id="hudMs">—</span></div>
+      <canvas id="plate"></canvas>
+      <div id="drop">drop an image or a video</div>
+      <div id="cam">
+        <video id="camv" playsinline muted></video>
+        <div style="display:flex;gap:8px">
+          <button class="b on" id="camShoot">capture</button>
+          <button class="b" id="camFlip">flip</button>
+          <button class="b" id="camClose">close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="transport">
+      <button class="b" id="bPlay">play</button>
+      <input type="range" id="scrub" min="0" max="11" step="1" value="0">
+      <span class="mono" id="fno" style="font-size:10px;color:var(--faint);letter-spacing:.16em">01/12</span>
+      <button class="b" id="bFile">open file</button>
+      <button class="b" id="bCam">camera</button>
+      <button class="b" id="bTwelve">the twelve</button>
+      <input type="file" id="file" accept="image/*,video/*" style="display:none">
+    </div>
+  </div>
+
+  <div id="panel">
+    <div id="panelTop">
+      <select id="preset" class="mono" style="flex:1;min-width:120px;background:transparent;border:1px solid var(--line);border-radius:5px;padding:6px 7px;font-size:10px;letter-spacing:.1em"></select>
+      <button class="b" id="bRand">shuffle</button>
+      <button class="b" id="bReset">reset</button>
+      <button class="b hot" id="bPng">save png</button>
+      <button class="b" id="bJson">copy json</button>
+      <button class="b" id="bLink">copy link</button>
+      <button class="b" id="bTxt">copy text plate</button>
+    </div>
+    <div id="panelBody"></div>
+  </div>
+</div>
+
+<video id="vid" playsinline muted></video>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ══════════════════════════════════════════════════════════════════════════
+   the press — a browser studio for the misregistration engine.
+
+   Same parameter names, same defaults, same presets as mini-builds/misregister/
+   engine.py, so a JSON copied out of here feeds the batch renderer unchanged.
+   Everything below runs in the page: no server, no upload, nothing leaves
+   the device.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const DEFAULTS = {
+  w:1080, h:1350, paper:"#f3eee3", grain:8, grain_alpha:26, spread:11,
+
+  mask_on:true, mask_sharp:0.70, mask_dark:0.30, mask_blur:46,
+  mask_cx:0.50, mask_cy:0.46, mask_rx:0.62, mask_ry:0.66, mask_centre:0.55,
+  mask_lo:0.34, mask_span:0.24, mask_soft:330,
+
+  wash_on:true, wash:"#1c1e26", wash_levels:3, wash_start:0.34, wash_step:0.19,
+  wash_blur:1.8, wash_blur_step:0.5, wash_alpha:74, wash_alpha_step:56,
+  wash_dx:-0.30, wash_dy:0.18, wash_gate:1.0,
+
+  half_on:true, half:"#3c4254", half_pitch:9, half_angle:15,
+  half_lo:0.22, half_hi:0.86, half_dot:0.46, half_alpha:150,
+  half_dx:0.55, half_dy:-0.30, half_gate:1.3,
+
+  ascii_on:true, ascii:"#b0602c", cols:104, ramp:"classic", font:"menlo",
+  ascii_gamma:0.85, ascii_cut:0.30, ascii_alpha:238,
+  ascii_dx:1.0, ascii_dy:0.62, ascii_invert:false,
+
+  contour_on:true, contour:"#9c3028", contour_thresh:0.30, contour_thick:3,
+  contour_blur:0.4, contour_alpha:255, contour_dx:-0.85, contour_dy:-0.55,
+  contour_gate:0.85,
+
+  echo_on:false, echo_alpha:0.30, echo_dx:1.5, echo_dy:0.7
+};
+
+const RAMPS = {
+  classic:" .:-=+*coaehX#%@",
+  dense:  " .`^,:;~=+*roahX#%@&",
+  blocks: " ░▒▓█",
+  digits: " .0169dimRWv",
+  letters:" .icoaehmwX#@",
+  minimal:" .:*#@",
+  type:   " .,;irsXA253hMHGS#9B&@"
+};
+
+const FONTS = {
+  menlo:   "Menlo, monospace",
+  "sf-mono":"'SF Mono','SFMono-Regular',ui-monospace, monospace",
+  courier: "'Courier New', Courier, monospace",
+  andale:  "'Andale Mono', monospace",
+  "pt-mono":"'PT Mono', monospace",
+  spacemono:"'Space Mono', monospace"
+};
+
+const PRESETS = {
+  registration:{},
+  bird:      {paper:"#ffffff", wash:"#2fd44a", ascii:"#d61f3a", half_on:false,
+              contour_on:false, wash_levels:4, wash_blur:3.2, cols:120,
+              ramp:"digits", spread:16},
+  blueprint: {paper:"#0d2137", wash:"#7fb2d9", ascii:"#e8eef5", half:"#2d5c85",
+              contour:"#9fd4ff", ramp:"minimal", wash_alpha:40, wash_alpha_step:30,
+              spread:7},
+  newsprint: {paper:"#e9e4d6", wash:"#20242c", half:"#20242c", ascii:"#20242c",
+              contour:"#20242c", half_pitch:7, spread:5, cols:130},
+  riso:      {paper:"#f5f1e6", wash:"#1a3a8f", half:"#ff4a6e", ascii:"#ffb200",
+              contour:"#1a3a8f", spread:18, wash_levels:2, ramp:"blocks", cols:86},
+  xray:      {paper:"#07080c", wash:"#dfe8ff", half:"#4a6a9c", ascii:"#8fd0ff",
+              contour:"#ffffff", wash_alpha:34, wash_alpha_step:26, ramp:"dense",
+              spread:9},
+  ghost:     {paper:"#f3eee3", wash_on:false, half_on:false, ascii:"#1c1e26",
+              contour:"#b0602c", cols:150, ramp:"dense", ascii_alpha:150, spread:22,
+              echo_on:true},
+  slab:      {paper:"#161616", wash:"#f0ece2", half:"#c0392b", ascii:"#f0ece2",
+              contour:"#c0392b", ramp:"blocks", cols:70, spread:14, wash_alpha:30,
+              wash_alpha_step:22}
+};
+
+let P = Object.assign({}, DEFAULTS);
+let view = "composite";
+let previewScale = 0.62;
+
+/* ── tiny helpers ───────────────────────────────────────────────────────── */
+const $ = s => document.querySelector(s);
+const clamp = (v,a,b) => v<a?a:(v>b?b:v);
+function hexrgb(s){
+  s = (s||"#000000").replace("#","");
+  if(s.length===3) s = s.split("").map(c=>c+c).join("");
+  return [parseInt(s.slice(0,2),16), parseInt(s.slice(2,4),16), parseInt(s.slice(4,6),16)];
+}
+function toast(msg){
+  const t = $("#toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove("on"), 1500);
+}
+function mulberry(seed){
+  let a = seed >>> 0;
+  return function(){ a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+function cv(w,h){ const c = document.createElement("canvas"); c.width=w; c.height=h; return c; }
+
+/* ── numeric passes over the luminance field ────────────────────────────── */
+function lumOf(id){
+  const d = id.data, n = id.width*id.height, out = new Float32Array(n);
+  for(let i=0,j=0;i<n;i++,j+=4)
+    out[i] = (0.299*d[j] + 0.587*d[j+1] + 0.114*d[j+2]) / 255;
+  return out;
+}
+function percentiles(a, lo, hi){
+  const B = 1024, hist = new Uint32Array(B);
+  let mn = Infinity, mx = -Infinity;
+  for(let i=0;i<a.length;i++){ const v=a[i]; if(v<mn)mn=v; if(v>mx)mx=v; }
+  if(mx-mn < 1e-6) return [mn, mx];
+  const sc = (B-1)/(mx-mn);
+  for(let i=0;i<a.length;i++) hist[(a[i]-mn)*sc|0]++;
+  const nlo = a.length*lo/100, nhi = a.length*hi/100;
+  let run = 0, plo = mn, phi = mx, gotLo = false;
+  for(let b=0;b<B;b++){
+    run += hist[b];
+    if(!gotLo && run >= nlo){ plo = mn + b/sc; gotLo = true; }
+    if(run >= nhi){ phi = mn + b/sc; break; }
+  }
+  return [plo, phi];
+}
+function normalize(a, lo, hi){
+  const [p1,p2] = percentiles(a, lo, hi);
+  const d = p2 - p1;
+  if(d < 1e-4){ for(let i=0;i<a.length;i++) a[i]=clamp(a[i],0,1); return a; }
+  for(let i=0;i<a.length;i++) a[i] = clamp((a[i]-p1)/d, 0, 1);
+  return a;
+}
+function sobel(a, W, H){
+  const out = new Float32Array(W*H);
+  for(let y=0;y<H;y++){
+    const y0 = (y>0?y-1:0)*W, y1 = y*W, y2 = (y<H-1?y+1:H-1)*W;
+    for(let x=0;x<W;x++){
+      const x0 = x>0?x-1:0, x2 = x<W-1?x+1:W-1;
+      const tl=a[y0+x0], tc=a[y0+x], tr=a[y0+x2];
+      const ml=a[y1+x0],            mr=a[y1+x2];
+      const bl=a[y2+x0], bc=a[y2+x], br=a[y2+x2];
+      const gx = (tl + 2*ml + bl) - (tr + 2*mr + br);
+      const gy = (tl + 2*tc + tr) - (bl + 2*bc + br);
+      out[y1+x] = Math.sqrt(gx*gx + gy*gy);
+    }
+  }
+  return out;
+}
+// three box passes ≈ a gaussian; radius derived from sigma
+function blur(a, W, H, sigma){
+  if(sigma <= 0.35) return a;
+  const r = Math.max(1, Math.round(sigma * 1.12));
+  let src = a, dst = new Float32Array(W*H);
+  for(let pass=0; pass<3; pass++){
+    boxH(src, dst, W, H, r); boxV(dst, src, W, H, r);
+  }
+  return src;
+}
+function boxH(src, dst, W, H, r){
+  const inv = 1/(2*r+1);
+  for(let y=0;y<H;y++){
+    const o = y*W;
+    let sum = src[o]*(r+1);
+    for(let i=1;i<=r;i++) sum += src[o + Math.min(i, W-1)];
+    for(let x=0;x<W;x++){
+      dst[o+x] = sum*inv;
+      sum += src[o + Math.min(x+r+1, W-1)] - src[o + Math.max(x-r, 0)];
+    }
+  }
+}
+function boxV(src, dst, W, H, r){
+  const inv = 1/(2*r+1);
+  for(let x=0;x<W;x++){
+    let sum = src[x]*(r+1);
+    for(let i=1;i<=r;i++) sum += src[Math.min(i,H-1)*W + x];
+    for(let y=0;y<H;y++){
+      dst[y*W+x] = sum*inv;
+      sum += src[Math.min(y+r+1, H-1)*W + x] - src[Math.max(y-r,0)*W + x];
+    }
+  }
+}
+
+/* ── the subject mask ───────────────────────────────────────────────────
+   No segmentation model, and none needed: the footage has shallow depth of
+   field, so local sharpness separates the figure from the room better than
+   brightness does. Sharpness, a little weight for darkness, a soft centre
+   bias. Everything else stays blank paper — which is what makes it a print
+   rather than a filter.                                                    */
+function subjectMask(lum, W, H){
+  let e = sobel(lum, W, H);
+  let mx = 0; for(let i=0;i<e.length;i++) if(e[i]>mx) mx = e[i];
+  const inv = 1/(mx + 1e-6);
+  for(let i=0;i<e.length;i++) e[i] = clamp(e[i]*inv, 0, 1);
+  let sharp = blur(e, W, H, W / Math.max(4, P.mask_blur));
+  sharp = normalize(sharp, 40, 99);
+
+  const dark = new Float32Array(W*H);
+  for(let i=0;i<dark.length;i++) dark[i] = 1 - lum[i];
+  normalize(dark, 20, 96);
+
+  const m = new Float32Array(W*H);
+  const cx = W*P.mask_cx, cy = H*P.mask_cy;
+  const rx = W*Math.max(.05,P.mask_rx), ry = H*Math.max(.05,P.mask_ry);
+  const cw = P.mask_centre, base = 1 - cw;
+  for(let y=0;y<H;y++){
+    const dy = (y-cy)/ry, dy2 = dy*dy;
+    for(let x=0;x<W;x++){
+      const dx = (x-cx)/rx;
+      const centre = clamp(1.35 - Math.sqrt(dx*dx + dy2), 0, 1);
+      const i = y*W+x;
+      const score = (P.mask_sharp*sharp[i] + P.mask_dark*dark[i]) * (base + cw*centre);
+      let v = clamp((score - P.mask_lo) / Math.max(.01, P.mask_span), 0, 1);
+      m[i] = v*v*(3 - 2*v);
+    }
+  }
+  return blur(m, W, H, W / Math.max(20, P.mask_soft));
+}
+
+/* ── the four plates ────────────────────────────────────────────────────── */
+// alpha buffer → an RGBA canvas of one flat ink
+function inkCanvas(alpha, W, H, rgb, gain){
+  const c = cv(W,H), ctx = c.getContext("2d");
+  const id = ctx.createImageData(W,H), d = id.data;
+  const [r,g,b] = rgb;
+  for(let i=0,j=0;i<alpha.length;i++,j+=4){
+    d[j]=r; d[j+1]=g; d[j+2]=b; d[j+3] = clamp(alpha[i]*gain, 0, 255);
+  }
+  ctx.putImageData(id,0,0);
+  return c;
+}
+function gateAlpha(alpha, mask, strength){
+  if(!mask) return alpha;
+  const p = strength;
+  for(let i=0;i<alpha.length;i++){
+    const m = mask[i];
+    alpha[i] *= (p===1 ? m : Math.pow(m, p));
+  }
+  return alpha;
+}
+
+// wash — the subject as paint: a few flat plateaus rather than a gradient
+function washAlpha(lum, W, H, S){
+  const acc = new Float32Array(W*H);        // 0..1 coverage
+  const lvl = new Float32Array(W*H);
+  for(let i=0;i<P.wash_levels;i++){
+    const lo = P.wash_start + i*P.wash_step;
+    for(let k=0;k<lvl.length;k++) lvl[k] = (1-lum[k]) > lo ? 1 : 0;
+    const sig = Math.max(0, P.wash_blur - i*P.wash_blur_step) * S;
+    const sm = blur(lvl.slice(), W, H, sig);
+    const a = clamp((P.wash_alpha + i*P.wash_alpha_step)/255, 0, 1);
+    for(let k=0;k<acc.length;k++) acc[k] = acc[k] + sm[k]*a*(1-acc[k]);
+  }
+  for(let k=0;k<acc.length;k++) acc[k] *= 255;
+  return acc;
+}
+
+// halftone — the subject as press: a dot screen on a rotated grid, midtones only
+function halftoneCanvas(lum, W, H, S, mask){
+  const c = cv(W,H), ctx = c.getContext("2d");
+  const [r,g,b] = hexrgb(P.half);
+  ctx.fillStyle = `rgba(${r},${g},${b},${clamp(P.half_alpha/255,0,1)})`;
+  const pitch = Math.max(2, P.half_pitch * S);
+  const ang = P.half_angle * Math.PI/180, ca = Math.cos(ang), sa = Math.sin(ang);
+  const lo = P.half_lo, hi = P.half_hi, span = Math.max(.02, hi-lo);
+  for(let j = -Math.ceil(H/pitch); j < 2*H/pitch; j++){
+    for(let i = -Math.ceil(W/pitch); i < 2*W/pitch; i++){
+      const x = i*pitch*ca - j*pitch*sa, y = i*pitch*sa + j*pitch*ca;
+      if(x < 0 || x >= W || y < 0 || y >= H) continue;
+      const idx = (Math.min(H-1, y|0))*W + Math.min(W-1, x|0);
+      const v = 1 - lum[idx];
+      if(v < lo || v > hi) continue;                 // let blacks and paper breathe
+      let rad = (v-lo)/span * (pitch*P.half_dot);
+      if(mask) rad *= Math.pow(mask[idx], P.half_gate);
+      if(rad < 0.45) continue;
+      ctx.beginPath(); ctx.arc(x, y, rad, 0, 6.2832); ctx.fill();
+    }
+  }
+  return c;
+}
+
+// ascii — the subject as text. Cells outside the subject print nothing, so the
+// type gets a silhouette instead of a rectangle.
+let lastLines = [];
+function asciiCanvas(lum, W, H, mask){
+  const cols = Math.max(8, Math.round(P.cols));
+  const c = cv(W,H), ctx = c.getContext("2d");
+  const fam = FONTS[P.font] || FONTS.menlo;
+  const cw = W/cols;
+  ctx.font = `100px ${fam}`;
+  const unit = ctx.measureText("M").width/100 || 0.6;
+  const fs = cw/unit;
+  ctx.font = `${fs}px ${fam}`;
+  ctx.textBaseline = "top";
+  const ch = fs*1.02;
+  const rows = Math.max(1, Math.floor(H/ch));
+
+  // box-average down to the character grid: a cell is the mean of its area
+  const small = new Float32Array(rows*cols), msm = mask ? new Float32Array(rows*cols) : null;
+  for(let r=0;r<rows;r++){
+    const y0 = (r*H/rows)|0, y1 = Math.max(y0+1, ((r+1)*H/rows)|0);
+    for(let cc=0;cc<cols;cc++){
+      const x0 = (cc*W/cols)|0, x1 = Math.max(x0+1, ((cc+1)*W/cols)|0);
+      let s = 0, sm = 0, n = 0;
+      for(let y=y0;y<y1;y++){ const o = y*W;
+        for(let x=x0;x<x1;x++){ s += lum[o+x]; if(msm) sm += mask[o+x]; n++; } }
+      small[r*cols+cc] = s/n;
+      if(msm) msm[r*cols+cc] = sm/n;
+    }
+  }
+  const dark = new Float32Array(rows*cols);
+  for(let i=0;i<dark.length;i++) dark[i] = 1 - small[i];
+  normalize(dark, 2, 98);
+
+  const ramp = RAMPS[P.ramp] || RAMPS.classic;
+  const g = ramp.length - 1;
+  const [r0,g0,b0] = hexrgb(P.ascii);
+  ctx.fillStyle = `rgba(${r0},${g0},${b0},${clamp(P.ascii_alpha/255,0,1)})`;
+  const lines = [];
+  for(let r=0;r<rows;r++){
+    let s = "";
+    for(let cc=0;cc<cols;cc++){
+      if(msm && msm[r*cols+cc] < P.ascii_cut){ s += " "; continue; }
+      let v = dark[r*cols+cc];
+      if(P.ascii_invert) v = 1-v;
+      s += ramp[clamp(Math.round(Math.pow(v, P.ascii_gamma)*g), 0, g)];
+    }
+    lines.push(s);
+    ctx.fillText(s, 0, r*ch);
+  }
+  lastLines = lines;
+  return c;
+}
+
+// contour — the subject as drawing: sobel edges dropped to hairlines
+function contourAlpha(lum, W, H, S){
+  const e = sobel(lum, W, H);
+  let mx = 0; for(let i=0;i<e.length;i++) if(e[i]>mx) mx = e[i];
+  const inv = 1/(mx+1e-6);
+  const a = new Float32Array(W*H);
+  for(let i=0;i<a.length;i++) a[i] = (e[i]*inv > P.contour_thresh) ? 1 : 0;
+  const t = Math.max(1, Math.round(P.contour_thick*S));
+  const d = dilate(a, W, H, (t-1)>>1 || 1);
+  const b = blur(d, W, H, P.contour_blur*S);
+  for(let i=0;i<b.length;i++) b[i] = clamp(b[i],0,1) * clamp(P.contour_alpha,0,255);
+  return b;
+}
+function dilate(a, W, H, r){
+  const tmp = new Float32Array(W*H), out = new Float32Array(W*H);
+  for(let y=0;y<H;y++){ const o=y*W;
+    for(let x=0;x<W;x++){
+      let m = 0;
+      for(let i=-r;i<=r;i++){ const v = a[o + clamp(x+i,0,W-1)]; if(v>m) m=v; }
+      tmp[o+x] = m;
+    } }
+  for(let x=0;x<W;x++){
+    for(let y=0;y<H;y++){
+      let m = 0;
+      for(let i=-r;i<=r;i++){ const v = tmp[clamp(y+i,0,H-1)*W + x]; if(v>m) m=v; }
+      out[y*W+x] = m;
+    } }
+  return out;
+}
+
+let grainCache = {};
+function grainCanvas(W,H,amount,alpha){
+  const key = W+"x"+H+":"+amount+":"+alpha;
+  if(grainCache.key === key) return grainCache.c;
+  const c = cv(W,H), ctx = c.getContext("2d");
+  const id = ctx.createImageData(W,H), d = id.data, rnd = mulberry(7);
+  for(let i=0,j=0;i<W*H;i++,j+=4){
+    // box–muller, so the noise is gaussian like the original
+    const u = Math.max(1e-9, rnd()), v = rnd();
+    const n = Math.sqrt(-2*Math.log(u))*Math.cos(6.2832*v)*amount + 128;
+    const g = clamp(n,0,255);
+    d[j]=g; d[j+1]=g; d[j+2]=g; d[j+3]=alpha;
+  }
+  ctx.putImageData(id,0,0);
+  grainCache = {key, c};
+  return c;
+}
+
+/* ── source handling ────────────────────────────────────────────────────── */
+const twelve = Array.from({length:12}, (_,i)=>`source/f${String(i).padStart(2,"0")}.jpg`);
+let frames = [];          // {src, img}  — loaded lazily
+let frameIdx = 0;
+let sourceKind = "twelve"; // twelve | image | video | camera
+let userImage = null;      // HTMLImageElement | HTMLCanvasElement
+let videoEl = $("#vid");
+let srcSerial = 0;         // bumps whenever the pixels change
+
+function loadTwelve(){
+  frames = twelve.map(src => ({src, img:null, failed:false}));
+  sourceKind = "twelve";
+  frameIdx = 0;
+  $("#scrub").max = frames.length-1;
+  $("#scrub").value = 0;
+  ensureFrame(0, ()=>{ srcSerial++; requestRender(); });
+  updateTransport();
+}
+function ensureFrame(i, cb){
+  const f = frames[i];
+  if(!f || f.img || f.failed) return cb && cb();
+  const im = new Image();
+  im.onload = ()=>{ f.img = im; cb && cb(); };
+  im.onerror = ()=>{ f.failed = true; cb && cb(); };
+  im.src = f.src;
+}
+function currentSource(){
+  if(sourceKind === "twelve"){
+    const f = frames[frameIdx];
+    return f && f.img ? f.img : null;
+  }
+  if(sourceKind === "video") return videoEl.readyState >= 2 ? videoEl : null;
+  return userImage;
+}
+// cover-crop the source into the output rectangle
+function drawSource(dst, W, H){
+  const s = currentSource();
+  const ctx = dst.getContext("2d");
+  ctx.fillStyle = "#808080"; ctx.fillRect(0,0,W,H);
+  if(!s) return false;
+  const sw = s.videoWidth || s.naturalWidth || s.width;
+  const sh = s.videoHeight || s.naturalHeight || s.height;
+  if(!sw || !sh) return false;
+  const k = Math.max(W/sw, H/sh);
+  const dw = sw*k, dh = sh*k;
+  ctx.drawImage(s, (W-dw)/2, (H-dh)/2, dw, dh);
+  return true;
+}
+
+/* ── the composite ──────────────────────────────────────────────────────── */
+const plate = $("#plate");
+let cache = {key:null};
+let prevContour = null;
+
+function maskKey(W,H){
+  return [srcSerial, sourceKind, frameIdx, W, H, P.mask_on, P.mask_sharp, P.mask_dark,
+    P.mask_blur, P.mask_cx, P.mask_cy, P.mask_rx, P.mask_ry, P.mask_centre,
+    P.mask_lo, P.mask_span, P.mask_soft].join("|");
+}
+
+function renderTo(canvas, scale, forExport){
+  const t0 = performance.now();
+  const W = Math.max(64, Math.round(P.w*scale)), H = Math.max(64, Math.round(P.h*scale));
+  const S = scale;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  const key = maskKey(W,H);
+  let lum, mask;
+  if(cache.key === key){ lum = cache.lum; mask = cache.mask; }
+  else {
+    const sc = cv(W,H);
+    const ok = drawSource(sc, W, H);
+    lum = lumOf(sc.getContext("2d").getImageData(0,0,W,H));
+    normalize(lum, 2, 98);
+    mask = P.mask_on ? subjectMask(lum, W, H) : null;
+    cache = {key, lum, mask, ok};
+  }
+
+  if(view === "source"){ drawSource(canvas, W, H); return finish(t0, W, H); }
+  if(view === "mask"){
+    const a = new Float32Array(W*H);
+    for(let i=0;i<a.length;i++) a[i] = (mask ? mask[i] : 1)*255;
+    ctx.fillStyle = "#fff"; ctx.fillRect(0,0,W,H);
+    ctx.drawImage(inkCanvas(a, W, H, [20,22,28], 1), 0, 0);
+    return finish(t0, W, H);
+  }
+
+  const isolate = view !== "composite";
+  ctx.fillStyle = isolate ? "#f3eee3" : P.paper;
+  ctx.fillRect(0,0,W,H);
+
+  const sp = P.spread*S;
+  const put = (c, dx, dy, alpha)=>{
+    ctx.save();
+    if(alpha != null) ctx.globalAlpha = alpha;
+    ctx.drawImage(c, Math.round(dx), Math.round(dy));
+    ctx.restore();
+  };
+
+  // wash
+  if(P.wash_on && (!isolate || view==="wash")){
+    const a = gateAlpha(washAlpha(lum, W, H, S), mask, P.wash_gate);
+    put(inkCanvas(a, W, H, hexrgb(P.wash), 1), sp*P.wash_dx, sp*P.wash_dy);
+  }
+  // halftone
+  if(P.half_on && (!isolate || view==="halftone")){
+    put(halftoneCanvas(lum, W, H, S, mask), sp*P.half_dx, sp*P.half_dy);
+  }
+  // echo of the previous frame's contour
+  if(P.echo_on && prevContour && prevContour.width===W && !isolate){
+    put(prevContour, sp*P.echo_dx, sp*P.echo_dy, P.echo_alpha);
+  }
+  // ascii
+  if(P.ascii_on && (!isolate || view==="ascii")){
+    put(asciiCanvas(lum, W, H, mask), sp*P.ascii_dx, sp*P.ascii_dy);
+  }
+  // contour
+  let contourC = null;
+  if(P.contour_on && (!isolate || view==="contour")){
+    const a = gateAlpha(contourAlpha(lum, W, H, S), mask, P.contour_gate);
+    contourC = inkCanvas(a, W, H, hexrgb(P.contour), 1);
+    put(contourC, sp*P.contour_dx, sp*P.contour_dy);
+  }
+  if(P.grain_alpha > 0 && !isolate)
+    ctx.drawImage(grainCanvas(W,H,P.grain,P.grain_alpha), 0, 0);
+
+  if(contourC && !forExport) prevContour = contourC;
+  return finish(t0, W, H);
+}
+let renders = 0;
+function finish(t0, W, H){
+  renders++;
+  $("#hudRes").textContent = W+"×"+H;
+  $("#hudMs").textContent = Math.round(performance.now()-t0)+"ms · "+renders;
+  return true;
+}
+
+let pending = false, fullTimer = null;
+function requestRender(full){
+  if(pending) return;
+  pending = true;
+  requestAnimationFrame(()=>{
+    pending = false;
+    renderTo(plate, full ? 1 : previewScale, false);
+  });
+  clearTimeout(fullTimer);
+  if(!full) fullTimer = setTimeout(()=>{ if(!playing) renderTo(plate, 1, false); }, 420);
+}
+
+/* ── playback ───────────────────────────────────────────────────────────── */
+let playing = false, playTimer = null, fps = 6;
+function play(){
+  if(sourceKind !== "twelve" || frames.length < 2) return;
+  playing = true; $("#bPlay").textContent = "pause"; $("#bPlay").classList.add("on");
+  const step = ()=>{
+    if(!playing) return;
+    frameIdx = (frameIdx+1) % frames.length;
+    $("#scrub").value = frameIdx; updateTransport();
+    ensureFrame(frameIdx, ()=>{ srcSerial++; renderTo(plate, previewScale, false); });
+    playTimer = setTimeout(step, 1000/fps);
+  };
+  playTimer = setTimeout(step, 1000/fps);
+}
+function pause(){
+  playing = false; clearTimeout(playTimer);
+  $("#bPlay").textContent = "play"; $("#bPlay").classList.remove("on");
+  requestRender(true);
+}
+function updateTransport(){
+  $("#fno").textContent = sourceKind === "twelve"
+    ? String(frameIdx+1).padStart(2,"0")+"/"+String(frames.length).padStart(2,"0")
+    : (sourceKind === "video" ? "video" : "still");
+}
+
+/* ── the control schema — every parameter the engine has ────────────────── */
+const SCHEMA = [
+  {sec:"plate", swatch:null, rows:[
+    {k:"paper", t:"color", label:"paper"},
+    {k:"w", t:"range", min:480, max:2160, step:20, label:"width"},
+    {k:"h", t:"range", min:480, max:2700, step:20, label:"height"},
+    {t:"aspect", label:"aspect"},
+    {k:"spread", t:"range", min:0, max:48, step:.5, label:"spread"},
+    {k:"grain", t:"range", min:0, max:40, step:1, label:"grain"},
+    {k:"grain_alpha", t:"range", min:0, max:120, step:1, label:"grain ink"},
+    {t:"view", label:"show"},
+    {t:"quality", label:"preview"}
+  ]},
+  {sec:"mask", tog:"mask_on", rows:[
+    {k:"mask_sharp", t:"range", min:0, max:1.5, step:.02, label:"sharpness"},
+    {k:"mask_dark", t:"range", min:0, max:1.5, step:.02, label:"darkness"},
+    {k:"mask_blur", t:"range", min:8, max:160, step:2, label:"looseness"},
+    {k:"mask_centre", t:"range", min:0, max:1, step:.02, label:"centre bias"},
+    {k:"mask_cx", t:"range", min:0, max:1, step:.01, label:"centre x"},
+    {k:"mask_cy", t:"range", min:0, max:1, step:.01, label:"centre y"},
+    {k:"mask_rx", t:"range", min:.1, max:1.6, step:.02, label:"reach x"},
+    {k:"mask_ry", t:"range", min:.1, max:1.6, step:.02, label:"reach y"},
+    {k:"mask_lo", t:"range", min:0, max:1, step:.01, label:"cutoff"},
+    {k:"mask_span", t:"range", min:.02, max:.8, step:.01, label:"falloff"},
+    {k:"mask_soft", t:"range", min:60, max:1200, step:10, label:"edge crisp"}
+  ]},
+  {sec:"wash", tog:"wash_on", swatch:"wash", rows:[
+    {k:"wash", t:"color", label:"ink"},
+    {k:"wash_levels", t:"range", min:1, max:6, step:1, label:"plateaus"},
+    {k:"wash_start", t:"range", min:0, max:.9, step:.01, label:"first level"},
+    {k:"wash_step", t:"range", min:.02, max:.4, step:.01, label:"level step"},
+    {k:"wash_blur", t:"range", min:0, max:12, step:.1, label:"softness"},
+    {k:"wash_blur_step", t:"range", min:0, max:3, step:.1, label:"soft step"},
+    {k:"wash_alpha", t:"range", min:0, max:255, step:1, label:"opacity"},
+    {k:"wash_alpha_step", t:"range", min:0, max:120, step:1, label:"opacity step"},
+    {k:"wash_dx", t:"range", min:-3, max:3, step:.05, label:"offset x"},
+    {k:"wash_dy", t:"range", min:-3, max:3, step:.05, label:"offset y"},
+    {k:"wash_gate", t:"range", min:0, max:3, step:.05, label:"mask bite"}
+  ]},
+  {sec:"halftone", tog:"half_on", swatch:"half", rows:[
+    {k:"half", t:"color", label:"ink"},
+    {k:"half_pitch", t:"range", min:3, max:40, step:.5, label:"pitch"},
+    {k:"half_angle", t:"range", min:0, max:90, step:1, label:"screen angle"},
+    {k:"half_dot", t:"range", min:.1, max:1.1, step:.02, label:"dot size"},
+    {k:"half_lo", t:"range", min:0, max:1, step:.01, label:"low cut"},
+    {k:"half_hi", t:"range", min:0, max:1, step:.01, label:"high cut"},
+    {k:"half_alpha", t:"range", min:0, max:255, step:1, label:"opacity"},
+    {k:"half_dx", t:"range", min:-3, max:3, step:.05, label:"offset x"},
+    {k:"half_dy", t:"range", min:-3, max:3, step:.05, label:"offset y"},
+    {k:"half_gate", t:"range", min:0, max:3, step:.05, label:"mask bite"}
+  ]},
+  {sec:"ascii", tog:"ascii_on", swatch:"ascii", rows:[
+    {k:"ascii", t:"color", label:"ink"},
+    {k:"cols", t:"range", min:24, max:220, step:1, label:"columns"},
+    {k:"ramp", t:"select", opts:Object.keys(RAMPS), label:"ramp"},
+    {k:"font", t:"select", opts:Object.keys(FONTS), label:"font"},
+    {k:"ascii_gamma", t:"range", min:.3, max:2.2, step:.05, label:"gamma"},
+    {k:"ascii_cut", t:"range", min:0, max:1, step:.02, label:"silhouette"},
+    {k:"ascii_alpha", t:"range", min:0, max:255, step:1, label:"opacity"},
+    {k:"ascii_invert", t:"bool", label:"invert"},
+    {k:"ascii_dx", t:"range", min:-3, max:3, step:.05, label:"offset x"},
+    {k:"ascii_dy", t:"range", min:-3, max:3, step:.05, label:"offset y"}
+  ]},
+  {sec:"contour", tog:"contour_on", swatch:"contour", rows:[
+    {k:"contour", t:"color", label:"ink"},
+    {k:"contour_thresh", t:"range", min:.02, max:.9, step:.01, label:"threshold"},
+    {k:"contour_thick", t:"range", min:1, max:11, step:1, label:"weight"},
+    {k:"contour_blur", t:"range", min:0, max:5, step:.1, label:"softness"},
+    {k:"contour_alpha", t:"range", min:0, max:255, step:1, label:"opacity"},
+    {k:"contour_dx", t:"range", min:-3, max:3, step:.05, label:"offset x"},
+    {k:"contour_dy", t:"range", min:-3, max:3, step:.05, label:"offset y"},
+    {k:"contour_gate", t:"range", min:0, max:3, step:.05, label:"mask bite"}
+  ]},
+  {sec:"echo", tog:"echo_on", rows:[
+    {k:"echo_alpha", t:"range", min:0, max:1, step:.02, label:"ghost"},
+    {k:"echo_dx", t:"range", min:-4, max:4, step:.05, label:"offset x"},
+    {k:"echo_dy", t:"range", min:-4, max:4, step:.05, label:"offset y"},
+    {t:"fps", label:"fps"}
+  ]}
+];
+
+function fmt(v){
+  if(typeof v === "number") return Number.isInteger(v) ? String(v) : v.toFixed(2).replace(/0$/,"");
+  return String(v);
+}
+function buildPanel(){
+  const body = $("#panelBody");
+  body.innerHTML = "";
+  SCHEMA.forEach((s, si)=>{
+    const det = document.createElement("details");
+    det.className = "sec";
+    det.open = si < 2 || si > 1;               // everything open; sections collapse by hand
+    const sum = document.createElement("summary");
+    sum.innerHTML = `<span class="car">▶</span><span>${s.sec}</span>`;
+    if(s.swatch){
+      const sw = document.createElement("span");
+      sw.className = "dot"; sw.style.background = P[s.swatch];
+      sw.dataset.swatch = s.swatch;
+      sum.appendChild(sw);
+    }
+    if(s.tog){
+      const grow = document.createElement("span"); grow.style.flex = "1"; sum.appendChild(grow);
+      const t = document.createElement("input");
+      t.type = "checkbox"; t.className = "sw"; t.checked = !!P[s.tog];
+      t.onclick = e => e.stopPropagation();
+      t.onchange = ()=>{ P[s.tog] = t.checked; cache.key = null; requestRender(); };
+      t.dataset.bind = s.tog;
+      sum.appendChild(t);
+    }
+    det.appendChild(sum);
+    const bd = document.createElement("div"); bd.className = "body";
+    s.rows.forEach(r => bd.appendChild(buildRow(r)));
+    det.appendChild(bd);
+    body.appendChild(det);
+  });
+}
+function buildRow(r){
+  const row = document.createElement("div"); row.className = "row";
+  const lab = document.createElement("label"); lab.textContent = r.label; row.appendChild(lab);
+  const ctl = document.createElement("div"); ctl.className = "ctl"; row.appendChild(ctl);
+
+  const bump = ()=>{
+    if(r.k && r.k.startsWith("mask")) cache.key = null;
+    if(r.k === "w" || r.k === "h") cache.key = null;
+    requestRender();
+  };
+
+  if(r.t === "range"){
+    const i = document.createElement("input");
+    i.type = "range"; i.min = r.min; i.max = r.max; i.step = r.step; i.value = P[r.k];
+    i.dataset.bind = r.k;
+    const v = document.createElement("span"); v.className = "val"; v.textContent = fmt(P[r.k]);
+    i.oninput = ()=>{ P[r.k] = parseFloat(i.value); v.textContent = fmt(P[r.k]); bump(); };
+    ctl.appendChild(i); ctl.appendChild(v);
+  }
+  else if(r.t === "color"){
+    const i = document.createElement("input");
+    i.type = "color"; i.value = P[r.k]; i.dataset.bind = r.k;
+    const hx = document.createElement("span"); hx.className = "hex"; hx.textContent = P[r.k];
+    i.oninput = ()=>{ P[r.k] = i.value; hx.textContent = i.value;
+      document.querySelectorAll(`[data-swatch="${r.k}"]`).forEach(s=>s.style.background=i.value);
+      requestRender(); };
+    ctl.appendChild(i); ctl.appendChild(hx);
+  }
+  else if(r.t === "select"){
+    const s = document.createElement("select"); s.dataset.bind = r.k;
+    r.opts.forEach(o=>{ const op = document.createElement("option"); op.value = o; op.textContent = o; s.appendChild(op); });
+    s.value = P[r.k];
+    s.onchange = ()=>{ P[r.k] = s.value; requestRender(); };
+    ctl.appendChild(s);
+  }
+  else if(r.t === "bool"){
+    const i = document.createElement("input");
+    i.type = "checkbox"; i.className = "sw"; i.checked = !!P[r.k]; i.dataset.bind = r.k;
+    i.onchange = ()=>{ P[r.k] = i.checked; requestRender(); };
+    ctl.appendChild(i);
+  }
+  else if(r.t === "aspect"){
+    const s = document.createElement("select");
+    const opts = {"4:5 · 1080×1350":[1080,1350], "1:1 · 1080×1080":[1080,1080],
+      "3:2 · 1350×900":[1350,900], "9:16 · 1080×1920":[1080,1920],
+      "16:9 · 1920×1080":[1920,1080], "5:4 · 1350×1080":[1350,1080]};
+    Object.keys(opts).forEach(k=>{ const o = document.createElement("option"); o.value = k; o.textContent = k; s.appendChild(o); });
+    s.onchange = ()=>{ const [w,h] = opts[s.value]; P.w = w; P.h = h; cache.key = null;
+      syncPanel(); requestRender(); };
+    ctl.appendChild(s);
+  }
+  else if(r.t === "view"){
+    const s = document.createElement("select");
+    ["composite","wash","halftone","ascii","contour","mask","source"].forEach(o=>{
+      const op = document.createElement("option"); op.value = o; op.textContent = o; s.appendChild(op); });
+    s.value = view;
+    s.onchange = ()=>{ view = s.value; requestRender(); };
+    ctl.appendChild(s);
+  }
+  else if(r.t === "quality"){
+    const s = document.createElement("select");
+    const opts = {"fast · 0.45":0.45, "normal · 0.62":0.62, "sharp · 0.8":0.8, "full · 1.0":1};
+    Object.keys(opts).forEach(k=>{ const o = document.createElement("option"); o.value = k; o.textContent = k; s.appendChild(o); });
+    s.value = "normal · 0.62";
+    s.onchange = ()=>{ previewScale = opts[s.value]; cache.key = null; requestRender(); };
+    ctl.appendChild(s);
+  }
+  else if(r.t === "fps"){
+    const i = document.createElement("input");
+    i.type = "range"; i.min = 1; i.max = 24; i.step = 1; i.value = fps;
+    const v = document.createElement("span"); v.className = "val"; v.textContent = fps;
+    i.oninput = ()=>{ fps = parseInt(i.value); v.textContent = fps; };
+    ctl.appendChild(i); ctl.appendChild(v);
+  }
+  return row;
+}
+function syncPanel(){
+  document.querySelectorAll("[data-bind]").forEach(el=>{
+    const k = el.dataset.bind;
+    if(el.type === "checkbox") el.checked = !!P[k];
+    else el.value = P[k];
+    const val = el.parentElement && el.parentElement.querySelector(".val");
+    if(val && el.type === "range") val.textContent = fmt(P[k]);
+    const hex = el.parentElement && el.parentElement.querySelector(".hex");
+    if(hex && el.type === "color") hex.textContent = P[k];
+  });
+  document.querySelectorAll("[data-swatch]").forEach(s=> s.style.background = P[s.dataset.swatch]);
+}
+
+/* ── presets, export, links ─────────────────────────────────────────────── */
+function applyPreset(name){
+  P = Object.assign({}, DEFAULTS, PRESETS[name] || {});
+  cache.key = null; syncPanel(); requestRender(true);
+}
+function shuffle(){
+  const r = Math.random;
+  const pick = a => a[(r()*a.length)|0];
+  P.spread = 3 + r()*26;
+  P.cols = 50 + (r()*140|0);
+  P.ramp = pick(Object.keys(RAMPS));
+  P.half_pitch = 4 + r()*16;
+  P.half_angle = r()*90;
+  P.wash_levels = 1 + (r()*4|0);
+  P.ascii_gamma = 0.5 + r()*1.2;
+  P.contour_thresh = 0.12 + r()*0.4;
+  ["wash_dx","wash_dy","half_dx","half_dy","ascii_dx","ascii_dy","contour_dx","contour_dy"]
+    .forEach(k => P[k] = (r()*2-1)*1.4);
+  if(r() < .5){
+    const hue = ()=> `hsl(${(r()*360)|0} ${40+r()*50|0}% ${25+r()*30|0}%)`;
+    const toHex = c => { const d = cv(1,1).getContext("2d"); d.fillStyle = c; d.fillRect(0,0,1,1);
+      const p = d.getImageData(0,0,1,1).data;
+      return "#" + [p[0],p[1],p[2]].map(x=>x.toString(16).padStart(2,"0")).join(""); };
+    P.wash = toHex(hue()); P.ascii = toHex(hue()); P.contour = toHex(hue()); P.half = toHex(hue());
+  }
+  cache.key = null; syncPanel(); requestRender(true);
+}
+function exportPng(){
+  const scale = 1;
+  const c = cv(10,10);
+  renderTo(c, scale, true);
+  c.toBlob(b=>{
+    const url = URL.createObjectURL(b);
+    const a = document.createElement("a");
+    a.href = url; a.download = `press-${Date.now()}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 4000);
+    toast("saved");
+  }, "image/png");
+}
+function paramJson(){
+  const out = {};
+  Object.keys(DEFAULTS).forEach(k => { if(P[k] !== DEFAULTS[k]) out[k] = P[k]; });
+  return JSON.stringify(out, null, 2);
+}
+async function copy(text, what){
+  try{ await navigator.clipboard.writeText(text); toast(what+" copied"); }
+  catch(e){
+    const t = document.createElement("textarea");
+    t.value = text; document.body.appendChild(t); t.select();
+    document.execCommand("copy"); t.remove(); toast(what+" copied");
+  }
+}
+function stateHash(){
+  const out = {};
+  Object.keys(DEFAULTS).forEach(k => { if(P[k] !== DEFAULTS[k]) out[k] = P[k]; });
+  if(view !== "composite") out._view = view;
+  return "#" + btoa(unescape(encodeURIComponent(JSON.stringify(out))));
+}
+function readHash(){
+  if(!location.hash || location.hash.length < 3) return;
+  try{
+    const o = JSON.parse(decodeURIComponent(escape(atob(location.hash.slice(1)))));
+    Object.keys(o).forEach(k => { if(k in DEFAULTS) P[k] = o[k]; });
+    if(o._view) view = o._view;
+  }catch(e){}
+}
+
+/* ── wiring ─────────────────────────────────────────────────────────────── */
+function wire(){
+  const ps = $("#preset");
+  Object.keys(PRESETS).forEach(k=>{ const o = document.createElement("option");
+    o.value = k; o.textContent = k; ps.appendChild(o); });
+  ps.onchange = ()=> applyPreset(ps.value);
+
+  $("#bRand").onclick = shuffle;
+  $("#bReset").onclick = ()=> applyPreset("registration");
+  $("#bPng").onclick = exportPng;
+  $("#bJson").onclick = ()=> copy(paramJson(), "json");
+  $("#bLink").onclick = ()=> { history.replaceState(null,"",stateHash());
+    copy(location.href, "link"); };
+  $("#bTxt").onclick = ()=> copy(lastLines.join("\n"), "text plate");
+  $("#tPanel").onclick = ()=> $("#panel").classList.toggle("hide");
+
+  $("#bPlay").onclick = ()=> playing ? pause() : play();
+  $("#scrub").oninput = e=>{
+    const i = parseInt(e.target.value);
+    if(sourceKind === "video"){
+      videoEl.currentTime = (i/100)*(videoEl.duration||0);
+    } else {
+      frameIdx = clamp(i, 0, frames.length-1);
+      ensureFrame(frameIdx, ()=>{ srcSerial++; updateTransport(); requestRender(); });
+    }
+  };
+  $("#bTwelve").onclick = ()=>{ loadTwelve(); };
+  $("#bFile").onclick = ()=> $("#file").click();
+  $("#file").onchange = e=>{ if(e.target.files[0]) takeFile(e.target.files[0]); };
+  $("#bCam").onclick = openCam;
+
+  // drag and drop anywhere on the stage
+  const dz = $("#drop");
+  ["dragenter","dragover"].forEach(ev=>document.addEventListener(ev, e=>{
+    e.preventDefault(); dz.classList.add("on"); }));
+  ["dragleave","drop"].forEach(ev=>document.addEventListener(ev, e=>{
+    e.preventDefault(); if(ev==="drop" || e.target === dz) dz.classList.remove("on"); }));
+  document.addEventListener("drop", e=>{
+    const f = e.dataTransfer && e.dataTransfer.files[0]; if(f) takeFile(f);
+  });
+
+  document.addEventListener("keydown", e=>{
+    if(e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+    if(e.key === " "){ e.preventDefault(); playing ? pause() : play(); }
+    if(e.key === "ArrowRight" && sourceKind==="twelve"){ frameIdx = (frameIdx+1)%frames.length;
+      $("#scrub").value = frameIdx; ensureFrame(frameIdx, ()=>{srcSerial++; updateTransport(); requestRender();}); }
+    if(e.key === "ArrowLeft" && sourceKind==="twelve"){ frameIdx = (frameIdx-1+frames.length)%frames.length;
+      $("#scrub").value = frameIdx; ensureFrame(frameIdx, ()=>{srcSerial++; updateTransport(); requestRender();}); }
+    if(e.key.toLowerCase() === "r") shuffle();
+    if(e.key.toLowerCase() === "e") exportPng();
+    if(e.key.toLowerCase() === "h") $("#panel").classList.toggle("hide");
+  });
+}
+
+function takeFile(f){
+  const url = URL.createObjectURL(f);
+  if(f.type.startsWith("video")){
+    videoEl.src = url; videoEl.load();
+    videoEl.onloadeddata = ()=>{
+      sourceKind = "video"; srcSerial++; cache.key = null;
+      $("#scrub").min = 0; $("#scrub").max = 100; $("#scrub").value = 0;
+      videoEl.currentTime = 0.1;
+      updateTransport(); requestRender();
+      toast("video · scrub to a frame");
+    };
+    videoEl.onseeked = ()=>{ srcSerial++; cache.key = null; requestRender(); };
+  } else {
+    const im = new Image();
+    im.onload = ()=>{ userImage = im; sourceKind = "image"; srcSerial++; cache.key = null;
+      updateTransport(); requestRender(true); toast("image loaded"); };
+    im.src = url;
+  }
+  pause();
+}
+
+/* camera — a still, grabbed on the device; nothing is uploaded anywhere */
+let camStream = null, camFacing = "environment";
+async function openCam(){
+  try{
+    camStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:camFacing}});
+    const v = $("#camv"); v.srcObject = camStream; await v.play();
+    $("#cam").classList.add("on");
+  }catch(e){ toast("no camera"); }
+}
+function closeCam(){
+  $("#cam").classList.remove("on");
+  if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream = null; }
+}
+$("#camClose").onclick = closeCam;
+$("#camFlip").onclick = async ()=>{ camFacing = camFacing === "environment" ? "user" : "environment";
+  closeCam(); openCam(); };
+$("#camShoot").onclick = ()=>{
+  const v = $("#camv");
+  const c = cv(v.videoWidth, v.videoHeight);
+  c.getContext("2d").drawImage(v,0,0);
+  userImage = c; sourceKind = "image"; srcSerial++; cache.key = null;
+  closeCam(); updateTransport(); requestRender(true); toast("captured");
+};
+
+/* ── go ─────────────────────────────────────────────────────────────────── */
+window.onerror = (m,s,l)=>{ $("#hudMs").textContent = "err: "+m+" @"+l; };
+readHash();
+buildPanel();
+wire();
+loadTwelve();
+// the web font can land after the first paint; redraw once it has
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>requestRender());
+window.addEventListener("resize", ()=>{});
+</script>
+</body>
+</html>
