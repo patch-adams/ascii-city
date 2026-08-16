@@ -8,7 +8,7 @@
  html,body{margin:0;height:100%;background:#05080c;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
  .btn,#screen{touch-action:manipulation}
  #screen{position:absolute;inset:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--c);background:#05080c;line-height:0.92em;white-space:pre;display:flex;align-items:center;justify-content:center;text-shadow:0 0 6px rgba(63,224,207,.22)}
- #hint{position:fixed;left:14px;top:calc(env(safe-area-inset-top) + 12px);font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.1em;color:#2b6f68;pointer-events:none}
+ #hint{position:fixed;left:126px;top:calc(env(safe-area-inset-top) + 12px);font-family:ui-monospace,monospace;font-size:10px;letter-spacing:.1em;color:#2b6f68;pointer-events:none}
  .pad{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 20px);z-index:5;display:grid;gap:8px;opacity:.8}
  .pad.left{left:18px;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,52px);grid-template-areas:". up ." "lft dn rgt"}
  .pad.right{right:18px;grid-template-columns:repeat(3,52px);grid-template-rows:52px;grid-template-areas:"tl tt tr"}
@@ -65,4 +65,14 @@ function tick(){
 }
 tick();
 })();
-</script></body></html>
+</script><style>
+  /* the way back to the corridor */
+  #backdoor{position:fixed;left:calc(env(safe-area-inset-left) + 14px);top:calc(env(safe-area-inset-top) + 12px);
+    z-index:9999;display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;
+    border:1px solid rgba(233,226,212,.26);background:rgba(10,9,8,.55);color:rgba(233,226,212,.5);
+    font-family:"Space Mono",ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.16em;
+    text-transform:lowercase;text-decoration:none;line-height:1;transition:color .3s ease,border-color .3s ease}
+  #backdoor:hover,#backdoor:focus{color:#e9e2d4;border-color:rgba(233,226,212,.5)}
+</style>
+<a id="backdoor" href="./" title="back to the corridor">↩ corridor</a>
+</body></html>

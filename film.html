@@ -137,5 +137,15 @@ ctl.addEventListener("click",function(){ if(T>=TOTAL){ T=0; capShown={}; } playi
 requestAnimationFrame(frame);
 })();
 </script>
+<style>
+  /* the way back to the corridor */
+  #backdoor{position:fixed;left:calc(env(safe-area-inset-left) + 14px);top:calc(env(safe-area-inset-top) + 12px);
+    z-index:9999;display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;
+    border:1px solid rgba(233,226,212,.26);background:rgba(10,9,8,.55);color:rgba(233,226,212,.5);
+    font-family:"Space Mono",ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.16em;
+    text-transform:lowercase;text-decoration:none;line-height:1;transition:color .3s ease,border-color .3s ease}
+  #backdoor:hover,#backdoor:focus{color:#e9e2d4;border-color:rgba(233,226,212,.5)}
+</style>
+<a id="backdoor" href="./" title="back to the corridor">↩ corridor</a>
 </body>
 </html>
