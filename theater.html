@@ -51,6 +51,8 @@
   ul.notes li .body{flex:1}
   ul.notes li .body .sc{display:block;font-size:11px;color:rgba(233,226,212,.4);font-style:italic}
   ul.notes li .x{cursor:pointer;color:rgba(233,226,212,.3);font-family:"Space Mono",monospace;font-size:13px}
+  ul.notes li .sent{color:rgba(230,201,138,.75);font-family:"Space Mono",monospace;font-size:10px;padding-top:4px}
+  .btn[disabled]{opacity:.5;cursor:default}
   ul.notes li .x:active{color:#e88}
   .tools{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
   .empty{color:rgba(233,226,212,.35);font-style:italic;font-size:15px;padding:8px 0}
@@ -101,6 +103,7 @@
       <div class="stamp" id="stamp"></div>
       <ul class="notes" id="notes"></ul>
       <div class="tools">
+        <button class="btn solid" id="send">send to patch ↗</button>
         <button class="btn" id="dl">download json</button>
         <button class="btn" id="cp">copy json</button>
         <button class="btn" id="clr">clear</button>
@@ -119,12 +122,14 @@
     </div>
   </div>
 </div>
-<footer>send the json to Patch and we build from your notes.</footer>
+<footer>hit send — the notes land in Patch's telegram, and we build from them.</footer>
 
 <script>
 (function(){
 "use strict";
 var BASE="https://patch-adams.github.io/ascii-city/";
+/* the chute — notes land in Patch's telegram */
+var DROP="https://patch-drop.pages.dev/api/drop", DROPKEY="nka-edf5acb21a65103f";
 var FILMS=[
  {id:"na-koja-abad", title:"na koja abad", meta:"a wordless passage · ~3 min", file:"film.html"},
  {id:"study-of-mike", title:"a study of Mike", meta:"his life as architecture · ~3½ min", file:"mike.html"}
@@ -189,7 +194,7 @@ function render(){ var ul=$("notes"); ul.innerHTML="";
   if(!notes.length){ ul.innerHTML='<div class="empty">no notes yet — jot something and hit mark.</div>'; return; }
   notes.slice().reverse().forEach(function(n){ var realIdx=notes.indexOf(n); var li=document.createElement("li");
     var fname=(FILMS.filter(function(f){return f.id===n.film;})[0]||{}).title||n.film;
-    li.innerHTML='<span class="tag">'+n.ts+'</span><span class="body">'+esc(n.text)+'<span class="sc">'+esc(fname)+(n.scene?" · "+esc(n.scene):"")+'</span></span><span class="x">✕</span>';
+    li.innerHTML='<span class="tag">'+n.ts+'</span><span class="body">'+esc(n.text)+'<span class="sc">'+esc(fname)+(n.scene?" · "+esc(n.scene):"")+'</span></span>'+(n.sent?'<span class="sent">sent ✓</span>':'')+'<span class="x">✕</span>';
     li.querySelector(".x").addEventListener("click",function(){ notes.splice(realIdx,1); save(); render(); });
     ul.appendChild(li); });
 }
@@ -200,6 +205,26 @@ $("dl").addEventListener("click",function(){ var b=new Blob([payload()],{type:"a
 $("cp").addEventListener("click",function(){ var t=payload();
   if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(function(){flash($("cp"),"copied ✓");},function(){legacy(t);}); } else legacy(t);
   function legacy(x){ var ta=document.createElement("textarea"); ta.value=x; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");flash($("cp"),"copied ✓");}catch(e){} document.body.removeChild(ta); } });
+$("send").addEventListener("click",function(){
+  var b=$("send"); if(b.disabled) return;
+  var unsent=notes.filter(function(n){return !n.sent;});
+  if(!unsent.length){ flash(b, notes.length?"all sent already":"nothing to send"); return; }
+  var old=b.textContent; b.textContent="sending…"; b.disabled=true;
+  fetch(DROP,{ method:"POST", headers:{"Content-Type":"application/json","X-Drop-Key":DROPKEY},
+    body:JSON.stringify({ source:"the screening room", notes:unsent }) })
+  .then(function(r){ return r.json().catch(function(){return {};}); })
+  .then(function(o){ b.disabled=false;
+    if(o&&o.ok){ unsent.forEach(function(n){ n.sent=true; }); save(); render();
+      b.textContent="landed ✓ ("+o.count+")"; setTimeout(function(){ b.textContent=old; },2200); }
+    else fallback(b,old);
+  })
+  .catch(function(){ b.disabled=false; fallback(b,old); });
+  function fallback(btn,label){
+    stamp.textContent="chute is down — json copied, paste it to Patch";
+    var t=payload(); if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t); }
+    btn.textContent="copied instead ⤴"; setTimeout(function(){ btn.textContent=label; },2600);
+  }
+});
 $("clr").addEventListener("click",function(){ if(confirm("clear all notes?")){ notes=[]; save(); render(); } });
 function flash(btn,txt){ var old=btn.textContent; btn.textContent=txt; setTimeout(function(){btn.textContent=old;},1400); }
 render();
