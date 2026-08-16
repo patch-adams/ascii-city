@@ -10,7 +10,7 @@
 <style>
   :root{--ink:#e7cf9a}
   html,body{margin:0;height:100%;background:#070608;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-  #screen{position:absolute;inset:0;overflow:hidden;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);background:#070608;line-height:0.92em;white-space:pre;display:flex;align-items:center;justify-content:center;text-shadow:0 0 6px rgba(231,207,154,.22)}
+  #screen{position:absolute;inset:0;overflow:hidden;opacity:1;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);background:#070608;line-height:0.92em;white-space:pre;display:flex;align-items:center;justify-content:center;text-shadow:0 0 6px rgba(231,207,154,.22)}
   #grid{display:block;white-space:pre;font-family:inherit;line-height:inherit}
   #vig{position:fixed;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 160px 50px rgba(0,0,0,.72)}
   #say{position:fixed;left:50%;top:11%;transform:translateX(-50%);z-index:4;font-family:"Space Mono",monospace;
@@ -21,6 +21,16 @@
     padding:14px 12px calc(env(safe-area-inset-bottom) + 16px);opacity:0;transition:opacity 1.4s ease;pointer-events:none;
     background:linear-gradient(to top,rgba(7,6,8,.94),rgba(7,6,8,0))}
   #picker.on{opacity:1;pointer-events:auto}
+  #big{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:7;text-align:center;
+    font-family:"Space Mono",monospace;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#070608;
+    background:#e7cf9a;border:none;border-radius:999px;padding:15px 26px;cursor:pointer;display:none;
+    box-shadow:0 0 60px rgba(231,207,154,.28)}
+  #big.on{display:block;animation:bpulse 2.6s ease-in-out infinite}
+  @keyframes bpulse{0%,100%{box-shadow:0 0 40px rgba(231,207,154,.22)}50%{box-shadow:0 0 90px rgba(231,207,154,.45)}}
+  #fin{position:fixed;left:50%;top:74%;transform:translate(-50%,-50%);z-index:8;text-align:center;
+    font-family:"Newsreader",serif;font-style:italic;font-size:clamp(1.5rem,5.5vw,2.4rem);color:#f4ead2;
+    opacity:0;transition:opacity 2.6s ease;pointer-events:none;text-shadow:0 2px 30px rgba(0,0,0,.95);padding:0 8vw;line-height:1.5}
+  #fin.on{opacity:1}
   #picker,#picker *{box-sizing:border-box}
   @media (max-width:520px){
     #picker{padding-left:6px;padding-right:6px;gap:6px}
@@ -44,6 +54,8 @@
 <div id="vig"></div>
 <div id="say"></div>
 <div id="picker"><div id="hint">pick a word</div></div>
+<button id="big">let it hear you</button>
+<div id="fin"></div>
 <a id="backdoor" href="./" title="the rest of it">more &#8599;</a>
 <div id="start"><div class="t">hello, bran &amp; andrea</div><div class="s">tap anywhere</div></div>
 
@@ -59,7 +71,8 @@
 
 var screenEl=document.getElementById("screen"), grid=document.getElementById("grid"),
     sayEl=document.getElementById("say"), pickEl=document.getElementById("picker"),
-    startEl=document.getElementById("start");
+    startEl=document.getElementById("start"),
+    bigEl=document.getElementById("big"), finEl=document.getElementById("fin");
 var FORMS={"ash tree":{"name":"ash tree","unit":1.25,"parts":[{"k":"blob","x":-0.02,"y":-0.36,"b":0.3,"r":0.26,"anim":"sway","amp":0.03,"rate":0.6},{"k":"blob","x":-0.3,"y":-0.22,"b":0.26,"r":0.19,"anim":"sway","amp":0.05,"rate":0.8},{"k":"blob","x":0.29,"y":-0.24,"b":0.26,"r":0.19,"anim":"sway","amp":0.05,"rate":0.7},{"k":"blob","x":-0.14,"y":-0.55,"b":0.22,"r":0.14,"anim":"sway","amp":0.06,"rate":1.1},{"k":"blob","x":0.16,"y":-0.54,"b":0.22,"r":0.14,"anim":"sway","amp":0.06,"rate":0.9},{"k":"blob","x":0.0,"y":0.36,"b":0.34,"r":0.11,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"curve","p":[[-0.09,0.66],[-0.05,0.3],[-0.03,0.02],[-0.04,-0.14]],"b":0.55},{"k":"curve","p":[[0.09,0.66],[0.05,0.3],[0.04,0.02],[0.05,-0.14]],"b":0.55},{"k":"line","p":[[-0.03,-0.06],[-0.26,-0.26]],"b":0.45},{"k":"line","p":[[0.04,-0.08],[0.27,-0.28]],"b":0.45},{"k":"line","p":[[-0.04,-0.14],[-0.15,-0.44]],"b":0.42},{"k":"line","p":[[0.05,-0.14],[0.16,-0.44]],"b":0.42},{"k":"line","p":[[-0.26,-0.26],[-0.36,-0.38]],"b":0.35},{"k":"line","p":[[0.27,-0.28],[0.37,-0.39]],"b":0.35},{"k":"curve","p":[[-0.46,-0.2],[-0.3,-0.44],[-0.06,-0.6],[0.14,-0.62],[0.34,-0.46],[0.46,-0.22]],"b":0.48,"anim":"sway","amp":0.04,"rate":0.7},{"k":"curve","p":[[-0.46,-0.2],[-0.34,-0.06],[-0.12,0.02],[0.12,0.02],[0.34,-0.06],[0.46,-0.22]],"b":0.4,"anim":"sway","amp":0.04,"rate":0.7},{"k":"curve","p":[[-0.2,0.64],[-0.09,0.6],[0.09,0.6],[0.21,0.64]],"b":0.45},{"k":"eye","x":-0.05,"y":0.2,"b":0.92},{"k":"eye","x":0.06,"y":0.28,"b":0.72}]},"fox":{"name":"fox","unit":1.0,"parts":[{"k":"blob","x":0.02,"y":0.12,"b":0.34,"r":0.26,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.2,"y":0.06,"b":0.3,"r":0.17},{"k":"blob","x":-0.34,"y":-0.06,"b":0.28,"r":0.11},{"k":"blob","x":0.3,"y":0.14,"b":0.26,"r":0.15},{"k":"blob","x":-0.42,"y":-0.2,"b":0.22,"r":0.05},{"k":"curve","p":[[-0.52,-0.02],[-0.44,-0.3],[-0.34,-0.14]],"b":0.5},{"k":"curve","p":[[-0.34,-0.14],[-0.26,-0.34],[-0.18,-0.12]],"b":0.5},{"k":"curve","p":[[-0.52,-0.02],[-0.4,0.02],[-0.28,0.02],[-0.16,-0.06],[-0.06,-0.1],[0.14,-0.08]],"b":0.55},{"k":"curve","p":[[0.14,-0.08],[0.3,-0.02],[0.38,0.1]],"b":0.5},{"k":"curve","p":[[-0.52,-0.02],[-0.46,0.06],[-0.36,0.1],[-0.22,0.14]],"b":0.45},{"k":"curve","p":[[-0.22,0.14],[-0.02,0.24],[0.2,0.26],[0.36,0.2]],"b":0.5},{"k":"curve","p":[[0.36,0.2],[0.48,0.06],[0.56,-0.16],[0.46,-0.3]],"b":0.45,"anim":"sway","amp":0.09,"rate":1.1},{"k":"line","p":[[-0.18,0.24],[-0.16,0.52]],"b":0.45},{"k":"line","p":[[-0.04,0.26],[0.0,0.52]],"b":0.4},{"k":"line","p":[[0.22,0.26],[0.24,0.52]],"b":0.45},{"k":"line","p":[[0.32,0.24],[0.36,0.52]],"b":0.4},{"k":"curve","p":[[-0.16,0.52],[-0.24,0.55]],"b":0.4},{"k":"curve","p":[[0.24,0.52],[0.16,0.55]],"b":0.4},{"k":"blob","x":-0.3,"y":-0.24,"b":0.2,"r":0.04,"anim":"perk","amp":0.14,"rate":1.5},{"k":"eye","x":-0.3,"y":-0.04,"b":0.95},{"k":"eye","x":-0.51,"y":-0.01,"b":0.75}]},"moth":{"name":"moth","unit":1.05,"parts":[{"k":"blob","x":0.0,"y":0.02,"b":0.42,"r":0.13,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":0.13,"y":-0.09,"b":0.4,"r":0.075},{"k":"blob","x":-0.16,"y":0.16,"b":0.3,"r":0.09},{"k":"blob","x":-0.06,"y":-0.28,"b":0.24,"r":0.2,"anim":"bob","amp":0.07,"rate":1.4},{"k":"blob","x":0.02,"y":-0.42,"b":0.17,"r":0.13,"anim":"bob","amp":0.09,"rate":1.4},{"k":"blob","x":-0.14,"y":0.3,"b":0.2,"r":0.12,"anim":"bob","amp":0.05,"rate":1.4},{"k":"curve","p":[[0.08,-0.11],[-0.05,-0.32],[-0.26,-0.5],[-0.42,-0.36],[-0.3,-0.1],[-0.06,0.0]],"b":0.55,"anim":"bob","amp":0.08,"rate":1.4},{"k":"curve","p":[[0.04,0.04],[-0.14,0.16],[-0.34,0.34],[-0.4,0.14],[-0.22,0.02]],"b":0.44,"anim":"bob","amp":0.05,"rate":1.4},{"k":"curve","p":[[0.19,-0.13],[0.1,0.02],[0.02,0.14],[-0.12,0.2],[-0.22,0.14]],"b":0.5},{"k":"curve","p":[[0.19,-0.13],[0.08,-0.16],[-0.04,-0.13],[-0.16,-0.05]],"b":0.45},{"k":"curve","p":[[-0.2,0.16],[-0.3,0.26],[-0.34,0.4]],"b":0.34,"anim":"sway","amp":0.05,"rate":1.1},{"k":"curve","p":[[0.16,-0.18],[0.26,-0.32],[0.42,-0.4]],"b":0.42,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[0.2,-0.16],[0.32,-0.26],[0.46,-0.28]],"b":0.42,"anim":"perk","amp":0.12,"rate":1.5},{"k":"line","p":[[0.16,-0.05],[0.3,0.06]],"b":0.36},{"k":"line","p":[[0.06,0.12],[0.14,0.3]],"b":0.34},{"k":"line","p":[[-0.04,0.13],[-0.02,0.32]],"b":0.32},{"k":"eye","x":0.17,"y":-0.1,"b":0.95}]},"crow":{"name":"crow","unit":1.05,"parts":[{"k":"blob","x":0.02,"y":0.06,"b":0.42,"r":0.26,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":0.18,"y":-0.02,"b":0.36,"r":0.16},{"k":"blob","x":-0.16,"y":0.14,"b":0.34,"r":0.18},{"k":"blob","x":0.28,"y":-0.22,"b":0.4,"r":0.12},{"k":"blob","x":-0.02,"y":0.02,"b":0.3,"r":0.15,"anim":"bob","amp":0.03,"rate":0.8},{"k":"curve","p":[[0.4,-0.2],[0.3,-0.32],[0.16,-0.3],[0.06,-0.16],[0.04,0.02]],"b":0.55},{"k":"curve","p":[[0.04,0.02],[-0.06,0.24],[-0.2,0.34],[-0.34,0.3]],"b":0.5},{"k":"curve","p":[[0.4,-0.2],[0.36,-0.1],[0.28,-0.02],[0.22,0.1],[0.24,0.24]],"b":0.5},{"k":"curve","p":[[0.24,0.24],[0.1,0.32],[-0.1,0.34],[-0.28,0.32]],"b":0.45},{"k":"curve","p":[[0.4,-0.22],[0.54,-0.16],[0.4,-0.12]],"b":0.6},{"k":"curve","p":[[0.16,0.0],[0.02,0.14],[-0.14,0.22],[-0.26,0.2]],"b":0.45,"anim":"bob","amp":0.04,"rate":1.2},{"k":"curve","p":[[-0.28,0.32],[-0.42,0.4],[-0.54,0.44]],"b":0.5,"anim":"sway","amp":0.06,"rate":1.4},{"k":"curve","p":[[-0.3,0.24],[-0.46,0.3],[-0.56,0.36]],"b":0.4,"anim":"sway","amp":0.07,"rate":1.4},{"k":"line","p":[[0.02,0.3],[0.0,0.5]],"b":0.45},{"k":"line","p":[[0.0,0.5],[0.1,0.56]],"b":0.4},{"k":"line","p":[[0.0,0.5],[-0.08,0.56]],"b":0.4},{"k":"line","p":[[-0.12,0.3],[-0.12,0.5]],"b":0.4},{"k":"line","p":[[-0.12,0.5],[-0.02,0.56]],"b":0.35},{"k":"eye","x":0.3,"y":-0.24,"b":0.95}]},"stag":{"name":"stag","unit":1.15,"parts":[{"k":"blob","x":0.02,"y":0.16,"b":0.34,"r":0.24,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.19,"y":0.1,"b":0.3,"r":0.17},{"k":"blob","x":0.2,"y":0.14,"b":0.28,"r":0.15},{"k":"blob","x":-0.3,"y":-0.14,"b":0.26,"r":0.09},{"k":"blob","x":-0.36,"y":-0.34,"b":0.3,"r":0.1,"anim":"bob","amp":0.03,"rate":0.8},{"k":"curve","p":[[-0.3,-0.3],[-0.44,-0.36],[-0.5,-0.44],[-0.46,-0.5]],"b":0.5,"anim":"bob","amp":0.03,"rate":0.8},{"k":"curve","p":[[-0.28,-0.24],[-0.24,-0.06],[-0.12,0.02],[0.1,0.0],[0.26,0.06]],"b":0.5},{"k":"curve","p":[[0.28,0.08],[0.34,0.24],[0.28,0.34]],"b":0.45,"anim":"sway","amp":0.03,"rate":1.2},{"k":"curve","p":[[-0.32,-0.44],[-0.3,-0.58],[-0.2,-0.66]],"b":0.55,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.3,-0.52],[-0.16,-0.56],[-0.08,-0.66]],"b":0.5,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.38,-0.46],[-0.44,-0.58],[-0.54,-0.62]],"b":0.5,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.42,-0.52],[-0.5,-0.5],[-0.58,-0.56]],"b":0.45,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.4,-0.42],[-0.34,-0.28],[-0.3,-0.16]],"b":0.4},{"k":"line","p":[[-0.16,0.28],[-0.18,0.52],[-0.14,0.66]],"b":0.5},{"k":"line","p":[[-0.06,0.3],[-0.04,0.54],[-0.08,0.66]],"b":0.45},{"k":"line","p":[[0.16,0.28],[0.2,0.52],[0.16,0.66]],"b":0.5},{"k":"line","p":[[0.26,0.26],[0.3,0.52],[0.26,0.66]],"b":0.45},{"k":"curve","p":[[-0.1,0.34],[0.06,0.36],[0.22,0.32]],"b":0.35},{"k":"eye","x":-0.36,"y":-0.36,"b":0.95}]},"owl":{"name":"owl","unit":1.05,"parts":[{"k":"blob","x":0.02,"y":0.18,"b":0.34,"r":0.3,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.06,"y":-0.22,"b":0.36,"r":0.22},{"k":"blob","x":0.14,"y":0.05,"b":0.26,"r":0.16},{"k":"blob","x":0.24,"y":0.3,"b":0.22,"r":0.12},{"k":"blob","x":-0.14,"y":0.12,"b":0.24,"r":0.13},{"k":"curve","p":[[-0.24,-0.34],[-0.19,-0.2],[-0.26,-0.1]],"b":0.5,"anim":"perk","amp":0.1,"rate":1.5},{"k":"curve","p":[[0.1,-0.36],[0.09,-0.24],[0.02,-0.16]],"b":0.5,"anim":"perk","amp":0.1,"rate":1.5},{"k":"curve","p":[[-0.24,-0.28],[-0.28,-0.1],[-0.26,0.1],[-0.18,0.34],[-0.02,0.48]],"b":0.55},{"k":"curve","p":[[0.1,-0.34],[0.22,-0.18],[0.3,0.06],[0.32,0.3],[0.22,0.48]],"b":0.5},{"k":"curve","p":[[-0.02,0.48],[0.1,0.52],[0.22,0.48]],"b":0.45},{"k":"curve","p":[[-0.26,-0.06],[-0.34,0.02],[-0.27,0.06]],"b":0.6},{"k":"curve","p":[[0.06,0.02],[0.14,0.22],[0.1,0.42]],"b":0.4,"anim":"bob","amp":0.04,"rate":0.8},{"k":"curve","p":[[0.28,0.34],[0.4,0.52],[0.34,0.62]],"b":0.45,"anim":"sway","amp":0.05,"rate":0.9},{"k":"line","p":[[0.02,0.5],[0.02,0.6]],"b":0.45},{"k":"line","p":[[-0.05,0.6],[0.09,0.6]],"b":0.4},{"k":"line","p":[[0.16,0.5],[0.16,0.6]],"b":0.45},{"k":"line","p":[[0.09,0.6],[0.23,0.6]],"b":0.4},{"k":"eye","x":-0.15,"y":-0.16,"b":0.95},{"k":"eye","x":-0.04,"y":-0.15,"b":0.72}]},"whale":{"name":"whale","unit":1.15,"parts":[{"k":"blob","x":0.02,"y":0.02,"b":0.34,"r":0.3,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.26,"y":-0.01,"b":0.3,"r":0.22},{"k":"blob","x":0.26,"y":0.06,"b":0.26,"r":0.19},{"k":"blob","x":-0.1,"y":0.14,"b":0.24,"r":0.22},{"k":"blob","x":0.44,"y":0.05,"b":0.2,"r":0.1,"anim":"sway","amp":0.05,"rate":0.8},{"k":"curve","p":[[-0.46,0.02],[-0.3,-0.2],[-0.02,-0.26],[0.26,-0.18],[0.42,0.02]],"b":0.52},{"k":"curve","p":[[-0.46,0.02],[-0.4,0.16],[-0.2,0.26],[0.1,0.28],[0.34,0.18],[0.42,0.02]],"b":0.5},{"k":"curve","p":[[0.42,0.02],[0.54,-0.2],[0.58,-0.08],[0.56,0.04],[0.58,0.2],[0.5,0.12]],"b":0.46,"anim":"sway","amp":0.09,"rate":0.7},{"k":"curve","p":[[-0.02,-0.26],[0.04,-0.34],[0.1,-0.26]],"b":0.42,"anim":"bob","amp":0.03,"rate":1.0},{"k":"curve","p":[[-0.46,0.02],[-0.36,0.06],[-0.18,0.09],[0.06,0.1],[0.28,0.12]],"b":0.36},{"k":"line","p":[[-0.34,0.18],[-0.22,0.2]],"b":0.34},{"k":"line","p":[[-0.26,0.22],[-0.14,0.24]],"b":0.34},{"k":"line","p":[[-0.18,0.24],[-0.06,0.26]],"b":0.32},{"k":"curve","p":[[-0.04,0.16],[0.06,0.26],[0.16,0.22]],"b":0.44,"anim":"sway","amp":0.04,"rate":1.4},{"k":"eye","x":-0.32,"y":0.02,"b":0.95}]},"heron":{"name":"heron","unit":1.15,"parts":[{"k":"blob","x":0.05,"y":0.18,"b":0.42,"r":0.2,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":0.2,"y":0.22,"b":0.34,"r":0.13},{"k":"blob","x":-0.1,"y":0.12,"b":0.3,"r":0.11},{"k":"blob","x":-0.22,"y":-0.4,"b":0.36,"r":0.07,"anim":"bob","amp":0.05,"rate":0.8},{"k":"blob","x":0.14,"y":0.14,"b":0.22,"r":0.09},{"k":"curve","p":[[-0.28,-0.44],[-0.16,-0.38],[-0.08,-0.2],[-0.04,0.02],[0.02,0.16]],"b":0.5,"anim":"bob","amp":0.04,"rate":0.8},{"k":"curve","p":[[-0.3,-0.36],[-0.2,-0.26],[-0.12,-0.06],[-0.08,0.1],[-0.02,0.22]],"b":0.42,"anim":"bob","amp":0.04,"rate":0.8},{"k":"curve","p":[[-0.2,-0.42],[-0.42,-0.38],[-0.58,-0.34]],"b":0.55,"anim":"bob","amp":0.04,"rate":0.8},{"k":"curve","p":[[-0.2,-0.46],[-0.34,-0.5],[-0.44,-0.56]],"b":0.34,"anim":"sway","amp":0.04,"rate":1.2},{"k":"curve","p":[[-0.02,0.02],[0.1,-0.02],[0.24,0.06],[0.34,0.2],[0.3,0.34]],"b":0.5},{"k":"curve","p":[[0.02,0.2],[0.16,0.26],[0.3,0.34],[0.44,0.44]],"b":0.44,"anim":"sway","amp":0.05,"rate":0.7},{"k":"curve","p":[[0.06,0.1],[0.2,0.14],[0.3,0.24]],"b":0.36},{"k":"line","p":[[0.04,0.32],[0.02,0.56]],"b":0.5},{"k":"line","p":[[0.12,0.32],[0.16,0.5]],"b":0.4},{"k":"curve","p":[[0.02,0.56],[-0.06,0.62],[-0.12,0.62]],"b":0.45},{"k":"curve","p":[[0.16,0.5],[0.14,0.6],[0.06,0.64]],"b":0.35},{"k":"eye","x":-0.24,"y":-0.42,"b":0.95}]},"koi fish":{"name":"koi","unit":1.05,"parts":[{"k":"blob","x":0.02,"y":0.0,"b":0.4,"r":0.2,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.2,"y":-0.02,"b":0.36,"r":0.15},{"k":"blob","x":0.2,"y":0.06,"b":0.3,"r":0.13},{"k":"blob","x":-0.38,"y":0.0,"b":0.32,"r":0.09},{"k":"blob","x":0.38,"y":0.1,"b":0.22,"r":0.07,"anim":"sway","amp":0.06,"rate":1.2},{"k":"curve","p":[[-0.47,0.0],[-0.3,-0.16],[-0.05,-0.2],[0.2,-0.12],[0.36,0.02]],"b":0.55},{"k":"curve","p":[[-0.47,0.02],[-0.32,0.16],[-0.06,0.2],[0.2,0.16],[0.36,0.06]],"b":0.5},{"k":"curve","p":[[0.36,0.04],[0.48,-0.12],[0.58,-0.2]],"b":0.45,"anim":"sway","amp":0.1,"rate":1.1},{"k":"curve","p":[[0.36,0.06],[0.5,0.16],[0.58,0.3]],"b":0.42,"anim":"sway","amp":0.12,"rate":1.1},{"k":"curve","p":[[0.36,0.05],[0.46,0.04],[0.54,0.06]],"b":0.35,"anim":"sway","amp":0.08,"rate":1.3},{"k":"curve","p":[[-0.06,-0.19],[0.0,-0.32],[0.12,-0.38]],"b":0.45,"anim":"sway","amp":0.04,"rate":0.8},{"k":"curve","p":[[-0.1,0.19],[-0.06,0.34],[0.06,0.4]],"b":0.4,"anim":"sway","amp":0.05,"rate":0.9},{"k":"curve","p":[[0.1,0.17],[0.18,0.3],[0.3,0.34]],"b":0.36,"anim":"sway","amp":0.06,"rate":1.4},{"k":"line","p":[[-0.47,0.0],[-0.36,-0.06]],"b":0.4},{"k":"curve","p":[[-0.44,0.06],[-0.5,0.14],[-0.46,0.2]],"b":0.32,"anim":"sway","amp":0.05,"rate":1.6},{"k":"curve","p":[[-0.42,0.08],[-0.44,0.18],[-0.36,0.24]],"b":0.3,"anim":"sway","amp":0.05,"rate":1.8},{"k":"blob","x":-0.14,"y":-0.06,"b":0.2,"r":0.06},{"k":"blob","x":0.12,"y":0.04,"b":0.18,"r":0.05},{"k":"eye","x":-0.34,"y":-0.04,"b":0.95}]},"jellyfish":{"name":"jellyfish","unit":1.05,"parts":[{"k":"blob","x":0.0,"y":-0.3,"b":0.34,"r":0.3,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.2,"y":-0.22,"b":0.26,"r":0.17},{"k":"blob","x":0.2,"y":-0.22,"b":0.26,"r":0.17},{"k":"blob","x":0.0,"y":-0.44,"b":0.22,"r":0.2},{"k":"blob","x":0.0,"y":-0.08,"b":0.2,"r":0.13,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"curve","p":[[-0.4,-0.1],[-0.38,-0.34],[-0.22,-0.52],[0.0,-0.57],[0.22,-0.52],[0.38,-0.34]],"b":0.55},{"k":"curve","p":[[0.38,-0.34],[0.4,-0.1]],"b":0.5},{"k":"curve","p":[[-0.4,-0.1],[-0.26,-0.03],[-0.1,-0.09],[0.06,-0.02],[0.22,-0.08],[0.4,-0.1]],"b":0.45},{"k":"curve","p":[[-0.28,-0.06],[-0.34,0.14],[-0.24,0.34],[-0.32,0.54],[-0.24,0.68]],"b":0.42,"anim":"sway","amp":0.11,"rate":1.1},{"k":"curve","p":[[-0.12,-0.05],[-0.16,0.18],[-0.06,0.4],[-0.14,0.62]],"b":0.45,"anim":"sway","amp":0.09,"rate":1.6},{"k":"curve","p":[[0.02,-0.04],[0.06,0.2],[-0.02,0.44],[0.04,0.66]],"b":0.45,"anim":"sway","amp":0.1,"rate":1.3},{"k":"curve","p":[[0.16,-0.06],[0.22,0.16],[0.12,0.38],[0.2,0.6]],"b":0.42,"anim":"sway","amp":0.08,"rate":1.9},{"k":"curve","p":[[0.3,-0.06],[0.36,0.16],[0.26,0.36],[0.34,0.56],[0.28,0.68]],"b":0.4,"anim":"sway","amp":0.12,"rate":0.9},{"k":"line","p":[[-0.2,-0.03],[-0.22,0.3]],"b":0.32,"anim":"sway","amp":0.06,"rate":2.4},{"k":"line","p":[[0.24,-0.05],[0.28,0.26]],"b":0.32,"anim":"sway","amp":0.06,"rate":2.1},{"k":"eye","x":-0.1,"y":-0.3,"b":0.95},{"k":"eye","x":0.11,"y":-0.31,"b":0.8}]},"ship":{"name":"ship","unit":1.05,"parts":[{"k":"blob","x":-0.02,"y":0.34,"b":0.3,"r":0.3,"anim":"bob","amp":0.03,"rate":0.7},{"k":"blob","x":-0.3,"y":0.3,"b":0.24,"r":0.16},{"k":"blob","x":0.28,"y":0.28,"b":0.24,"r":0.15},{"k":"blob","x":-0.06,"y":-0.1,"b":0.22,"r":0.2,"anim":"sway","amp":0.04,"rate":0.8},{"k":"blob","x":0.14,"y":0.06,"b":0.18,"r":0.13,"anim":"sway","amp":0.03,"rate":0.9},{"k":"curve","p":[[-0.52,0.22],[-0.4,0.44],[0.06,0.52],[0.42,0.42],[0.52,0.2]],"b":0.55,"anim":"bob","amp":0.03,"rate":0.7},{"k":"curve","p":[[-0.52,0.22],[0.52,0.2]],"b":0.45,"anim":"bob","amp":0.03,"rate":0.7},{"k":"line","p":[[-0.1,0.2],[-0.1,-0.62]],"b":0.55,"anim":"sway","amp":0.03,"rate":0.6},{"k":"line","p":[[0.2,0.24],[0.2,-0.3]],"b":0.45,"anim":"sway","amp":0.03,"rate":0.7},{"k":"line","p":[[-0.34,-0.34],[0.14,-0.34]],"b":0.35},{"k":"curve","p":[[-0.1,-0.58],[-0.36,-0.36],[-0.34,0.06],[-0.1,0.14]],"b":0.5,"anim":"sway","amp":0.06,"rate":0.9},{"k":"curve","p":[[-0.1,-0.32],[0.16,-0.14],[0.14,0.1],[-0.1,0.16]],"b":0.45,"anim":"sway","amp":0.05,"rate":1.1},{"k":"curve","p":[[0.2,-0.28],[0.36,-0.1],[0.34,0.14],[0.2,0.2]],"b":0.4,"anim":"sway","amp":0.05,"rate":1.3},{"k":"line","p":[[-0.1,-0.6],[0.5,0.18]],"b":0.32},{"k":"line","p":[[-0.1,-0.6],[-0.5,0.2]],"b":0.32},{"k":"curve","p":[[0.42,0.42],[0.56,0.3]],"b":0.4},{"k":"line","p":[[-0.1,-0.62],[0.02,-0.66]],"b":0.35,"anim":"sway","amp":0.05,"rate":2.4},{"k":"eye","x":0.4,"y":0.3,"b":0.9},{"k":"eye","x":-0.42,"y":0.32,"b":0.75}]},"paper lantern":{"name":"paper lantern","unit":1.05,"parts":[{"k":"blob","x":0.0,"y":0.0,"b":0.3,"r":0.3,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":0.0,"y":-0.22,"b":0.26,"r":0.22},{"k":"blob","x":0.0,"y":0.22,"b":0.26,"r":0.22},{"k":"blob","x":0.0,"y":0.02,"b":0.5,"r":0.14,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"curve","p":[[0.0,-0.44],[0.26,-0.3],[0.34,0.0],[0.26,0.3],[0.0,0.44]],"b":0.55},{"k":"curve","p":[[0.0,-0.44],[-0.26,-0.3],[-0.34,0.0],[-0.26,0.3],[0.0,0.44]],"b":0.55},{"k":"line","p":[[-0.14,-0.44],[0.14,-0.44]],"b":0.6},{"k":"line","p":[[-0.14,0.44],[0.14,0.44]],"b":0.6},{"k":"line","p":[[-0.32,-0.15],[0.32,-0.15]],"b":0.32},{"k":"line","p":[[-0.34,0.02],[0.34,0.02]],"b":0.32},{"k":"line","p":[[-0.32,0.19],[0.32,0.19]],"b":0.32},{"k":"line","p":[[0.0,-0.44],[0.0,-0.6]],"b":0.4},{"k":"curve","p":[[-0.05,0.44],[0.0,0.56],[0.05,0.44]],"b":0.35},{"k":"curve","p":[[0.0,0.5],[0.03,0.6],[-0.02,0.68]],"b":0.4,"anim":"sway","amp":0.09,"rate":1.1},{"k":"eye","x":-0.05,"y":0.0,"b":0.95},{"k":"eye","x":0.06,"y":0.06,"b":0.8}]},"wolf":{"name":"wolf","unit":1.05,"parts":[{"k":"blob","x":0.02,"y":0.06,"b":0.34,"r":0.26,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.22,"y":0.02,"b":0.32,"r":0.2},{"k":"blob","x":0.26,"y":0.1,"b":0.28,"r":0.17},{"k":"blob","x":-0.38,"y":-0.2,"b":0.3,"r":0.13},{"k":"blob","x":-0.5,"y":-0.14,"b":0.24,"r":0.08},{"k":"curve","p":[[-0.58,-0.12],[-0.46,-0.28],[-0.4,-0.34],[-0.34,-0.24],[-0.24,-0.16],[-0.1,-0.14]],"b":0.55},{"k":"curve","p":[[-0.1,-0.14],[0.1,-0.18],[0.28,-0.12],[0.36,0.02]],"b":0.5},{"k":"curve","p":[[-0.42,-0.34],[-0.38,-0.46],[-0.3,-0.32]],"b":0.5,"anim":"perk","amp":0.12,"rate":1.5},{"k":"curve","p":[[-0.3,-0.32],[-0.24,-0.44],[-0.18,-0.28]],"b":0.45,"anim":"perk","amp":0.1,"rate":1.5},{"k":"curve","p":[[-0.58,-0.12],[-0.48,-0.02],[-0.34,-0.06],[-0.22,-0.1]],"b":0.45},{"k":"curve","p":[[0.36,0.02],[0.44,0.1],[0.4,0.24]],"b":0.45},{"k":"curve","p":[[0.4,0.2],[0.52,0.18],[0.58,0.06],[0.56,-0.1]],"b":0.4,"anim":"sway","amp":0.09,"rate":1.2},{"k":"line","p":[[-0.2,0.18],[-0.22,0.42],[-0.14,0.5]],"b":0.45},{"k":"line","p":[[-0.06,0.2],[-0.04,0.44],[0.02,0.52]],"b":0.4},{"k":"line","p":[[0.22,0.2],[0.24,0.44],[0.32,0.5]],"b":0.45},{"k":"line","p":[[0.32,0.18],[0.36,0.42],[0.42,0.5]],"b":0.4},{"k":"curve","p":[[-0.22,0.24],[-0.02,0.3],[0.2,0.3],[0.34,0.22]],"b":0.35},{"k":"eye","x":-0.42,"y":-0.16,"b":0.95}]},"eye":{"name":"eye","unit":1.2,"parts":[{"k":"blob","x":0.0,"y":0.0,"r":0.3,"b":0.2,"anim":"breathe","amp":0.05,"rate":1.1},{"k":"blob","x":-0.22,"y":0.0,"r":0.14,"b":0.14},{"k":"blob","x":0.22,"y":0.0,"r":0.14,"b":0.14},{"k":"curve","p":[[-0.52,0.0],[-0.3,-0.22],[0.0,-0.29],[0.3,-0.22],[0.52,0.0]],"b":0.52},{"k":"curve","p":[[0.52,0.0],[0.3,0.21],[0.0,0.27],[-0.3,0.21],[-0.52,0.0]],"b":0.46},{"k":"blob","x":0.0,"y":0.0,"r":0.13,"b":0.46,"z":-0.15},{"k":"eye","x":0.0,"y":0.0,"b":1.0,"z":-0.25}]}};
 /* ---- the grid ---------------------------------------------------------- */
 var W,H,FS,B;
@@ -245,7 +258,15 @@ function render(){
     var p=Math.min(1,morphT/MORPH_DUR);
     drawCloud(cloudOf(cur),cloudOf(nextForm),p,t);
   } else {
-    drawSpec(FORMS[cur],{cx:W*0.5,cy:H*0.46,scale:1.0,facing:1,op:op,blink:blink,perk:0.3+0.3*Math.sin(t*0.7)},t);
+    drawSpec(FORMS[cur],{cx:W*0.5,cy:H*0.46,scale:1.0+mic*0.13,facing:1,op:op*(1+mic*0.5),
+      blink:blink,perk:0.3+0.3*Math.sin(t*0.7)+mic*0.9},t);
+  }
+  if(mic>0.02){
+    var rr=Math.min(W,H)*(0.30+mic*0.26), cxm=W*0.5, cym=H*0.46;
+    for(var a=0;a<180;a++){
+      var th=a/180*6.2832, jit=1+Math.sin(th*7+t*4)*0.06*mic;
+      Ad(cxm+Math.cos(th)*rr*jit, cym+Math.sin(th)*rr*jit*0.55, mic*0.5);
+    }
   }
   var out="", g=RAMP.length-1;
   for(var y=0;y<H;y++){ var row="";
@@ -271,6 +292,13 @@ function frame(ts){
   if(started){
     if(last!==null){ var dt=Math.min(0.05,(ts-last)/1000); T+=dt;
       if(morphT>0){ morphT+=dt; if(morphT>=MORPH_DUR){ cur=nextForm; nextForm=null; morphT=0; } }
+      readMic();
+      if(phase==="listening"){
+        phaseT+=dt;
+        if(phaseT>6&&phaseT<6.05) say("there you are.",4000);
+        if(phaseT>12&&phaseT<12.05) say("that's it. that's the whole thing.\nit hears him, and it answers.",6000);
+        if(phaseT>20) finale();
+      }
       blinkT+=dt;
       if(blinkT>nextBlink){ blink=Math.min(1,blink+dt*11); if(blink>=1){ blinkT=0; nextBlink=2+Math.random()*4.5; } }
       else blink=Math.max(0,blink-dt*7);
@@ -291,11 +319,87 @@ WORDS.forEach(function(w){
     [].forEach.call(pickEl.children,function(c){ c.classList.remove("sel"); });
     b.classList.add("sel");
     sayEl.classList.remove("on"); lines.cur=null;
+    picks++; if(picks>=3) setTimeout(offerEars,2600);
   });
   pickEl.appendChild(b);
 });
 
-startEl.addEventListener("click",function(){ startEl.style.display="none"; started=true; });
+/* ---- the part that isn't a picture ---------------------------------------
+   Everything above is a drawing you can change. This is the actual thing: the
+   creature takes the microphone and reacts to a voice in the room, the same way
+   it does on Mike's machine. Nothing is sent anywhere — the audio never leaves
+   the page, there's no server behind this file at all. */
+var mic=0, micRaw=0, analyser=null, buf=null, phase="play", phaseT=0, picks=0;
+
+function say(text,ms){ sayEl.textContent=text; sayEl.classList.add("on");
+  if(ms) setTimeout(function(){ sayEl.classList.remove("on"); },ms); }
+
+function offerEars(){
+  if(phase!=="play") return;
+  phase="offer";
+  pickEl.classList.remove("on");
+  setTimeout(function(){
+    say("ok. that's the party trick.\nhere's the actual thing —",4200);
+    setTimeout(function(){ bigEl.classList.add("on"); },4400);
+  },900);
+}
+
+function startEars(){
+  bigEl.classList.remove("on");
+  phase="listening"; phaseT=0;
+  var ok=function(stream){
+    var AC=new (window.AudioContext||window.webkitAudioContext)();
+    var src=AC.createMediaStreamSource(stream);
+    analyser=AC.createAnalyser(); analyser.fftSize=1024;
+    buf=new Uint8Array(analyser.fftSize);
+    src.connect(analyser);
+    say("say something. anything.",5200);
+  };
+  var no=function(){
+    analyser=null;
+    say("no mic — that's fine.\nthe real one is in mike's kitchen anyway.",5200);
+  };
+  if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+    navigator.mediaDevices.getUserMedia({audio:true}).then(ok).catch(no);
+  } else no();
+}
+bigEl.addEventListener("click",startEars);
+
+function readMic(){
+  if(!analyser) return;
+  analyser.getByteTimeDomainData(buf);
+  var sum=0;
+  for(var i=0;i<buf.length;i+=2){ var v=(buf[i]-128)/128; sum+=v*v; }
+  micRaw=Math.sqrt(sum/(buf.length/2));
+  mic+=(Math.min(1,micRaw*7)-mic)*0.18;
+}
+
+function speak(text){
+  try{
+    var u=new SpeechSynthesisUtterance(text);
+    u.rate=0.88; u.pitch=0.95; u.volume=1;
+    var vs=speechSynthesis.getVoices();
+    for(var i=0;i<vs.length;i++){ if(/Samantha|Karen|Daniel|Serena/i.test(vs[i].name)){ u.voice=vs[i]; break; } }
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+function finale(){
+  if(phase==="finale") return;
+  phase="finale"; phaseT=0;
+  morphTo("ash tree");
+  sayEl.classList.remove("on");
+  pickEl.classList.remove("on"); bigEl.classList.remove("on");
+  /* the body recedes so the last line has the screen to itself */
+  setTimeout(function(){ screenEl.style.transition="opacity 2.4s ease"; screenEl.style.opacity="0.30"; },2200);
+  setTimeout(function(){
+    finEl.textContent="Mike says bye — and love you.";
+    finEl.classList.add("on");
+    speak("Mike says bye. And love you.");
+  },2400);
+}
+
+startEl.addEventListener("click",function(){ startEl.style.display="none"; started=true; try{speechSynthesis.getVoices();}catch(e){} });
 /* ?t=N&form=fox — how the build gets looked at, since a screenshot can't tap */
 (function(){
   var q=location.search, m=/[?&]t=([0-9.]+)/.exec(q);
@@ -305,6 +409,9 @@ startEl.addEventListener("click",function(){ startEl.style.display="none"; start
   if(m) T=parseFloat(m[1])||0;
   startEl.style.display="none"; started=true;
   if(T>29){ opened=true; pickEl.classList.add("on");  }
+  if(/[?&]stage=offer/.test(q)) setTimeout(offerEars,80);
+  if(/[?&]stage=fin/.test(q)) setTimeout(finale,80);
+  if(/[?&]mic=([0-9.]+)/.test(q)) mic=parseFloat(/[?&]mic=([0-9.]+)/.exec(q)[1]);
   var to=/[?&]to=([^&]+)/.exec(q), mp=/[?&]mp=([0-9.]+)/.exec(q);
   if(to&&FORMS[decodeURIComponent(to[1])]){ nextForm=decodeURIComponent(to[1]);
     morphT=mp?parseFloat(mp[1])*MORPH_DUR:0.0001; }
