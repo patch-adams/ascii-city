@@ -109,8 +109,10 @@
 
   @media (max-width:860px){
     #app{flex-direction:column}
-    #panel{width:100%;flex:0 0 auto;max-height:52vh;border-left:none;border-top:1px solid var(--line)}
-    #stage{flex:1;min-height:44vh}
+    #panel{width:100%;flex:0 0 auto;max-height:42vh;border-left:none;border-top:1px solid var(--line)}
+    #stage{flex:1;min-height:54vh}
+    #plateWrap{padding:8px}
+    #transport{padding:6px 10px 8px}
     #bar{padding:10px 12px 8px}
     #bar h1{font-size:1.1rem}
     .row label{flex:0 0 84px}
@@ -162,6 +164,7 @@
       <button class="b" id="bJson">copy json</button>
       <button class="b" id="bLink">copy link</button>
       <button class="b" id="bTxt">copy text plate</button>
+      <button class="b" id="bSheet">contact sheet</button>
     </div>
     <div id="panelBody"></div>
   </div>
@@ -568,7 +571,11 @@ function loadTwelve(){
   frameIdx = 0;
   $("#scrub").max = frames.length-1;
   $("#scrub").value = 0;
-  ensureFrame(0, ()=>{ srcSerial++; requestRender(); });
+  ensureFrame(0, ()=>{
+    srcSerial++; requestRender();
+    // warm the rest so playback doesn't stutter on the first pass
+    frames.forEach((_,i)=> i && setTimeout(()=>ensureFrame(i), 60*i));
+  });
   updateTransport();
 }
 function ensureFrame(i, cb){
@@ -683,11 +690,9 @@ function renderTo(canvas, scale, forExport){
   if(contourC && !forExport) prevContour = contourC;
   return finish(t0, W, H);
 }
-let renders = 0;
 function finish(t0, W, H){
-  renders++;
   $("#hudRes").textContent = W+"×"+H;
-  $("#hudMs").textContent = Math.round(performance.now()-t0)+"ms · "+renders;
+  $("#hudMs").textContent = Math.round(performance.now()-t0)+"ms";
   return true;
 }
 
@@ -973,6 +978,37 @@ function exportPng(){
     toast("saved");
   }, "image/png");
 }
+// the whole sequence on one sheet — the individual plates are better than the
+// motion, and a sheet is the way to look at all of them at once
+async function contactSheet(){
+  if(sourceKind !== "twelve"){ toast("needs the twelve"); return; }
+  pause();
+  const cols = 3, rows = Math.ceil(frames.length/cols), pad = 26;
+  const cw = 520, chh = Math.round(cw * P.h / P.w);
+  const W = cols*cw + pad*(cols+1), H = rows*chh + pad*(rows+1);
+  const sheet = cv(W,H), sx = sheet.getContext("2d");
+  sx.fillStyle = P.paper; sx.fillRect(0,0,W,H);
+  const keep = frameIdx;
+  const tmp = cv(10,10);
+  for(let i=0;i<frames.length;i++){
+    await new Promise(r => ensureFrame(i, r));
+    frameIdx = i; srcSerial++; cache.key = null;
+    renderTo(tmp, cw/P.w, true);
+    const x = pad + (i%cols)*(cw+pad), y = pad + Math.floor(i/cols)*(chh+pad);
+    sx.drawImage(tmp, x, y, cw, chh);
+    sx.strokeStyle = "rgba(28,30,38,.10)"; sx.strokeRect(x+.5, y+.5, cw-1, chh-1);
+    toast("sheet "+(i+1)+"/"+frames.length);
+    await new Promise(r => setTimeout(r, 0));
+  }
+  frameIdx = keep; srcSerial++; cache.key = null; requestRender(true);
+  sheet.toBlob(b=>{
+    const url = URL.createObjectURL(b), a = document.createElement("a");
+    a.href = url; a.download = `press-sheet-${Date.now()}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 6000);
+    toast("sheet saved");
+  }, "image/png");
+}
 function paramJson(){
   const out = {};
   Object.keys(DEFAULTS).forEach(k => { if(P[k] !== DEFAULTS[k]) out[k] = P[k]; });
@@ -1015,6 +1051,7 @@ function wire(){
   $("#bLink").onclick = ()=> { history.replaceState(null,"",stateHash());
     copy(location.href, "link"); };
   $("#bTxt").onclick = ()=> copy(lastLines.join("\n"), "text plate");
+  $("#bSheet").onclick = contactSheet;
   $("#tPanel").onclick = ()=> $("#panel").classList.toggle("hide");
 
   $("#bPlay").onclick = ()=> playing ? pause() : play();
