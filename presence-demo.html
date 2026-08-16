@@ -208,9 +208,9 @@ var MOTH_PATH=[
   K(51.20,-0.19,0.25,0.72,1),   /* too close */
   K(51.70,-1.14,-0.77,0.50,1),   /* recoil */
   K(54.00,-2.04,-1.16,0.42,1),
-  K(62.00,-1.20,-0.42,0.60,1),   /* and back, slower */
-  K(68.00,-1.03,0.10,0.62,1),
-  K(82.00,-1.03,0.10,0.62,1)
+  K(62.00,-1.55,-0.42,0.60,1),   /* and back, slower */
+  K(68.00,-1.40,0.10,0.62,1),
+  K(82.00,-1.40,0.10,0.62,1)
 ];
 function samplePath(keys,t){
   if(t<=keys[0].t) return keys[0];
@@ -244,14 +244,15 @@ function render(){
 
   /* the lantern — still, warm, centre-right */
   var lanOp=ss(9,15,t)*(1-ss(71,76,t));
-  drawSpec(FORMS.lantern,{cx:W*0.56,cy:H*0.46,scale:1.10,facing:1,op:lanOp,blink:0,perk:0},t);
+  drawSpec(FORMS.lantern,{cx:W*0.62,cy:H*0.46,scale:1.00,facing:1,op:lanOp,blink:0,perk:0},t);
 
   /* the moth — everything that moves */
   var mothOp=ss(24,29,t)*(1-ss(71,75,t));
   var pth=samplePath(MOTH_PATH,t);
-  var ux=W*0.17, uy=H*0.155;
+  var bu=Math.min(W,H)*0.42;
+  var ux=bu*0.64, uy=bu*0.42;
   drawSpec(FORMS.moth,{
-    cx:W*0.56+pth.x*ux, cy:H*0.46+pth.y*uy,
+    cx:W*0.62+pth.x*ux, cy:H*0.46+pth.y*uy,
     scale:pth.s, facing:pth.f, op:mothOp,
     blink:blink, perk:0.35+0.35*Math.sin(t*0.7)
   },t);
