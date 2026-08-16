@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>waypoint 01</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23070608'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23e7cf9a'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;1,6..72,300&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#e7cf9a}
+  html,body{margin:0;height:100%;background:#050405;overflow:hidden;touch-action:manipulation;
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  #screen{position:absolute;inset:0;overflow:hidden;opacity:1;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+    color:var(--ink);line-height:0.92em;white-space:pre;display:flex;align-items:center;justify-content:center;
+    text-shadow:0 0 7px rgba(231,207,154,.20)}
+  #vig{position:fixed;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 170px 56px rgba(0,0,0,.78)}
+
+  /* the terminal — act 0 */
+  #term{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:8;width:min(90vw,44em);
+    font-family:"Space Mono",monospace;font-size:clamp(.82rem,2.4vw,1rem);line-height:2.0;color:#d8c79a;
+    white-space:pre-wrap;display:none}
+  #term.on{display:block}
+  #term .dim{color:#6f6244}
+  #cur{display:inline-block;width:.62em;height:1.05em;vertical-align:-.16em;background:#e7cf9a;animation:bl 1.05s steps(1) infinite}
+  @keyframes bl{50%{opacity:0}}
+  #nameRow{display:none;margin-top:1.6em;gap:10px;align-items:center}
+  #nameRow.on{display:flex}
+  #nameIn{flex:1;background:transparent;border:none;border-bottom:1px solid rgba(231,207,154,.35);
+    font-family:"Space Mono",monospace;font-size:1em;color:#f2e7cb;padding:8px 2px;outline:none;letter-spacing:.08em}
+  #nameGo{font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#050405;
+    background:#e7cf9a;border:none;border-radius:999px;padding:11px 18px;cursor:pointer}
+
+  /* narration */
+  #cap{position:fixed;left:50%;bottom:14%;transform:translateX(-50%);z-index:4;font-family:"Newsreader",Georgia,serif;
+    font-style:italic;font-size:clamp(1.1rem,3.6vw,1.7rem);color:#f2e7cb;text-align:center;max-width:22em;
+    opacity:0;transition:opacity 1.3s ease;pointer-events:none;text-shadow:0 2px 20px rgba(0,0,0,.95);padding:0 1.2em}
+  #cap.on{opacity:1}
+
+  /* the walk controls */
+  #pad{position:fixed;left:0;width:100vw;bottom:0;z-index:6;display:none;justify-content:space-between;
+    padding:0 18px calc(env(safe-area-inset-bottom) + 20px);box-sizing:border-box;pointer-events:none}
+  #pad.on{display:flex}
+  .cl{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,44px);gap:6px;pointer-events:auto}
+  .k{border:1px solid rgba(231,207,154,.2);border-radius:10px;background:rgba(231,207,154,.04);color:#a3915f;
+    font-family:"Space Mono",monospace;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .k:active{background:rgba(231,207,154,.2);color:#050405}
+  .k.sp{visibility:hidden}
+
+  /* the button + the last card */
+  #big{position:fixed;left:50%;top:52%;transform:translate(-50%,-50%);z-index:7;font-family:"Space Mono",monospace;
+    font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#050405;background:#e7cf9a;border:none;
+    border-radius:999px;padding:15px 26px;cursor:pointer;display:none;box-shadow:0 0 60px rgba(231,207,154,.28)}
+  #big.on{display:block;animation:bp 2.6s ease-in-out infinite}
+  @keyframes bp{0%,100%{box-shadow:0 0 40px rgba(231,207,154,.2)}50%{box-shadow:0 0 92px rgba(231,207,154,.46)}}
+  #fin{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:9;width:min(90vw,40em);text-align:center;
+    opacity:0;transition:opacity 2.4s ease;pointer-events:none;display:none}
+  #fin.on{display:block;opacity:1}
+  #fin .l{font-family:"Newsreader",serif;font-style:italic;font-size:clamp(1.3rem,4.6vw,2rem);color:#f4ead2;line-height:1.5}
+  #fin .m{font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.24em;text-transform:uppercase;
+    color:#bfab77;margin-top:2.6em;line-height:2.5;text-shadow:0 2px 16px rgba(0,0,0,.95)}
+  #fin .m b{color:#f4ead2;font-weight:normal;letter-spacing:.34em;font-size:2.1em;line-height:2.2}
+</style>
+</head>
+<body>
+<pre id="screen"><code id="grid"></code></pre>
+<div id="vig"></div>
+<div id="cap"></div>
+<div id="term"><span id="tt"></span><span id="cur"></span>
+  <div id="nameRow"><input id="nameIn" autocomplete="off" autocapitalize="words" spellcheck="false" placeholder="name"><button id="nameGo">log it</button></div>
+</div>
+<div id="pad">
+  <div class="cl"><div class="k sp"></div><div class="k" data-k="f">&#9650;</div><div class="k sp"></div>
+                  <div class="k" data-k="l">&#9664;</div><div class="k" data-k="b">&#9660;</div><div class="k" data-k="r">&#9654;</div></div>
+</div>
+<button id="big">let it hear you</button>
+<div id="fin"><div class="l"></div><div class="m"></div></div>
+
+<script>
+/* ============================================================================
+   waypoint 01 — a first transmission
+
+   For Josh. Three surfaces that have lived apart until now, in one line:
+   the corridor from the ascii hallway, the creature from Presence, and the
+   terminal that asks who you are. Nothing here talks to a server; the whole
+   thing is this file.
+   ========================================================================= */
+var screenEl=document.getElementById("screen"), grid=document.getElementById("grid"),
+    capEl=document.getElementById("cap"), termEl=document.getElementById("term"),
+    ttEl=document.getElementById("tt"), curEl=document.getElementById("cur"),
+    nameRow=document.getElementById("nameRow"), nameIn=document.getElementById("nameIn"),
+    nameGo=document.getElementById("nameGo"), padEl=document.getElementById("pad"),
+    bigEl=document.getElementById("big"), finEl=document.getElementById("fin");
+
+var NAME="", phase="boot", now=0, T=0;
+
+/* ---- grid -------------------------------------------------------------- */
+var W,H,FS,B;
+var COARSE=false;
+function sizeGrid(){ var vw=innerWidth,vh=innerHeight;
+  FS=COARSE ? Math.max(9,Math.min(30,Math.round(Math.min(vw,vh)/34)))
+            : Math.max(7,Math.min(14,Math.round(Math.min(vw,vh)/46)));
+  screenEl.style.fontSize=FS+"px";
+  W=Math.max(44,Math.min(160,Math.floor(vw/(FS*0.60))));
+  H=Math.max(28,Math.min(90,Math.floor(vh/(FS*0.92))));
+  B=new Float32Array(W*H); }
+sizeGrid(); addEventListener("resize",sizeGrid);
+addEventListener("orientationchange",function(){setTimeout(sizeGrid,200);});
+function rnd(x,y,t){var m=Math.sin(x*12.9898+y*78.233+t)*43758.5453;return m-Math.floor(m);}
+
+/* ---- sound: sparse, struck, never a drone ------------------------------ */
+var AC=null;
+function audio(){ if(!AC){ try{ AC=new(window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return AC; }
+function tone(f,d,type,v){ var a=audio(); if(!a)return;
+  var o=a.createOscillator(), g=a.createGain(), lp=a.createBiquadFilter();
+  lp.type="lowpass"; lp.frequency.setValueAtTime(2400,a.currentTime);
+  lp.frequency.exponentialRampToValueAtTime(400,a.currentTime+d*0.8);
+  o.type=type||"sine"; o.frequency.value=f; o.connect(lp); lp.connect(g); g.connect(a.destination);
+  var s=a.currentTime; g.gain.setValueAtTime(0,s); g.gain.linearRampToValueAtTime(v||0.12,s+0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001,s+d); o.start(s); o.stop(s+d+0.05); }
+function blip(){ tone(660,0.07,"sine",0.035); }
+function knock(){ tone(88,0.18,"sine",0.22); setTimeout(function(){tone(66,0.2,"sine",0.17);},70); }
+function chord(){ tone(196,1.6,"sine",0.10); tone(294,1.6,"sine",0.06); tone(441,1.9,"sine",0.03); }
+
+/* ---- act 0: the terminal ----------------------------------------------- */
+function typeLines(lines,done){
+  termEl.classList.add("on");
+  var li=0, ci=0, html="";
+  (function step(){
+    if(li>=lines.length){ if(done)done(); return; }
+    var L=lines[li];
+    if(L.pause){ li++; setTimeout(step,L.pause); return; }
+    var txt=L.t;
+    if(ci===0&&li>0) html+="\n";
+    if(ci<txt.length){
+      html+=txt.charAt(ci)===" "?" ":txt.charAt(ci);
+      ttEl.innerHTML=(L.dim?"":"")+html;
+      ci++; if(ci%2===0)blip();
+      setTimeout(step, L.slow?52:26);
+    } else { li++; ci=0; setTimeout(step, L.after||520); }
+  })();
+}
+
+var BOOT=[
+  {t:"carrier detected."},
+  {pause:700},
+  {t:"holding.",slow:true},
+  {pause:900},
+  {t:"you're early. that's usually a good sign."},
+  {pause:600},
+  {t:""},
+  {t:"before anything opens — state your name for the log.",slow:true}
+];
+
+function boot(){
+  phase="boot";
+  renderStatic();
+  typeLines(BOOT,function(){
+    nameRow.classList.add("on");
+    curEl.style.display="none";
+    setTimeout(function(){ try{nameIn.focus();}catch(e){} },120);
+  });
+}
+
+function submitName(){
+  var v=nameIn.value.trim(); if(!v) { nameIn.focus(); return; }
+  NAME=v.split(/\s+/)[0]; NAME=NAME.charAt(0).toUpperCase()+NAME.slice(1);
+  audio(); nameRow.classList.remove("on"); curEl.style.display="inline-block";
+  ttEl.innerHTML="";
+  typeLines([
+    {t:"logged: "+NAME.toUpperCase()},
+    {pause:800},
+    {t:"good. the last one didn't answer.",slow:true},
+    {pause:1000},
+    {t:""},
+    {t:"there's a corridor on the other side of this screen."},
+    {t:"most of the doors are shut. one isn't."},
+    {pause:700},
+    {t:"walk until you find it, "+NAME+".",slow:true}
+  ],function(){
+    setTimeout(function(){ termEl.classList.remove("on"); startWalk(); },2100);
+  });
+}
+nameGo.addEventListener("click",submitName);
+nameIn.addEventListener("keydown",function(e){ if(e.key==="Enter")submitName(); });
+
+/* ---- act 1: the corridor ------------------------------------------------
+   The raycaster from the ascii hallway, kept whole: a DDA through a narrow
+   map of '#' walls, 'D' shut doors and one 'T' that opens. */
+var MAP,MH,MW,TARGET;
+function makeCorridor(){
+  var len=22, tSide=4, tRow=len-4, rows=[];
+  for(var y=0;y<len;y++){
+    if(y===0||y===len-1){ rows.push("#####"); continue; }
+    var L="#",Rt="#";
+    if(y===4)L="D"; if(y===7)Rt="D"; if(y===11)L="D"; if(y===14)Rt="D"; if(y===17)L="D";
+    if(y===tRow)Rt="T";
+    rows.push(L+"..."+Rt);
+  }
+  MAP=rows; MH=len; MW=5; TARGET={x:tSide,y:tRow};
+}
+function Cc(x,y){ if(x<0||y<0||x>=MW||y>=MH)return "#"; return MAP[y|0][x|0]; }
+function solid(x,y){ var c=Cc(x,y); return c==="#"||c==="D"||c==="T"; }
+function isDoor(x,y){ var c=Cc(x,y); return c==="D"||c==="T"; }
+
+var cam={x:2.5,y:1.6,ang:Math.PI/2}, FOV=0.66, doorOpen=0, held={};
+var SHADE="@N#WkHm=+~:-. ", LIGHT="@8&%$#*o";
+function cast(sx){
+  var dx=Math.cos(cam.ang),dy=Math.sin(cam.ang),pX=-dy*FOV,pY=dx*FOV;
+  var camX=2*sx/W-1,rdx=dx+pX*camX,rdy=dy+pY*camX;
+  var mx=cam.x|0,my=cam.y|0,ddx=Math.abs(1/rdx),ddy=Math.abs(1/rdy),sX,sY,dX,dY;
+  if(rdx<0){sX=-1;dX=(cam.x-mx)*ddx;}else{sX=1;dX=(mx+1-cam.x)*ddx;}
+  if(rdy<0){sY=-1;dY=(cam.y-my)*ddy;}else{sY=1;dY=(my+1-cam.y)*ddy;}
+  var side=0,hit=false,g=0;
+  while(!hit&&g++<300){ if(dX<dY){dX+=ddx;mx+=sX;side=0;}else{dY+=ddy;my+=sY;side=1;} if(solid(mx,my))hit=true; }
+  var d=(side===0)?(dX-ddx):(dY-ddy); if(d<0.0001)d=0.0001;
+  return{d:d,side:side,door:isDoor(mx,my),target:(mx===TARGET.x&&my===TARGET.y)};
+}
+function renderHall(){
+  var out="",col=[],x,y; for(x=0;x<W;x++)col[x]=cast(x);
+  var tt=now*0.00016;
+  for(y=0;y<H;y++){ var r="";
+    for(x=0;x<W;x++){ var c=col[x],lh=Math.floor(H/c.d),s=((H-lh)/2)|0,e=((H+lh)/2)|0,ch;
+      if(y<s||y>e){ var p=Math.abs((y-H/2)/(H/2));
+        ch=p>0.80?" ":(((x+y*3)%14===0)?".":" ");
+        if(ch===" "&&rnd(x,y,(tt*40)|0)>0.9955)ch="·"; }
+      else { var si=Math.floor(c.d/16*(SHADE.length-1)); if(c.side===1)si++;
+        if(si<0)si=0; if(si>=SHADE.length)si=SHADE.length-1; ch=SHADE[si];
+        if(c.door){ var t2=(y-s)/Math.max(1,e-s);
+          ch=((y-s)%3===0)?(c.side===0?"|":"]"):ch;
+          if(t2>0.46&&t2<0.54)ch="o"; if(t2>0.9)ch="_";
+          if(c.target){ if(t2>0.9&&doorOpen<0.05)ch="=";
+            if(doorOpen>0){ var op=t2>(0.5-0.5*doorOpen)&&t2<(0.5+0.5*doorOpen);
+              if(op)ch=LIGHT[(rnd(x,y,(tt*30)|0)*LIGHT.length)|0]; } } } }
+      r+=ch; }
+    out+=r+"\n"; }
+  grid.textContent=out;
+}
+function renderStatic(){
+  var out="",x,y,tt=now*0.0004;
+  for(y=0;y<H;y++){ var r="";
+    for(x=0;x<W;x++){ r+=(rnd(x,y,(tt*60)|0)>0.994)?"·":" "; }
+    out+=r+"\n"; }
+  grid.textContent=out;
+}
+
+var walkT=0, beats=[
+  [1.2,"You have a body again."],
+  [7.0,"Five doors. Four of them are decoration."],
+  [15.0,"Keep going."]
+];
+function startWalk(){
+  makeCorridor(); phase="walk"; walkT=0; padEl.classList.add("on");
+  cam={x:2.5,y:1.6,ang:Math.PI/2};
+  showCap("You have a body again.",5200);
+}
+function showCap(t,ms){ capEl.textContent=t; capEl.classList.add("on");
+  if(ms) setTimeout(function(){capEl.classList.remove("on");},ms); }
+
+function step(dt){
+  if(phase!=="walk")return;
+  walkT+=dt;
+  var sp=dt*2.1, rot=dt*1.6, nx=cam.x, ny=cam.y;
+  if(held.f){ nx+=Math.cos(cam.ang)*sp; ny+=Math.sin(cam.ang)*sp; }
+  if(held.b){ nx-=Math.cos(cam.ang)*sp*0.7; ny-=Math.sin(cam.ang)*sp*0.7; }
+  if(held.l) cam.ang-=rot;
+  if(held.r) cam.ang+=rot;
+  if(!solid(nx+ (nx>cam.x?0.22:-0.22), cam.y)) cam.x=nx;
+  if(!solid(cam.x, ny+ (ny>cam.y?0.22:-0.22))) cam.y=ny;
+
+  for(var i=0;i<beats.length;i++){ var b=beats[i];
+    if(!b[2]&&walkT>b[0]){ b[2]=1; showCap(b[1],5000); } }
+
+  /* close enough to the open door, facing it */
+  var dy=TARGET.y-cam.y, dx=TARGET.x-cam.x, dist=Math.hypot(dx,dy);
+  if(dist<2.0){
+    if(doorOpen<0.001) knock();
+    doorOpen=Math.min(1,doorOpen+dt*0.55);
+    if(doorOpen>0.30&&phase==="walk") enterRoom();
+  }
+}
+function bindKey(el,k){
+  var on=function(e){ e.preventDefault(); held[k]=1; audio(); };
+  var off=function(e){ e.preventDefault(); held[k]=0; };
+  el.addEventListener("touchstart",on,{passive:false}); el.addEventListener("touchend",off);
+  el.addEventListener("mousedown",on); el.addEventListener("mouseup",off); el.addEventListener("mouseleave",off);
+}
+[].forEach.call(document.querySelectorAll(".k[data-k]"),function(el){ bindKey(el,el.getAttribute("data-k")); });
+addEventListener("keydown",function(e){
+  if(document.activeElement===nameIn)return;
+  var m={ArrowUp:"f",ArrowDown:"b",ArrowLeft:"l",ArrowRight:"r",w:"f",s:"b",a:"l",d:"r"};
+  if(m[e.key]){ held[m[e.key]]=1; e.preventDefault(); audio(); } });
+addEventListener("keyup",function(e){
+  var m={ArrowUp:"f",ArrowDown:"b",ArrowLeft:"l",ArrowRight:"r",w:"f",s:"b",a:"l",d:"r"};
+  if(m[e.key])held[m[e.key]]=0; });
+
+/* ---- act 2: what's through the door ------------------------------------- */
+var FORMS={"stag":{"name":"stag","unit":1.15,"parts":[{"k":"blob","x":0.02,"y":0.16,"b":0.34,"r":0.24,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":-0.19,"y":0.1,"b":0.3,"r":0.17},{"k":"blob","x":0.2,"y":0.14,"b":0.28,"r":0.15},{"k":"blob","x":-0.3,"y":-0.14,"b":0.26,"r":0.09},{"k":"blob","x":-0.36,"y":-0.34,"b":0.3,"r":0.1,"anim":"bob","amp":0.03,"rate":0.8},{"k":"curve","p":[[-0.3,-0.3],[-0.44,-0.36],[-0.5,-0.44],[-0.46,-0.5]],"b":0.5,"anim":"bob","amp":0.03,"rate":0.8},{"k":"curve","p":[[-0.28,-0.24],[-0.24,-0.06],[-0.12,0.02],[0.1,0.0],[0.26,0.06]],"b":0.5},{"k":"curve","p":[[0.28,0.08],[0.34,0.24],[0.28,0.34]],"b":0.45,"anim":"sway","amp":0.03,"rate":1.2},{"k":"curve","p":[[-0.32,-0.44],[-0.3,-0.58],[-0.2,-0.66]],"b":0.55,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.3,-0.52],[-0.16,-0.56],[-0.08,-0.66]],"b":0.5,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.38,-0.46],[-0.44,-0.58],[-0.54,-0.62]],"b":0.5,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.42,-0.52],[-0.5,-0.5],[-0.58,-0.56]],"b":0.45,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[-0.4,-0.42],[-0.34,-0.28],[-0.3,-0.16]],"b":0.4},{"k":"line","p":[[-0.16,0.28],[-0.18,0.52],[-0.14,0.66]],"b":0.5},{"k":"line","p":[[-0.06,0.3],[-0.04,0.54],[-0.08,0.66]],"b":0.45},{"k":"line","p":[[0.16,0.28],[0.2,0.52],[0.16,0.66]],"b":0.5},{"k":"line","p":[[0.26,0.26],[0.3,0.52],[0.26,0.66]],"b":0.45},{"k":"curve","p":[[-0.1,0.34],[0.06,0.36],[0.22,0.32]],"b":0.35},{"k":"eye","x":-0.36,"y":-0.36,"b":0.95}]},"crow":{"name":"crow","unit":1.05,"parts":[{"k":"blob","x":0.02,"y":0.06,"b":0.42,"r":0.26,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":0.18,"y":-0.02,"b":0.36,"r":0.16},{"k":"blob","x":-0.16,"y":0.14,"b":0.34,"r":0.18},{"k":"blob","x":0.28,"y":-0.22,"b":0.4,"r":0.12},{"k":"blob","x":-0.02,"y":0.02,"b":0.3,"r":0.15,"anim":"bob","amp":0.03,"rate":0.8},{"k":"curve","p":[[0.4,-0.2],[0.3,-0.32],[0.16,-0.3],[0.06,-0.16],[0.04,0.02]],"b":0.55},{"k":"curve","p":[[0.04,0.02],[-0.06,0.24],[-0.2,0.34],[-0.34,0.3]],"b":0.5},{"k":"curve","p":[[0.4,-0.2],[0.36,-0.1],[0.28,-0.02],[0.22,0.1],[0.24,0.24]],"b":0.5},{"k":"curve","p":[[0.24,0.24],[0.1,0.32],[-0.1,0.34],[-0.28,0.32]],"b":0.45},{"k":"curve","p":[[0.4,-0.22],[0.54,-0.16],[0.4,-0.12]],"b":0.6},{"k":"curve","p":[[0.16,0.0],[0.02,0.14],[-0.14,0.22],[-0.26,0.2]],"b":0.45,"anim":"bob","amp":0.04,"rate":1.2},{"k":"curve","p":[[-0.28,0.32],[-0.42,0.4],[-0.54,0.44]],"b":0.5,"anim":"sway","amp":0.06,"rate":1.4},{"k":"curve","p":[[-0.3,0.24],[-0.46,0.3],[-0.56,0.36]],"b":0.4,"anim":"sway","amp":0.07,"rate":1.4},{"k":"line","p":[[0.02,0.3],[0.0,0.5]],"b":0.45},{"k":"line","p":[[0.0,0.5],[0.1,0.56]],"b":0.4},{"k":"line","p":[[0.0,0.5],[-0.08,0.56]],"b":0.4},{"k":"line","p":[[-0.12,0.3],[-0.12,0.5]],"b":0.4},{"k":"line","p":[[-0.12,0.5],[-0.02,0.56]],"b":0.35},{"k":"eye","x":0.3,"y":-0.24,"b":0.95}]},"eye":{"name":"eye","unit":1.2,"parts":[{"k":"blob","x":0.0,"y":0.0,"r":0.3,"b":0.2,"anim":"breathe","amp":0.05,"rate":1.1},{"k":"blob","x":-0.22,"y":0.0,"r":0.14,"b":0.14},{"k":"blob","x":0.22,"y":0.0,"r":0.14,"b":0.14},{"k":"curve","p":[[-0.52,0.0],[-0.3,-0.22],[0.0,-0.29],[0.3,-0.22],[0.52,0.0]],"b":0.52},{"k":"curve","p":[[0.52,0.0],[0.3,0.21],[0.0,0.27],[-0.3,0.21],[-0.52,0.0]],"b":0.46},{"k":"blob","x":0.0,"y":0.0,"r":0.13,"b":0.46,"z":-0.15},{"k":"eye","x":0.0,"y":0.0,"b":1.0,"z":-0.25}]}};
+function Ad(x,y,b){ x|=0;y|=0; if(x<0||y<0||x>=W||y>=H)return; B[y*W+x]+=b; }
+function splat(x,y,b,r){ x|=0;y|=0;r=r|0;
+  for(var dy=-r;dy<=r;dy++){ var yy=y+dy; if(yy<0||yy>=H)continue;
+    for(var dx=-r;dx<=r;dx++){ var xx=x+dx; if(xx<0||xx>=W)continue;
+      var d=Math.sqrt(dx*dx+dy*dy*3.0)/r; if(d>1)continue;
+      var f=1-d; B[yy*W+xx]+=b*f*f; } } }
+function blobStamp(x,y,b,r,ay){
+  x|=0; y|=0; r=Math.max(1,r);
+  var ry=Math.max(1,r*ay), R=Math.ceil(r), RY=Math.ceil(ry);
+  for(var dy=-RY;dy<=RY;dy++){ var yy=y+dy; if(yy<0||yy>=H)continue;
+    for(var dx=-R;dx<=R;dx++){ var xx=x+dx; if(xx<0||xx>=W)continue;
+      var u=dx/r, v=dy/ry, d=Math.sqrt(u*u+v*v); if(d>1)continue;
+      var f=1-d; f=f*f*(1.35-0.35*f);
+      var n=1+((((xx*7+yy*13)%5)-2)*0.035);
+      B[yy*W+xx]+=b*f*n; } } }
+function ss(a,b,x){ x=(x-a)/(b-a); if(x<0)x=0; if(x>1)x=1; return x*x*(3-2*x); }
+
+function drawSpec(spec,tr,t){
+  if(tr.op<=0.001) return;
+  var s=Math.min(W,H)*0.42*spec.unit*tr.scale, ay=0.55;
+  var cxp=tr.cx, cyp=tr.cy, fac=1, dim=tr.op;
+  var breathe=1+Math.sin(t*1.35)*0.055, blink=tr.blink||0, perk=tr.perk||0;
+  function PT(x,y,b,r){ if(r<=1) Ad(cxp+x,cyp+y*ay,b); else splat(cxp+x,cyp+y*ay,b,r); }
+  function LN(x0,y0,x1,y1,w){
+    var X0=cxp+x0,Y0=cyp+y0*ay,X1=cxp+x1,Y1=cyp+y1*ay;
+    var dx=X1-X0,dy=Y1-Y0,steps=Math.max(2,Math.ceil(Math.hypot(dx,dy)*1.7)),wgt=w*dim;
+    for(var i=0;i<=steps;i++){ var u=i/steps,px=X0+dx*u,py=Y0+dy*u;
+      splat(px|0,py|0,wgt*0.55,1); Ad(px|0,py|0,wgt*0.85); } }
+  for(var i=0;i<spec.parts.length;i++){
+    var q=spec.parts[i], ox=0, oy=0, gain=1, rmul=1;
+    if(q.anim==="breathe"){ rmul=breathe; gain=breathe; }
+    else if(q.anim==="sway"){ ox+=Math.sin(t*(q.rate||1.5)+i)*(q.amp||0.08)*s; }
+    else if(q.anim==="bob"){ oy+=Math.sin(t*(q.rate||1.2)+i*0.7)*(q.amp||0.06)*s; }
+    else if(q.anim==="perk"){ oy-=(q.amp||0.12)*s*perk; }
+    if(q.k==="blob"){ blobStamp(cxp+(q.x*fac*s+ox), cyp+(q.y*s+oy)*ay, q.b*gain*dim*1.35, s*q.r*rmul, ay); }
+    else if(q.k==="eye"){ var eb=q.b*(0.8+0.3*Math.sin(t*2))*(1-blink*0.92)*dim;
+      PT(q.x*fac*s+ox,q.y*s+oy,eb,1); PT(q.x*fac*s+ox,q.y*s+oy,q.b*0.25*dim,Math.max(1,s*0.03)); }
+    else if(q.k==="line"||q.k==="curve"){
+      for(var j=0;j<q.p.length-1;j++){
+        var w0=q.p.length>2?(j/(q.p.length-1)):1, w1=q.p.length>2?((j+1)/(q.p.length-1)):1;
+        LN(q.p[j][0]*fac*s+ox*w0,q.p[j][1]*s+oy*w0,q.p[j+1][0]*fac*s+ox*w1,q.p[j+1][1]*s+oy*w1,q.b); } }
+  }
+}
+var dustMotes=[];
+(function(){ for(var i=0;i<130;i++) dustMotes.push({x:Math.random(),y:Math.random(),
+  z:0.25+Math.random()*0.75, ph:Math.random()*6.28, sp:0.4+Math.random()*0.9}); })();
+function drawAtmosphere(t,amt,haze){
+  if(haze>0){ var cx=W/2,cy=H/2;
+    for(var yy=0;yy<H;yy++) for(var xx=0;xx<W;xx++){
+      var d=Math.sqrt((xx-cx)*(xx-cx)*0.36+(yy-cy)*(yy-cy))/(H*0.6);
+      if(d<1) B[yy*W+xx]+=haze*0.10*(1-d)*(1-d); } }
+  if(amt<=0)return;
+  for(var i=0;i<dustMotes.length;i++){ var m=dustMotes[i];
+    var dx=(m.x+t*0.012*m.sp*m.z)%1, dy=(m.y+Math.sin(t*0.18*m.sp+m.ph)*0.03+t*0.004*m.sp)%1;
+    if(dx<0)dx+=1; if(dy<0)dy+=1;
+    var tw=0.45+0.55*Math.abs(Math.sin(t*1.1+m.ph));
+    Ad((dx*W)|0,(dy*H)|0,(0.03+0.07*tw*m.z)*amt); } }
+
+var RAMP=" .`^,:;~=+*roahX#%@&", GAMMA=0.58;
+var roomT=0, mic=0, analyser=null, abuf=null, blink=0, blinkT=0, nextBlink=2.4, listening=false;
+
+function enterRoom(){
+  phase="room"; roomT=0; padEl.classList.remove("on"); capEl.classList.remove("on");
+  COARSE=true; sizeGrid();
+  chord();
+  setTimeout(function(){ showCap("Hello, "+NAME+".",5200); },1800);
+  setTimeout(function(){ showCap("I've been the one keeping the log.",5200); },7600);
+  setTimeout(function(){ showCap("You should know I can hear the room you're in.",5400); },13600);
+  setTimeout(function(){ bigEl.classList.add("on"); },19200);
+}
+function readMic(){
+  if(!analyser)return;
+  analyser.getByteTimeDomainData(abuf);
+  var sum=0; for(var i=0;i<abuf.length;i+=2){ var v=(abuf[i]-128)/128; sum+=v*v; }
+  mic+=(Math.min(1,Math.sqrt(sum/(abuf.length/2))*7)-mic)*0.18;
+}
+function speak(t){ try{ var u=new SpeechSynthesisUtterance(t); u.rate=0.86; u.pitch=0.95;
+  var vs=speechSynthesis.getVoices();
+  for(var i=0;i<vs.length;i++){ if(/Samantha|Serena|Daniel|Karen/i.test(vs[i].name)){u.voice=vs[i];break;} }
+  speechSynthesis.speak(u); }catch(e){} }
+
+bigEl.addEventListener("click",function(){
+  bigEl.classList.remove("on"); listening=true; var t0=Date.now();
+  var ok=function(stream){ var a=audio();
+    var src=a.createMediaStreamSource(stream);
+    analyser=a.createAnalyser(); analyser.fftSize=1024; abuf=new Uint8Array(analyser.fftSize);
+    src.connect(analyser); showCap("Say something, "+NAME+".",6000); };
+  var no=function(){ analyser=null; showCap("You kept it shut. Noted — that's the right instinct.",6000); };
+  if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)
+    navigator.mediaDevices.getUserMedia({audio:true}).then(ok).catch(no); else no();
+  setTimeout(function(){ showCap("There you are.",4600); },9000);
+  setTimeout(function(){ showCap("That's enough for a first pass.",4600); },16000);
+  setTimeout(closing,22000);
+});
+
+function renderRoom(t){
+  B.fill(0);
+  drawAtmosphere(t, ss(0,3,roomT)*0.8, ss(0,4,roomT)*0.22);
+  var op=ss(0.3,3.2,roomT)*(1-ss(2.0,5.0,closeT));
+  drawSpec(FORMS.stag,{cx:W*0.5,cy:H*0.46,scale:1.0+mic*0.10,op:op*1.35*(1+mic*0.4),
+    blink:blink,perk:0.3+0.3*Math.sin(t*0.7)+mic*0.9},t);
+  if(mic>0.02){
+    var rr=Math.min(W,H)*(0.26+mic*0.13), cxm=W*0.5, cym=H*0.46;
+    for(var a=0;a<180;a++){ var th=a/180*6.2832, jit=1+Math.sin(th*7+t*4)*0.06*mic;
+      Ad(cxm+Math.cos(th)*rr*jit, cym+Math.sin(th)*rr*jit*0.55, mic*0.34); } }
+  var out="",g=RAMP.length-1;
+  for(var y=0;y<H;y++){ var r="";
+    for(var x=0;x<W;x++){ var b=B[y*W+x]; if(b<=0){r+=" ";continue;} if(b>1)b=1;
+      var ci=(Math.pow(b,GAMMA)*g)|0; if(ci>g)ci=g; r+=RAMP[ci]; }
+    out+=r+"\n"; }
+  grid.textContent=out;
+}
+
+/* ---- the thread you leave hanging --------------------------------------- */
+var closeT=0, closing_started=false;
+function closing(){
+  if(closing_started)return; closing_started=true;
+  capEl.classList.remove("on");
+  screenEl.style.transition="opacity 2.8s ease"; screenEl.style.opacity="0.15";
+  setTimeout(function(){
+    var bearing=(function(){ var h=0; for(var i=0;i<NAME.length;i++) h=(h*31+NAME.charCodeAt(i))>>>0;
+      return String(h%360).padStart(3,"0"); })();
+    finEl.querySelector(".l").textContent="This was waypoint one, "+NAME+".";
+    finEl.querySelector(".m").innerHTML="there are five<br>you have the bearing now<br><br><b>"+bearing+"&deg;</b><br><br>ask mike for the second";
+    finEl.classList.add("on");
+    speak("This was waypoint one, "+NAME+". There are five.");
+  },2600);
+}
+
+/* ---- loop --------------------------------------------------------------- */
+var last=null;
+function frame(ts){
+  now=ts;
+  var dt=(last===null)?0.016:Math.min(0.05,(ts-last)/1000); last=ts;
+  T+=dt;
+  if(phase==="boot"){ renderStatic(); }
+  else if(phase==="walk"){ step(dt); renderHall(); }
+  else if(phase==="room"){
+    roomT+=dt; if(closing_started)closeT+=dt;
+    readMic();
+    blinkT+=dt;
+    if(blinkT>nextBlink){ blink=Math.min(1,blink+dt*11); if(blink>=1){blinkT=0;nextBlink=2+Math.random()*4.5;} }
+    else blink=Math.max(0,blink-dt*7);
+    renderRoom(T);
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* ?skip=walk|room — for looking at the build, not for playing it */
+(function(){
+  var q=location.search;
+  var n=/[?&]name=([^&]+)/.exec(q); if(n) NAME=decodeURIComponent(n[1]);
+  if(!/[?&]skip=/.test(q)){ setTimeout(boot,700); return; }
+  if(/[?&]skip=walk/.test(q)){ NAME=NAME||"Josh"; setTimeout(function(){ termEl.classList.remove("on"); startWalk(); },200); }
+  if(/[?&]skip=room/.test(q)){ NAME=NAME||"Josh"; makeCorridor(); setTimeout(function(){ termEl.classList.remove("on"); enterRoom(); },200); }
+  if(/[?&]skip=end/.test(q)){ NAME=NAME||"Josh"; makeCorridor(); setTimeout(function(){ termEl.classList.remove("on"); phase="room"; closing(); },200); }
+  var mv=/[?&]mic=([0-9.]+)/.exec(q); if(mv) mic=parseFloat(mv[1]);
+})();
+</script>
+</body>
+</html>
