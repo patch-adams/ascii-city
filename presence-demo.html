@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>presence — the moth and the lantern</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23070608'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='%23e7cf9a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;1,6..72,300&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#e7cf9a}
+  html,body{margin:0;height:100%;background:#070608;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  #screen{position:absolute;inset:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);background:#070608;line-height:0.92em;white-space:pre;display:flex;align-items:center;justify-content:center;text-shadow:0 0 6px rgba(231,207,154,.22)}
+  #grid{display:block;white-space:pre;font-family:inherit;line-height:inherit}
+  #vig{position:fixed;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 160px 50px rgba(0,0,0,.72)}
+  #cap{position:fixed;left:50%;bottom:12%;transform:translateX(-50%);z-index:4;font-family:"Newsreader",Georgia,serif;font-style:italic;
+    font-size:clamp(1.2rem,4vw,1.9rem);color:#f2e7cb;text-align:center;max-width:22em;opacity:0;transition:opacity 1.4s ease;pointer-events:none;text-shadow:0 2px 18px rgba(0,0,0,.9);padding:0 1.2em}
+  #cap.on{opacity:1}
+  #start{position:fixed;inset:0;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;background:#070608;cursor:pointer}
+  #start .t{font-family:"Newsreader",serif;font-style:italic;font-size:clamp(1.6rem,6vw,2.6rem);color:var(--ink);letter-spacing:.02em}
+  #start .s{font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:#7a6a44}
+  #end{position:fixed;inset:0;z-index:8;display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:#070608;opacity:0;transition:opacity 2.2s ease;padding:0 8vw;text-align:center}
+  #end.on{display:flex;opacity:1}
+  #end .l{font-family:"Newsreader",serif;font-style:italic;font-size:clamp(1rem,3.2vw,1.35rem);color:#cbbb93;max-width:26em;line-height:1.6}
+  #end .s{font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:#7a6a44}
+  #bar{position:fixed;left:0;bottom:0;height:3px;background:rgba(231,207,154,.55);width:0;z-index:5;transition:width .1s linear}
+  #ctl{position:fixed;bottom:14px;right:16px;z-index:10;font-family:"Space Mono",monospace;font-size:12px;color:#7a6a44;cursor:pointer;opacity:.6}
+  #backdoor{position:fixed;bottom:14px;left:16px;z-index:10;font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.14em;color:#6b5c3a;text-decoration:none;opacity:.55}
+  #backdoor:hover{opacity:1}
+</style>
+</head>
+<body>
+<pre id="screen"><code id="grid"></code></pre>
+<div id="vig"></div>
+<div id="cap"></div>
+<div id="bar"></div>
+<div id="ctl">❚❚</div>
+<a id="backdoor" href="./" title="back to the corridor">↩ corridor</a>
+<div id="start"><div class="t">presence</div><div class="s">tap to begin · 1 min</div></div>
+<div id="end">
+  <div class="l">This runs live on a machine in a house in Salt Lake City. It listens, it answers out loud, and it wears whatever body it's asked for. What you just watched is the same creature, playing alone.</div>
+  <div class="s">patch · signalform</div>
+</div>
+
+<script>
+/* ============================================================================
+   presence-demo — the moth and the lantern
+
+   A standalone cut of Patch Presence. The renderer, the body specs and the
+   score are lifted from the live instrument (mini-builds/patch-console) and
+   run here with no hub, no microphone and no session behind them — so it can
+   be sent to somebody who isn't in the room.
+
+   Bookended with the closing iris from `na koja abad` (film.html), run
+   backwards to open and forwards to close.
+   ========================================================================= */
+
+var screenEl=document.getElementById("screen"), grid=document.getElementById("grid"),
+    capEl=document.getElementById("cap"), barEl=document.getElementById("bar"),
+    ctl=document.getElementById("ctl"), startEl=document.getElementById("start"),
+    endEl=document.getElementById("end");
+
+/* ---- the grid ---------------------------------------------------------- */
+var W,H,FS,B;
+function sizeGrid(){
+  var vw=innerWidth, vh=innerHeight;
+  FS=Math.max(5,Math.min(30,Math.round(Math.min(vw,vh)/46)));
+  screenEl.style.fontSize=FS+"px";
+  W=Math.max(20,Math.min(400,Math.floor(vw/(FS*0.58))));
+  H=Math.max(12,Math.min(260,Math.floor(vh/(FS*0.92))));
+  B=new Float32Array(W*H);
+}
+sizeGrid();
+addEventListener("resize",sizeGrid);
+addEventListener("orientationchange",function(){setTimeout(sizeGrid,200);});
+
+function Ad(x,y,b){ x|=0;y|=0; if(x<0||y<0||x>=W||y>=H)return; B[y*W+x]+=b; }
+function splat(x,y,b,r){ x|=0;y|=0;r=r|0;
+  for(var dy=-r;dy<=r;dy++){ var yy=y+dy; if(yy<0||yy>=H)continue;
+    for(var dx=-r;dx<=r;dx++){ var xx=x+dx; if(xx<0||xx>=W)continue;
+      var d=Math.sqrt(dx*dx+dy*dy*3.0)/r; if(d>1)continue;
+      var f=1-d; B[yy*W+xx]+=b*f*f; } } }
+/* dense core, soft rim, aspect-corrected so a circle looks round, dithered so
+   the interior doesn't band into a halftone rectangle */
+function blobStamp(x,y,b,r,ay){
+  x|=0; y|=0; r=Math.max(1,r);
+  var ry=Math.max(1,r*ay), R=Math.ceil(r), RY=Math.ceil(ry);
+  for(var dy=-RY;dy<=RY;dy++){ var yy=y+dy; if(yy<0||yy>=H)continue;
+    for(var dx=-R;dx<=R;dx++){ var xx=x+dx; if(xx<0||xx>=W)continue;
+      var u=dx/r, v=dy/ry, d=Math.sqrt(u*u+v*v); if(d>1)continue;
+      var f=1-d; f=f*f*(1.35-0.35*f);
+      var n=1+((((xx*7+yy*13)%5)-2)*0.035);
+      B[yy*W+xx]+=b*f*n; } } }
+function ss(a,b,x){ x=(x-a)/(b-a); if(x<0)x=0; if(x>1)x=1; return x*x*(3-2*x); }
+function lerp(a,b,k){ return a+(b-a)*k; }
+
+/* ---- the bodies -------------------------------------------------------- */
+var FORMS={
+"lantern":{"name":"paper lantern","unit":1.05,"parts":[{"k":"blob","x":0,"y":0,"b":0.3,"r":0.3,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":0,"y":-0.22,"b":0.26,"r":0.22},{"k":"blob","x":0,"y":0.22,"b":0.26,"r":0.22},{"k":"blob","x":0,"y":0.02,"b":0.5,"r":0.14,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"curve","p":[[0,-0.44],[0.26,-0.3],[0.34,0],[0.26,0.3],[0,0.44]],"b":0.55},{"k":"curve","p":[[0,-0.44],[-0.26,-0.3],[-0.34,0],[-0.26,0.3],[0,0.44]],"b":0.55},{"k":"line","p":[[-0.14,-0.44],[0.14,-0.44]],"b":0.6},{"k":"line","p":[[-0.14,0.44],[0.14,0.44]],"b":0.6},{"k":"line","p":[[-0.32,-0.15],[0.32,-0.15]],"b":0.32},{"k":"line","p":[[-0.34,0.02],[0.34,0.02]],"b":0.32},{"k":"line","p":[[-0.32,0.19],[0.32,0.19]],"b":0.32},{"k":"line","p":[[0,-0.44],[0,-0.6]],"b":0.4},{"k":"curve","p":[[-0.05,0.44],[0,0.56],[0.05,0.44]],"b":0.35},{"k":"curve","p":[[0,0.5],[0.03,0.6],[-0.02,0.68]],"b":0.4,"anim":"sway","amp":0.09,"rate":1.1},{"k":"eye","x":-0.05,"y":0,"b":0.95},{"k":"eye","x":0.06,"y":0.06,"b":0.8}]},
+"moth":{"name":"moth","unit":1.05,"parts":[{"k":"blob","x":0,"y":0.02,"b":0.42,"r":0.13,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":0.13,"y":-0.09,"b":0.4,"r":0.075},{"k":"blob","x":-0.16,"y":0.16,"b":0.3,"r":0.09},{"k":"blob","x":-0.06,"y":-0.28,"b":0.24,"r":0.2,"anim":"bob","amp":0.07,"rate":1.4},{"k":"blob","x":0.02,"y":-0.42,"b":0.17,"r":0.13,"anim":"bob","amp":0.09,"rate":1.4},{"k":"blob","x":-0.14,"y":0.3,"b":0.2,"r":0.12,"anim":"bob","amp":0.05,"rate":1.4},{"k":"curve","p":[[0.08,-0.11],[-0.05,-0.32],[-0.26,-0.5],[-0.42,-0.36],[-0.3,-0.1],[-0.06,0]],"b":0.55,"anim":"bob","amp":0.08,"rate":1.4},{"k":"curve","p":[[0.04,0.04],[-0.14,0.16],[-0.34,0.34],[-0.4,0.14],[-0.22,0.02]],"b":0.44,"anim":"bob","amp":0.05,"rate":1.4},{"k":"curve","p":[[0.19,-0.13],[0.1,0.02],[0.02,0.14],[-0.12,0.2],[-0.22,0.14]],"b":0.5},{"k":"curve","p":[[0.19,-0.13],[0.08,-0.16],[-0.04,-0.13],[-0.16,-0.05]],"b":0.45},{"k":"curve","p":[[-0.2,0.16],[-0.3,0.26],[-0.34,0.4]],"b":0.34,"anim":"sway","amp":0.05,"rate":1.1},{"k":"curve","p":[[0.16,-0.18],[0.26,-0.32],[0.42,-0.4]],"b":0.42,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[0.2,-0.16],[0.32,-0.26],[0.46,-0.28]],"b":0.42,"anim":"perk","amp":0.12,"rate":1.5},{"k":"line","p":[[0.16,-0.05],[0.3,0.06]],"b":0.36},{"k":"line","p":[[0.06,0.12],[0.14,0.3]],"b":0.34},{"k":"line","p":[[-0.04,0.13],[-0.02,0.32]],"b":0.32},{"k":"eye","x":0.17,"y":-0.1,"b":0.95}]}
+};
+
+/* ---- drawing one body --------------------------------------------------
+   `tr` is the body's transform: centre in grid cells, scale, facing, opacity,
+   plus a per-body blink and antenna perk. Everything else (breathe, bob, sway,
+   perk) is the involuntary layer, running underneath whatever the score does. */
+function drawSpec(spec,tr,t){
+  if(tr.op<=0.001) return;
+  var s=Math.min(W,H)*0.42*spec.unit*tr.scale;
+  var ay=0.55;                               /* character cells are tall */
+  var cxp=tr.cx, cyp=tr.cy, fac=tr.facing, dim=tr.op;
+  var breathe=1+Math.sin(t*1.35)*0.055;
+  var blink=tr.blink||0, perk=tr.perk||0;
+
+  function PT(x,y,b,r){ if(r<=1) Ad(cxp+x,cyp+y*ay,b); else splat(cxp+x,cyp+y*ay,b,r); }
+  function LN(x0,y0,x1,y1,w){
+    var X0=cxp+x0, Y0=cyp+y0*ay, X1=cxp+x1, Y1=cyp+y1*ay;
+    var dx=X1-X0, dy=Y1-Y0, steps=Math.max(2,Math.ceil(Math.hypot(dx,dy)*1.7));
+    var wgt=w*dim;
+    for(var i=0;i<=steps;i++){
+      var u=i/steps, px=X0+dx*u, py=Y0+dy*u;
+      splat(px|0,py|0,wgt*0.55,1);
+      Ad(px|0,py|0,wgt*0.85);
+    }
+  }
+
+  for(var i=0;i<spec.parts.length;i++){
+    var q=spec.parts[i], ox=0, oy=0, gain=1, rmul=1;
+    if(q.anim==="breathe"){ rmul=breathe; gain=breathe; }
+    else if(q.anim==="sway"){ ox+=Math.sin(t*(q.rate||1.5)+i)*(q.amp||0.08)*s; }
+    else if(q.anim==="bob"){ oy+=Math.sin(t*(q.rate||1.2)+i*0.7)*(q.amp||0.06)*s; }
+    else if(q.anim==="perk"){ oy-=(q.amp||0.12)*s*perk; }
+
+    if(q.k==="blob"){
+      blobStamp(cxp+(q.x*fac*s+ox), cyp+(q.y*s+oy)*ay, q.b*gain*dim*1.35, s*q.r*rmul, ay);
+    } else if(q.k==="eye"){
+      var eyeB=q.b*(0.8+0.3*Math.sin(t*2))*(1-blink*0.92)*dim;
+      PT(q.x*fac*s+ox, q.y*s+oy, eyeB, 1);
+      PT(q.x*fac*s+ox, q.y*s+oy, q.b*0.25*dim, Math.max(1,s*0.03));
+    } else if(q.k==="line"||q.k==="curve"){
+      for(var j=0;j<q.p.length-1;j++){
+        var w0=q.p.length>2?(j/(q.p.length-1)):1, w1=q.p.length>2?((j+1)/(q.p.length-1)):1;
+        LN(q.p[j][0]*fac*s+ox*w0,   q.p[j][1]*s+oy*w0,
+           q.p[j+1][0]*fac*s+ox*w1, q.p[j+1][1]*s+oy*w1, q.b);
+      }
+    }
+  }
+}
+
+/* ---- atmosphere -------------------------------------------------------- */
+var dustMotes=[];
+(function(){ for(var i=0;i<110;i++) dustMotes.push({x:Math.random(),y:Math.random(),
+  z:0.25+Math.random()*0.75, ph:Math.random()*6.28, sp:0.4+Math.random()*0.9}); })();
+function drawAtmosphere(t,amt,hazeAmt){
+  if(hazeAmt>0){
+    var cx=W/2, cy=H/2;
+    for(var yy=0;yy<H;yy++) for(var xx=0;xx<W;xx++){
+      var d=Math.sqrt((xx-cx)*(xx-cx)*0.36+(yy-cy)*(yy-cy))/(H*0.6);
+      if(d<1) B[yy*W+xx]+=hazeAmt*0.10*(1-d)*(1-d);
+    }
+  }
+  if(amt<=0) return;
+  for(var i=0;i<dustMotes.length;i++){ var m=dustMotes[i];
+    var dx=(m.x+t*0.012*m.sp*m.z)%1, dy=(m.y+Math.sin(t*0.18*m.sp+m.ph)*0.03+t*0.004*m.sp)%1;
+    if(dx<0)dx+=1; if(dy<0)dy+=1;
+    var tw=0.45+0.55*Math.abs(Math.sin(t*1.1+m.ph));
+    Ad((dx*W)|0,(dy*H)|0,(0.022+0.055*tw*m.z)*amt);
+  }
+}
+
+/* ---- the iris, from na koja abad --------------------------------------
+   scEnd in film.html: a disc of light contracting to nothing. p=0 is wide
+   open, p=1 is shut. Run it backwards and it's an opening. */
+function iris(p){
+  var cx=W/2, cy=H/2, rad=Math.max(0.6,(1-p)*Math.max(W,H)*0.55);
+  for(var y=0;y<H;y++) for(var x=0;x<W;x++){
+    var d=Math.hypot((x-cx)*0.55,y-cy);
+    if(d<rad) B[y*W+x]+=(1-d/rad)*(1-p*0.7);
+  }
+}
+
+/* ---- the score ---------------------------------------------------------
+   Translated beat for beat from scripts/patch_scene.py — the `lantern` scene.
+   Times are absolute seconds. Two bodies on screen at once, which the live
+   instrument can't do: the lantern holds still and the moth does everything. */
+var CAPS=[
+  [ 6.0, 12.5, "Two bodies. Watch which one moves."],
+  [16.0, 23.0, "This one is made of paper and burns anyway."],
+  [27.5, 33.5, "This one makes no light at all."],
+  [38.0, 45.0, "It goes wherever the light is. It can't help that."],
+  [52.0, 58.0, "And then back. It was always going to come back."],
+  [64.0, 69.0, "Same pair. Opposite ends."],
+  [74.5, 80.0, "and you were the one dreaming it."]
+];
+var TOTAL=82;
+
+/* the moth's path: absolute keyframes of (t, x, y, scale, facing) in body
+   units relative to the lantern, so the whole flight reads as one gesture */
+function K(t,x,y,sc,f){ return {t:t,x:x,y:y,s:sc,f:f}; }
+var MOTH_PATH=[
+  K(0.00,-2.52,-1.22,0.40,1),   /* out in the dark */
+  K(24.00,-2.52,-1.22,0.40,1),
+  K(31.00,-1.38,-0.96,0.58,1),   /* approach */
+  K(36.00,-0.94,-0.60,0.66,1),
+  K(41.00,-0.06,-1.55,0.70,1),   /* circling: over the top */
+  K(45.50,1.10,-0.53,0.66,-1),
+  K(49.00,0.26,1.30,0.64,-1),  /* under */
+  K(51.20,-0.19,0.25,0.72,1),   /* too close */
+  K(51.70,-1.14,-0.77,0.50,1),   /* recoil */
+  K(54.00,-2.04,-1.16,0.42,1),
+  K(62.00,-1.20,-0.42,0.60,1),   /* and back, slower */
+  K(68.00,-1.03,0.10,0.62,1),
+  K(82.00,-1.03,0.10,0.62,1)
+];
+function samplePath(keys,t){
+  if(t<=keys[0].t) return keys[0];
+  for(var i=0;i<keys.length-1;i++){
+    var a=keys[i], b=keys[i+1];
+    if(t<=b.t){
+      var u=(b.t-a.t)>0?((t-a.t)/(b.t-a.t)):1;
+      u=u*u*(3-2*u);                                   /* ease in-out */
+      return {x:lerp(a.x,b.x,u), y:lerp(a.y,b.y,u), s:lerp(a.s,b.s,u),
+              f:(u<0.5?a.f:b.f)};
+    }
+  }
+  return keys[keys.length-1];
+}
+
+/* ---- playback ---------------------------------------------------------- */
+var RAMP=" .`^,:;~=+*roahX#%@&", GAMMA=0.82;
+var T=0, playing=false, last=null, blinkT=0, nextBlink=2.4, blink=0;
+
+function render(){
+  B.fill(0);
+  var t=T;
+
+  /* the room */
+  var roomUp=ss(3,10,t)*(1-ss(72,79,t));
+  drawAtmosphere(t, roomUp*1.0, roomUp*0.24);
+
+  /* bookends */
+  if(t<6.5)  iris(1-ss(0.4,6.0,t));            /* opening: light expands */
+  if(t>72.5) iris(ss(72.5,79.5,t));            /* closing: light contracts */
+
+  /* the lantern — still, warm, centre-right */
+  var lanOp=ss(9,15,t)*(1-ss(71,76,t));
+  drawSpec(FORMS.lantern,{cx:W*0.56,cy:H*0.46,scale:1.10,facing:1,op:lanOp,blink:0,perk:0},t);
+
+  /* the moth — everything that moves */
+  var mothOp=ss(24,29,t)*(1-ss(71,75,t));
+  var pth=samplePath(MOTH_PATH,t);
+  var ux=W*0.17, uy=H*0.155;
+  drawSpec(FORMS.moth,{
+    cx:W*0.56+pth.x*ux, cy:H*0.46+pth.y*uy,
+    scale:pth.s, facing:pth.f, op:mothOp,
+    blink:blink, perk:0.35+0.35*Math.sin(t*0.7)
+  },t);
+
+  /* the flare when it gets too close */
+  var flare=Math.max(0, 1-Math.abs(t-51.2)/0.85);
+  if(flare>0){ var cxf=W*0.56, cyf=H*0.48;
+    for(var y=0;y<H;y++) for(var x=0;x<W;x++){
+      var d=Math.hypot((x-cxf)*0.55,y-cyf)/(H*0.5);
+      if(d<1) B[y*W+x]+=flare*flare*0.55*(1-d);
+    } }
+
+  /* to characters */
+  var out="", g=RAMP.length-1;
+  for(var y2=0;y2<H;y2++){ var row="";
+    for(var x2=0;x2<W;x2++){
+      var b=B[y2*W+x2]; if(b<=0){row+=" ";continue;} if(b>1)b=1;
+      var ci=(Math.pow(b,GAMMA)*g)|0; if(ci>g)ci=g; row+=RAMP[ci];
+    }
+    out+=row+"\n"; }
+  grid.textContent=out;
+}
+
+function captions(){
+  var show=null;
+  for(var i=0;i<CAPS.length;i++){ if(T>=CAPS[i][0]&&T<CAPS[i][1]) show=CAPS[i][2]; }
+  if(show!==captions.cur){
+    captions.cur=show;
+    if(show){ capEl.textContent=show; capEl.classList.add("on"); }
+    else capEl.classList.remove("on");
+  }
+}
+captions.cur=undefined;
+
+function frame(ts){
+  if(playing){
+    if(last!==null){ var dt=Math.min(0.05,(ts-last)/1000); T+=dt;
+      blinkT+=dt;
+      if(blinkT>nextBlink){ blink=Math.min(1,blink+dt*11); if(blink>=1){ blinkT=0; nextBlink=2+Math.random()*4.5; } }
+      else blink=Math.max(0,blink-dt*7);
+    }
+    last=ts;
+    if(T>=TOTAL){ T=TOTAL; playing=false; ctl.textContent="▶"; endEl.classList.add("on"); }
+  } else last=null;
+  render(); captions();
+  barEl.style.width=(T/TOTAL*100)+"%";
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+startEl.addEventListener("click",function(){
+  startEl.style.display="none";
+  playing=true; ctl.textContent="❚❚";
+});
+
+/* ?t=41 seeks to a moment with the title card out of the way — how the build
+   gets looked at, since a screenshot can't tap to begin. */
+(function(){
+  var m=/[?&]t=([0-9.]+)/.exec(location.search);
+  if(!m) return;
+  T=Math.max(0,Math.min(TOTAL,parseFloat(m[1])||0));
+  startEl.style.display="none";
+  playing=/[?&]play=1/.test(location.search);
+  ctl.textContent=playing?"❚❚":"▶";
+})();
+ctl.addEventListener("click",function(){
+  if(T>=TOTAL){ T=0; captions.cur=undefined; endEl.classList.remove("on"); }
+  playing=!playing; ctl.textContent=playing?"❚❚":"▶";
+});
+</script>
+</body>
+</html>
