@@ -9,29 +9,38 @@
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&family=Space+Mono&display=swap" rel="stylesheet">
 <style>
   :root{--ink:#d8b878;--paper:#0a0908}
-  html,body{margin:0;height:100%;background:var(--paper);overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-  #screen{position:absolute;inset:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);background:var(--paper);
-    line-height:0.92em;white-space:pre;display:flex;align-items:center;justify-content:center;text-shadow:0 0 6px rgba(216,184,120,.2)}
+  html,body{margin:0;height:100%;background:var(--paper);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  #screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--paper)}
+  /* the grid lives in its own plain element — spans inside a flex parent get mangled */
+  #grid{margin:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);
+    line-height:0.92em;white-space:pre;text-shadow:0 0 6px rgba(216,184,120,.2)}
   #flash{position:fixed;inset:0;background:#fff;opacity:0;z-index:8;pointer-events:none;transition:opacity .5s ease}
   #panel{position:fixed;inset:10px;z-index:3;pointer-events:none;border:2px solid rgba(216,184,120,.26);border-radius:4px;box-shadow:inset 0 0 120px 34px rgba(0,0,0,.7)}
+  #scan{position:fixed;inset:0;z-index:4;pointer-events:none;opacity:.12;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.55) 0 1px,transparent 1px 3px)}
   #cap{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 118px);z-index:6;max-width:min(30em,86vw);
     background:#efe7d2;color:#20180c;border:1.5px solid #20180c;border-radius:3px;padding:12px 18px;font-family:"Newsreader",Georgia,serif;
     font-size:clamp(1.05rem,3.4vw,1.32rem);line-height:1.4;box-shadow:4px 4px 0 rgba(0,0,0,.5);opacity:0;transition:opacity .55s ease;text-align:center}
   #cap.on{opacity:1}
   #cap .said{font-style:italic;color:#7a5a1e}
-  /* the one forward control */
+  /* reticle + the prompt that appears when a door is in reach */
+  #ret{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;pointer-events:none;
+    font-family:"Space Mono",monospace;font-size:13px;color:rgba(239,231,210,.35);opacity:0;transition:opacity .3s}
+  #ret.on{opacity:1}
+  #door-hint{position:fixed;left:50%;top:calc(50% + 26px);transform:translateX(-50%);z-index:6;pointer-events:none;
+    font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:#efe7d2;background:rgba(20,16,10,.62);border:1px solid var(--ink);border-radius:999px;padding:7px 14px;opacity:0;transition:opacity .25s}
+  #door-hint.on{opacity:1}
+  /* the forward control (void beats, and touch walking) */
   #fwd{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 32px);z-index:7;
     font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#efe7d2;
     background:rgba(20,16,10,.55);border:1px solid var(--ink);border-radius:999px;padding:16px 30px;cursor:pointer;
     display:none;align-items:center;gap:10px;opacity:.85}
   #fwd.on{display:inline-flex}
-  #fwd.push{background:rgba(216,184,120,.28)}
   #fwd .arw{font-size:16px}
-  /* a normal tap button (intro / end) */
   #act{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 36px);z-index:7;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;opacity:0;transition:opacity .5s ease}
   #act.on{opacity:1}
   button.b{font-family:"Space Mono",monospace;font-size:13px;color:#efe7d2;background:rgba(20,16,10,.6);border:1px solid var(--ink);border-radius:999px;padding:13px 22px;cursor:pointer}
-  /* the clear TYPE moment */
   #typebox{position:fixed;inset:0;z-index:9;display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:30px;background:rgba(6,5,4,.55)}
   #typebox.on{display:flex}
   #typebox .q{font-family:"Newsreader",serif;font-style:italic;font-size:clamp(1.4rem,5vw,2.1rem);color:#efe7d2;text-align:center;max-width:16em}
@@ -39,158 +48,465 @@
     text-align:center;width:min(16em,84vw);padding:10px 4px;outline:none;caret-color:var(--ink)}
   #see::placeholder{color:rgba(216,184,120,.4);font-style:italic}
   #typebox .go{font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.1em;color:#efe7d2;background:transparent;border:1px solid var(--ink);border-radius:999px;padding:11px 20px;cursor:pointer}
+  /* ── the control surface ── */
+  #knobchip{position:fixed;top:16px;right:16px;z-index:11;font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+    color:#efe7d2;background:rgba(20,16,10,.7);border:1px solid rgba(216,184,120,.5);border-radius:999px;padding:8px 14px;cursor:pointer}
+  #knobs{position:fixed;top:14px;right:14px;bottom:14px;width:264px;max-width:82vw;z-index:12;display:none;flex-direction:column;
+    background:rgba(9,8,7,.93);border:1px solid rgba(216,184,120,.34);border-radius:6px;padding:12px 12px 10px;
+    font-family:"Space Mono",monospace;color:#efe7d2;box-shadow:0 18px 60px rgba(0,0,0,.6)}
+  #knobs.on{display:flex}
+  #knobs h3{margin:0 0 2px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);font-weight:400;display:flex;justify-content:space-between;align-items:center}
+  #knobs .sub{font-size:9px;letter-spacing:.1em;color:rgba(239,231,210,.35);margin-bottom:10px}
+  #knobs .close{cursor:pointer;color:rgba(239,231,210,.5);font-size:13px}
+  #knoblist{overflow-y:auto;flex:1;padding-right:4px}
+  #knobs .grp{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:rgba(216,184,120,.55);margin:12px 0 6px;border-top:1px solid rgba(216,184,120,.16);padding-top:8px}
+  #knobs .grp:first-child{margin-top:0;border-top:0;padding-top:0}
+  #knobs .row{margin:0 0 9px}
+  #knobs .row .lab{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.06em;color:rgba(239,231,210,.72);margin-bottom:3px}
+  #knobs .row .lab b{font-weight:400;color:var(--ink)}
+  #knobs input[type=range]{width:100%;height:16px;-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer}
+  #knobs input[type=range]::-webkit-slider-runnable-track{height:2px;background:rgba(216,184,120,.28)}
+  #knobs input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--ink);margin-top:-4.5px}
+  #knobs input[type=range]::-moz-range-track{height:2px;background:rgba(216,184,120,.28)}
+  #knobs input[type=range]::-moz-range-thumb{width:11px;height:11px;border:0;border-radius:50%;background:var(--ink)}
+  #knobs select{width:100%;background:#12100d;color:#efe7d2;border:1px solid rgba(216,184,120,.3);border-radius:3px;font-family:inherit;font-size:11px;padding:4px}
+  #knobs .btns{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  #knobs .kb{flex:1;min-width:74px;font-family:inherit;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#efe7d2;
+    background:transparent;border:1px solid rgba(216,184,120,.4);border-radius:3px;padding:7px 4px;cursor:pointer}
+  #knobs .kb:active{background:rgba(216,184,120,.18)}
+  #help{position:fixed;left:16px;bottom:16px;z-index:6;font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.1em;
+    color:rgba(239,231,210,.32);line-height:1.7;pointer-events:none;opacity:0;transition:opacity .4s}
+  #help.on{opacity:1}
 </style>
 </head>
 <body>
-<pre id="screen"></pre>
+<div id="screen"><pre id="grid"></pre></div>
 <div id="flash"></div>
 <div id="panel"></div>
+<div id="scan"></div>
 <div id="cap"></div>
+<div id="ret">+</div>
+<div id="door-hint">click or space to open</div>
 <div id="fwd"><span class="arw">↑</span> tap to move forward</div>
 <div id="act"></div>
+<div id="help" class="on">wasd — walk · mouse — look<br>click / space — open a door<br>esc — release the mouse</div>
 <div id="typebox"><div class="q" id="tq">The door opens. What do you see?</div><input id="see" type="text" autocomplete="off" autocapitalize="off" placeholder="type it — anything that comes"><button class="go" id="tgo">step through →</button></div>
+
+<div id="knobchip">controls</div>
+<div id="knobs">
+  <h3>the hallway <span class="close" id="kclose">✕</span></h3>
+  <div class="sub">live — every knob lands next frame</div>
+  <div id="knoblist"></div>
+  <div class="btns">
+    <button class="kb" id="kreset">reset</button>
+    <button class="kb" id="knew">new corridor</button>
+    <button class="kb" id="kcopy">copy params</button>
+  </div>
+</div>
 
 <script>
 (function(){
 "use strict";
 document.addEventListener("gesturestart",function(e){e.preventDefault();},{passive:false});
-/* (removed the touchend double-tap blocker — it was swallowing legit forward taps.
-   touch-action:manipulation on <body> already disables double-tap zoom.) */
-var screen=document.getElementById("screen"),cap=document.getElementById("cap"),fwd=document.getElementById("fwd"),
-    act=document.getElementById("act"),flash=document.getElementById("flash"),typebox=document.getElementById("typebox"),see=document.getElementById("see");
+var grid=document.getElementById("grid"),screenEl=document.getElementById("screen"),cap=document.getElementById("cap"),
+    fwd=document.getElementById("fwd"),act=document.getElementById("act"),flash=document.getElementById("flash"),
+    typebox=document.getElementById("typebox"),see=document.getElementById("see"),ret=document.getElementById("ret"),
+    doorHint=document.getElementById("door-hint"),scan=document.getElementById("scan"),help=document.getElementById("help");
 
-/* sound */
+/* ────────────────────────────────────────────────────────────────
+   the param bus — one dict, the render loop reads it every frame
+   ──────────────────────────────────────────────────────────────── */
+var DEFAULTS={
+  fov:0.66, speed:2.7, look:0.0024, pitch:1, bob:0.5,
+  dens:46, fog:16, ramp:0,
+  hue:38, sat:52, lum:64, spread:74, doorGlow:1,
+  glow:7, dust:0.45, scan:0.12, vign:0.7, aspect:0.60
+};
+var P={}; for(var k in DEFAULTS) P[k]=DEFAULTS[k];
+try{ var saved=JSON.parse(localStorage.getItem("hallway-params")||"{}");
+     for(var s in saved) if(s in P && typeof saved[s]==="number") P[s]=saved[s]; }catch(e){}
+var saveT=null;
+function persist(){ if(saveT)clearTimeout(saveT); saveT=setTimeout(function(){
+  try{ localStorage.setItem("hallway-params",JSON.stringify(P)); }catch(e){} },250); }
+
+var RAMPS=["@N#WkHm=+~:-. ","█▓▒░·. ","MWNQ8OZbua|1I;:. ","@%#*+=-:. ","▄▀█▌▐░▒▓ "];
+var LIGHT="@8&%$#*o";
+
+/* structural params force a regrid; everything else is free */
+var SPEC=[
+  {g:"movement"},
+  {k:"speed", t:"walk speed",     min:0.6, max:7,    step:0.1},
+  {k:"look",  t:"mouse look",     min:0.0004,max:0.008,step:0.0002, fmt:function(v){return (v*1000).toFixed(1);}},
+  {k:"pitch", t:"look up/down",   min:0,   max:1,    step:0.05},
+  {k:"bob",   t:"head bob",       min:0,   max:1.6,  step:0.05},
+  {g:"the lens"},
+  {k:"fov",   t:"field of view",  min:0.3, max:1.4,  step:0.02},
+  {k:"dens",  t:"grid density",   min:22,  max:96,   step:1, structural:true},
+  {k:"aspect",t:"cell aspect",    min:0.45,max:0.85, step:0.01, structural:true},
+  {k:"fog",   t:"draw distance",  min:5,   max:40,   step:0.5},
+  {k:"ramp",  t:"shade ramp",     opts:["classic","blocks","dense","sparse","heavy"]},
+  {g:"colour"},
+  {k:"hue",   t:"base hue",       min:0,   max:359,  step:1},
+  {k:"sat",   t:"saturation",     min:0,   max:100,  step:1},
+  {k:"lum",   t:"brightness",     min:20,  max:95,   step:1},
+  {k:"spread",t:"door hue spread",min:0,   max:180,  step:2},
+  {k:"doorGlow",t:"door glow",    min:0,   max:2,    step:0.05},
+  {g:"atmosphere"},
+  {k:"glow",  t:"bloom",          min:0,   max:22,   step:0.5},
+  {k:"dust",  t:"dust",           min:0,   max:1,    step:0.02},
+  {k:"scan",  t:"scanlines",      min:0,   max:0.6,  step:0.01},
+  {k:"vign",  t:"vignette",       min:0,   max:1.4,  step:0.05}
+];
+
+function applyLook(){
+  var ink="hsl("+P.hue+","+P.sat+"%,"+P.lum+"%)";
+  document.documentElement.style.setProperty("--ink",ink);
+  grid.style.textShadow = P.glow>0 ? ("0 0 "+P.glow+"px hsla("+P.hue+",60%,60%,.30)") : "none";
+  scan.style.opacity=P.scan;
+  document.getElementById("panel").style.boxShadow="inset 0 0 120px "+(34*P.vign).toFixed(0)+"px rgba(0,0,0,"+Math.min(.92,.7*P.vign+.1)+")";
+  colorCache={};
+}
+
+/* ── grid ── */
+var W,H,FS;
+function sizeGrid(){var vw=innerWidth,vh=innerHeight;
+  FS=Math.max(6,Math.min(15,Math.round(Math.min(vw,vh)/P.dens*1.0)));
+  grid.style.fontSize=FS+"px";
+  W=Math.max(44,Math.min(190,Math.floor(vw/(FS*P.aspect))));
+  H=Math.max(28,Math.min(96,Math.floor(vh/(FS*0.92))));}
+sizeGrid();addEventListener("resize",sizeGrid);addEventListener("orientationchange",function(){setTimeout(sizeGrid,200);});
+
+/* ── sound ── */
 var AC=null;function audio(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}return AC;}
 function tone(f,d,t,v){var a=audio();if(!a)return;var o=a.createOscillator(),g=a.createGain();o.type=t||"sine";o.frequency.value=f;o.connect(g);g.connect(a.destination);var s=a.currentTime;g.gain.setValueAtTime(v||.15,s);g.gain.exponentialRampToValueAtTime(.0001,s+d);o.start(s);o.stop(s+d+.02);}
 function knock(v){tone(88,.16,"sine",v||.24);setTimeout(function(){tone(66,.18,"sine",(v||.24)*.8);},70);}
-function creak(){tone(150,.5,"sawtooth",.05);}
+function creak(){tone(150,.55,"sawtooth",.055);setTimeout(function(){tone(120,.4,"sawtooth",.04);},160);}
 function chord(){tone(196,1.2,"sine",.12);tone(294,1.2,"sine",.08);}
 
-/* grid */
-var W,H,FS;
-function sizeGrid(){var vw=innerWidth,vh=innerHeight;FS=Math.max(7,Math.min(13,Math.round(Math.min(vw,vh)/46)));screen.style.fontSize=FS+"px";
-  W=Math.max(44,Math.min(150,Math.floor(vw/(FS*.60))));H=Math.max(30,Math.min(84,Math.floor(vh/(FS*.92))));}
-sizeGrid();addEventListener("resize",sizeGrid);addEventListener("orientationchange",function(){setTimeout(sizeGrid,200);});
-
-/* corridor (regenerated per room) */
-var MAP,MH,MW,TARGET;
+/* ── the corridor ── */
+var MAP,MH,MW,DOORS={},doorList=[];
 function seededRnd(s){ s=(s>>>0)||1; return function(){ s=(Math.imul(s,1103515245)+12345)>>>0; return s/4294967296; }; }
-function makeCorridor(seed){                          // each word seeds a DIFFERENT corridor
-  var R=seededRnd(seed||1), len=16+((R()*12)|0), tSide=R()<0.5?0:4, tRow=len-3-((R()*2)|0), rows=[];
+function makeCorridor(seed){
+  var R=seededRnd(seed||1), len=18+((R()*14)|0), rows=[];
+  DOORS={}; doorList=[];
   for(var y=0;y<len;y++){
     if(y===0||y===len-1){ rows.push("#####"); continue; }
     var L="#",Rt="#";
-    if(y>2&&y<len-3&&R()<0.14){ if(R()<0.5)L="D"; else Rt="D"; }
-    if(y===tRow){ if(tSide===0)L="T"; else Rt="T"; }
+    if(y>2&&y<len-2&&R()<0.34){ if(R()<0.5)L="D"; else Rt="D"; }
     rows.push(L+"..."+Rt);
   }
-  MAP=rows; MH=len; MW=5; TARGET={x:tSide,y:tRow};
-  var faceAng=(tSide===4)?0:Math.PI;
-  WP=[{x:2.5,y:1.5,a:Math.PI/2},{x:2.5,y:Math.max(3,tRow*0.4),a:Math.PI/2},{x:2.5,y:Math.max(4,tRow-2),a:Math.PI/2},{x:2.5,y:tRow+0.5,a:faceAng}]; }
+  /* guarantee at least three doors, and one at the far end */
+  var tRow=len-3-((R()*2)|0), tSide=R()<0.5?0:4;
+  rows[tRow]=(tSide===0?"D":"#")+"..."+(tSide===4?"D":"#");
+  MAP=rows; MH=len; MW=5;
+  for(var y2=0;y2<len;y2++) for(var x2=0;x2<5;x2++) if(rows[y2][x2]==="D"){
+    var key=x2+","+y2;
+    DOORS[key]={x:x2,y:y2,open:0,opening:false,hue:0,i:doorList.length};
+    doorList.push(DOORS[key]);
+  }
+  if(doorList.length<2){ /* very unlucky seed — carve one */
+    var yy=Math.max(3,(len/2)|0); rows[yy]="D"+"..."+"#";
+    DOORS["0,"+yy]={x:0,y:yy,open:0,opening:false,hue:0,i:doorList.length}; doorList.push(DOORS["0,"+yy]);
+  }
+  doorHues();
+}
+function doorHues(){ doorList.forEach(function(d,i){
+  var n=Math.max(1,doorList.length);
+  d.hue=(P.hue + (i-(n-1)/2)*(P.spread/Math.max(1,n-1))*2 + 360)%360; }); }
 function Cc(x,y){if(x<0||y<0||x>=MW||y>=MH)return "#";return MAP[y|0][x|0];}
-function solid(x,y){var c=Cc(x,y);return c==="#"||c==="D"||c==="T";}
-function isDoor(x,y){var c=Cc(x,y);return c==="D"||c==="T";}
+function solid(x,y){var c=Cc(x,y);if(c==="#")return true;
+  if(c==="D"){var d=DOORS[(x|0)+","+(y|0)];return !(d&&d.open>0.88);} return false;}
+function blocksSight(x,y){var c=Cc(x,y);return c==="#"||c==="D";}
 
-/* camera + raycaster */
-var cam={x:2.5,y:1.5,ang:Math.PI/2},FOV=.66,doorOpen=0,opening=false,now=0;
-var SHADE="@N#WkHm=+~:-. ", LIGHT="@8&%$#*o";
-function cast(sx){var dx=Math.cos(cam.ang),dy=Math.sin(cam.ang),pX=-dy*FOV,pY=dx*FOV;var camX=2*sx/W-1,rdx=dx+pX*camX,rdy=dy+pY*camX;
+/* ── camera + raycaster ── */
+var cam={x:2.5,y:1.5,ang:Math.PI/2,pitch:0},now=0,bobPhase=0,bobAmt=0;
+/* mutate, never reassign — anything holding a reference must stay correct */
+function resetCam(){cam.x=2.5;cam.y=1.5;cam.ang=Math.PI/2;cam.pitch=0;bobPhase=0;bobAmt=0;}
+function cast(sx){var dx=Math.cos(cam.ang),dy=Math.sin(cam.ang),pX=-dy*P.fov,pY=dx*P.fov;
+  var camX=2*sx/W-1,rdx=dx+pX*camX,rdy=dy+pY*camX;
   var mx=cam.x|0,my=cam.y|0,ddx=Math.abs(1/rdx),ddy=Math.abs(1/rdy),sX,sY,dX,dY;
   if(rdx<0){sX=-1;dX=(cam.x-mx)*ddx;}else{sX=1;dX=(mx+1-cam.x)*ddx;}
   if(rdy<0){sY=-1;dY=(cam.y-my)*ddy;}else{sY=1;dY=(my+1-cam.y)*ddy;}
-  var side=0,hit=false,g=0;while(!hit&&g++<300){if(dX<dY){dX+=ddx;mx+=sX;side=0;}else{dY+=ddy;my+=sY;side=1;}if(solid(mx,my))hit=true;}
-  var d=(side===0)?(dX-ddx):(dY-ddy);if(d<.0001)d=.0001;return{d:d,side:side,door:isDoor(mx,my),target:(mx===TARGET.x&&my===TARGET.y)};}
+  var side=0,hit=false,g=0;
+  while(!hit&&g++<400){if(dX<dY){dX+=ddx;mx+=sX;side=0;}else{dY+=ddy;my+=sY;side=1;}if(blocksSight(mx,my))hit=true;}
+  var d=(side===0)?(dX-ddx):(dY-ddy);if(d<.0001)d=.0001;
+  var key=mx+","+my, door=DOORS[key]||null;
+  return {d:d,side:side,door:door,mx:mx,my:my};}
 function rnd(x,y,t){var m=Math.sin(x*12.9898+y*78.233+t)*43758.5453;return m-Math.floor(m);}
-function renderHall(){var out="",col=[];for(var x=0;x<W;x++)col[x]=cast(x);var tt=now*.00016;
-  for(var y=0;y<H;y++){var r="";for(var x=0;x<W;x++){var c=col[x],lh=Math.floor(H/c.d),s=((H-lh)/2)|0,e=((H+lh)/2)|0,ch;
-    if(y<s||y>e){var p=Math.abs((y-H/2)/(H/2));ch=p>.80?" ":(((x+y*3)%9===0)?".":" ");if(ch===" "&&rnd(x,y,(tt*40)|0)>.9955)ch="·";}
-    else{var si=Math.floor(c.d/16*(SHADE.length-1));if(c.side===1)si++;if(si<0)si=0;if(si>=SHADE.length)si=SHADE.length-1;ch=SHADE[si];
-      if(c.door){var t=(y-s)/Math.max(1,e-s);ch=((y-s)%3===0)?(c.side===0?"|":"]"):ch;if(t>.46&&t<.54)ch="o";if(t>.9)ch="_";
-        if(c.target){if(t>.9&&doorOpen<.05)ch="=";if(doorOpen>0){var op=t>(.5-.5*doorOpen)&&t<(.5+.5*doorOpen);if(op)ch=LIGHT[(rnd(x,y,(tt*30)|0)*LIGHT.length)|0];}}}}
-    r+=ch;}out+=r+"\n";}screen.textContent=out;}
 
-/* pure black — nothing at all */
-function renderBlack(){ var row=new Array(W+1).join(" ")+"\n"; screen.textContent=new Array(H+1).join(row); }
-/* the point of light: appears small/far, grows closer with each tap; dust thickens as it nears */
+/* ── colour (quantised so runs stay long) ── */
+var colorCache={};
+function hsl(h,s,l){var key=(h|0)+"_"+(s|0)+"_"+(l|0);var v=colorCache[key];
+  if(!v){v="hsl("+(h|0)+","+(s|0)+"%,"+(l|0)+"%)";colorCache[key]=v;}return v;}
+function wallColor(d,door){
+  var near=1-Math.min(1,d/P.fog), lv=Math.round(near*6)/6;
+  if(door){ var boost=door.open*0.30*P.doorGlow;
+    return hsl(door.hue, Math.min(100,P.sat+20), Math.max(10,P.lum*(0.32+0.68*lv)+boost*38)); }
+  return hsl(P.hue,P.sat,Math.max(8,P.lum*(0.26+0.74*lv)));}
+function dimColor(){ return hsl(P.hue,Math.max(0,P.sat-16),Math.max(6,P.lum*0.34)); }
+
+/* ── the render ── */
+function esc(c){ return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":c; }
+function renderHall(){
+  var SHADE=RAMPS[P.ramp|0]||RAMPS[0], cols=new Array(W), x,y;
+  for(x=0;x<W;x++){ var c=cast(x); c.col=wallColor(c.d,c.door); cols[x]=c; }
+  var tt=now*.00016, dim=dimColor(),
+      horizon=(H/2) + cam.pitch*H*0.42 + Math.sin(bobPhase)*bobAmt*P.bob*H*0.012,
+      dustThresh=1-0.0055*P.dust, out=[];
+  for(y=0;y<H;y++){
+    var row="",runCol=null,run="";
+    for(x=0;x<W;x++){
+      var c=cols[x],lh=Math.floor(H/c.d),s=Math.round(horizon-lh/2),e=Math.round(horizon+lh/2),ch,col;
+      if(y<s||y>e){
+        var p=Math.abs((y-horizon)/(H/2));
+        ch=(p>.80||P.dust<.14)?" ":(((x+y*3)%9===0)?".":" ");
+        if(ch===" "&&P.dust>0&&rnd(x,y,(tt*40)|0)>dustThresh)ch="·";
+        col=dim;
+      } else {
+        /* reserve the ramp's last glyph (usually a space) for nothing at all —
+           otherwise the far end of the hall renders as literal blank and vanishes */
+        var si=Math.floor(c.d/P.fog*(SHADE.length-1));if(c.side===1)si++;
+        if(si<0)si=0;if(si>SHADE.length-2)si=SHADE.length-2;ch=SHADE[si];col=c.col;
+        if(c.door){
+          var t=(y-s)/Math.max(1,e-s), d0=c.door;
+          ch=((y-s)%3===0)?(c.side===0?"|":"]"):ch;
+          if(t>.46&&t<.54)ch="o";           /* the handle */
+          if(t>.90)ch="_";
+          if(d0.open>0.02){
+            /* light through the gap: brightest at the centre of the opening, falling off
+               to the edges. Pure per-cell random here reads as static, not light. */
+            var half=0.5*d0.open, off=Math.abs(t-0.5);
+            if(off<half){
+              var b=1-off/Math.max(0.001,half);
+              b=b*b*(3-2*b);                                   /* smoothstep */
+              b*=0.82+0.18*Math.sin(tt*9+x*0.6);               /* a slow flicker */
+              var li=Math.floor((1-b)*(LIGHT.length-1)+rnd(x,y,(tt*30)|0)*0.9);
+              ch=LIGHT[Math.max(0,Math.min(LIGHT.length-1,li))];
+            }
+          }
+        }
+      }
+      if(col!==runCol){ if(runCol!==null) row+='<span style="color:'+runCol+'">'+run+'</span>'; runCol=col; run=""; }
+      run+=esc(ch);
+    }
+    row+='<span style="color:'+runCol+'">'+run+'</span>';
+    out.push(row);
+  }
+  grid.innerHTML=out.join("\n");
+}
+function renderBlack(){ var row=new Array(W+1).join(" ")+"\n"; grid.textContent=new Array(H+1).join(row); }
 var lightGrow=0;
 function renderVoid(){var out="",cx=W/2,cy=H/2,rad=Math.pow(lightGrow,1.7)*Math.max(W,H)*0.74,tt=now*.00016,dustThresh=0.999-lightGrow*0.03;
   for(var y=0;y<H;y++){var r="";for(var x=0;x<W;x++){var dxp=(x-cx)*0.55,dyp=(y-cy),dist=Math.sqrt(dxp*dxp+dyp*dyp),ch=" ";
     if(dist<rad){var k=1-dist/Math.max(1,rad);ch=LIGHT[Math.min(LIGHT.length-1,(k*LIGHT.length)|0)];}
     else if(lightGrow>0.05 && rnd(x,y,(tt*40)|0)>dustThresh)ch="·";
-    r+=ch;}out+=r+"\n";}screen.textContent=out;}
+    r+=ch;}out+=r+"\n";}
+  grid.textContent=out;}
 
-/* narration */
+/* ── narration ── */
 function showCap(h){cap.classList.remove("on");setTimeout(function(){cap.innerHTML=h;cap.classList.add("on");},140);}
 function hideCap(){cap.classList.remove("on");}
 function acts(list){act.classList.remove("on");act.innerHTML="";list.forEach(function(a){var b=document.createElement("button");b.className="b";b.textContent=a.t;b.onclick=function(){audio();a.f();};act.appendChild(b);});setTimeout(function(){act.classList.add("on");},220);}
-function esc(s){return s.replace(/[&<>\"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
-function seedColor(seed){var hue=seed%360;document.documentElement.style.setProperty("--ink","hsl("+hue+",52%,64%)");screen.style.textShadow="0 0 7px hsla("+hue+",60%,60%,.22)";}
+function escHtml(s){return s.replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function hash(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0);}
 
-/* ---- flow ---- */
-var phase="intro", railT=0, roomIndex=0, capMarks;
-function intro(){ phase="intro"; showCap("Let the room go quiet. Breathe out once, all the way."); acts([{t:"I have",f:toVoid}]); }
+/* ── flow ── */
+var phase="intro", roomIndex=0;
+function intro(){ phase="intro"; help.classList.remove("on"); showCap("Let the room go quiet. Breathe out once, all the way."); acts([{t:"I have",f:toVoid}]); }
 function toVoid(){ phase="void"; lightGrow=0; act.classList.remove("on");
   showCap("A black void. No walls, no floor. Nothing at all. <span class='said'>Move forward into it.</span>");
-  fwd.classList.add("on");   /* control present from the start — nothing to get stuck behind */
-}
+  fwd.classList.add("on"); }
 function boom(){ phase="booming"; fwd.classList.remove("on"); chord();
   flash.style.opacity=.9; setTimeout(function(){ flash.style.opacity=0; },90);
-  makeCorridor(1); cam={x:2.5,y:1.5,ang:Math.PI/2}; doorOpen=0; opening=false; railT=0; roomIndex=0;
-  setTimeout(function(){ phase="hall"; capMarks=[[.02,"You have a body now. The hall runs ahead — a door is knocking, far down on the left."],[.4,"A door drifts past on your left, light leaking under it."],[.7,"Dust turns in the air. The knock is in your chest now."]]; showCap(capMarks[0][1]); knock(); fwd.classList.add("on"); },260);
+  makeCorridor(1); resetCam(); roomIndex=0;
+  setTimeout(function(){ enterHall("You have a body now. The hall runs ahead — <span class='said'>walk it yourself.</span> Doors on both sides. Open the one that pulls."); },260);
 }
-var WP=[];
-function pathAt(t){var seg=Math.min(2.999,t*3),i=seg|0,f=seg-i,A=WP[i],B=WP[i+1];cam.x=A.x+(B.x-A.x)*f;cam.y=A.y+(B.y-A.y)*f;
-  var da=((B.a-A.a+Math.PI)%(2*Math.PI))-Math.PI;cam.ang=A.a+da*f;}
+function enterHall(capHtml){ phase="hall"; showCap(capHtml); knock(); help.classList.add("on");
+  if(isTouch) fwd.classList.add("on"); }
 
-/* the one forward control — TAP: each tap glides the scene one beat */
-var anim=null;
-function easeInOut(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
-function pushValue(get,set,delta,cap,dur,done){ if(anim)return; anim={from:get(),to:Math.min(cap,get()+delta),dur:dur,t0:null,set:set,done:done}; }
-function onTap(){ audio(); if(anim)return;
-  if(phase==="void"){
-    if(lightGrow<0.05){ lightGrow=0.06; showCap("And then — far off — <span class='said'>a single point of light.</span>"); return; }  // first tap: the point appears
-    pushValue(function(){return lightGrow;},function(v){lightGrow=v;},0.27,1,700,function(){ if(lightGrow>=0.999) boom(); }); }
-  else if(phase==="hall"){ knock(0.28); pushValue(function(){return railT;},function(v){railT=v;},0.24,1,1050,function(){ if(railT>=0.999) askDoor(); }); }
+/* ── movement ── */
+var keys={}, isTouch=("ontouchstart" in window), locked=false;
+addEventListener("keydown",function(e){
+  var k=e.key.toLowerCase();
+  if(k==="`"||k==="~"){ toggleKnobs(); return; }
+  if(document.activeElement===see) return;
+  if(k===" "){ e.preventDefault(); if(phase==="void"){onTap();} else if(phase==="hall"){interact();} return; }
+  if(["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright","shift"].indexOf(k)>=0){ e.preventDefault(); keys[k]=true; }
+});
+addEventListener("keyup",function(e){ keys[e.key.toLowerCase()]=false; });
+addEventListener("blur",function(){ keys={}; });
+
+function tryMove(nx,ny){
+  var r=0.22;
+  if(!solid(nx+r,cam.y)&&!solid(nx-r,cam.y)) cam.x=nx;
+  if(!solid(cam.x,ny+r)&&!solid(cam.x,ny-r)) cam.y=ny;
 }
-fwd.addEventListener("click",function(e){e.preventDefault();onTap();});
-screen.addEventListener("click",function(){ if(phase==="void"||phase==="hall") onTap(); });
-addEventListener("keydown",function(e){var k=e.key.toLowerCase();if((k==="w"||k==="arrowup"||k===" ")&&(phase==="void"||phase==="hall")){e.preventDefault();onTap();}});
+function stepMove(dt){
+  var f=0,st=0;
+  if(keys["w"]||keys["arrowup"])f+=1; if(keys["s"]||keys["arrowdown"])f-=1;
+  if(keys["a"])st-=1; if(keys["d"])st+=1;
+  if(keys["arrowleft"])cam.ang-=1.6*dt; if(keys["arrowright"])cam.ang+=1.6*dt;
+  if(touchFwd)f+=1;
+  if(!f&&!st){ bobAmt+=(0-bobAmt)*Math.min(1,dt*6); return; }
+  var sp=P.speed*(keys["shift"]?1.7:1)*dt, dx=Math.cos(cam.ang), dy=Math.sin(cam.ang);
+  var vx=dx*f+(-dy)*st, vy=dy*f+dx*st, len=Math.hypot(vx,vy)||1;
+  tryMove(cam.x+vx/len*sp, cam.y+vy/len*sp);
+  bobPhase+=dt*9*(P.speed/2.7); bobAmt+=(1-bobAmt)*Math.min(1,dt*6);
+  checkThreshold();
+}
+/* stepping into an open door takes you through it */
+function checkThreshold(){
+  var c=Cc(cam.x,cam.y);
+  if(c==="D"){ var d=DOORS[(cam.x|0)+","+(cam.y|0)]; if(d&&d.open>0.88) askDoor(); }
+}
 
-/* type moment */
-function askDoor(){ phase="type"; fwd.classList.remove("on"); hideCap();
+/* ── looking ── */
+screenEl.addEventListener("click",function(e){
+  audio();
+  if(phase==="void"){ onTap(); return; }
+  if(phase!=="hall") return;
+  if(!locked && !isTouch){ screenEl.requestPointerLock&&screenEl.requestPointerLock(); return; }
+  interact();
+});
+document.addEventListener("pointerlockchange",function(){ locked=(document.pointerLockElement===screenEl); });
+document.addEventListener("mousemove",function(e){
+  if(!locked) return;
+  cam.ang += e.movementX*P.look;
+  cam.pitch = Math.max(-0.55,Math.min(0.55, cam.pitch - e.movementY*P.look*0.55*P.pitch));
+});
+/* unlocked drag-look, and touch look */
+var dragging=false,lastX=0,lastY=0,touchFwd=false,moved=0;
+screenEl.addEventListener("pointerdown",function(e){ if(phase!=="hall")return; dragging=true;moved=0;lastX=e.clientX;lastY=e.clientY; });
+addEventListener("pointermove",function(e){
+  if(!dragging||locked) return;
+  var dx=e.clientX-lastX,dy=e.clientY-lastY; lastX=e.clientX;lastY=e.clientY; moved+=Math.abs(dx)+Math.abs(dy);
+  cam.ang += dx*P.look*1.7;
+  cam.pitch = Math.max(-0.55,Math.min(0.55, cam.pitch - dy*P.look*0.9*P.pitch));
+});
+addEventListener("pointerup",function(){ dragging=false; });
+fwd.addEventListener("pointerdown",function(e){e.preventDefault();audio();if(phase==="hall")touchFwd=true;else onTap();});
+addEventListener("pointerup",function(){touchFwd=false;});
+
+/* ── doors ── */
+var aimed=null;
+function aim(){
+  if(phase!=="hall"){ aimed=null; return; }
+  var c=cast(W/2);
+  aimed=(c.door && c.d<2.6) ? c.door : null;
+  ret.classList.toggle("on", true);
+  ret.textContent = aimed ? "◇" : "+";
+  doorHint.classList.toggle("on", !!aimed && aimed.open<0.05);
+}
+function interact(){
+  if(!aimed) return;
+  if(aimed.open<0.02 && !aimed.opening){ aimed.opening=true; creak(); knock(0.2);
+    showCap("The door gives. Light comes through the gap."); }
+}
+function askDoor(){ phase="type"; fwd.classList.remove("on"); hideCap(); ret.classList.remove("on"); doorHint.classList.remove("on");
+  if(document.pointerLockElement) document.exitPointerLock();
   document.getElementById("tq").textContent = roomIndex===0 ? "The door opens. What do you see?" : "Another door. What's on the other side?";
   see.value=""; typebox.classList.add("on"); setTimeout(function(){see.focus();},350); }
 function submitDoor(){ var w=see.value.trim(); if(!w){see.focus();return;} typebox.classList.remove("on"); walkThrough(w); }
 see.addEventListener("keydown",function(e){if(e.key==="Enter")submitDoor();});
 document.getElementById("tgo").addEventListener("click",function(){audio();submitDoor();});
-
 function walkThrough(word){
   window._last=word; roomIndex++;
   chord(); flash.style.opacity=.85; setTimeout(function(){flash.style.opacity=0;},120);
-  seedColor(hash(word));
-  makeCorridor(hash(word)); cam={x:2.5,y:1.5,ang:Math.PI/2}; doorOpen=0; opening=false; railT=0; phase="hall";
-  capMarks=[[.02,"You step through, into <span class='said'>"+esc(word)+"</span>. It builds itself around you as you move — same strange grain, a new shape."],[.55,"It keeps going. Another door waits ahead."]];
-  setTimeout(function(){ showCap(capMarks[0][1]); fwd.classList.add("on"); },300);
+  var h=hash(word); P.hue=h%360; applyLook(); syncKnobs();
+  makeCorridor(h); resetCam();
+  setTimeout(function(){ enterHall("You step through, into <span class='said'>"+escHtml(word)+"</span>. It builds itself around you as you walk — same strange grain, a new shape."); },300);
 }
 
-/* loop */
+/* ── the void beat (unchanged: one tap at a time) ── */
+var anim=null;
+function easeInOut(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+function pushValue(get,set,delta,cap,dur,done){ if(anim)return; anim={from:get(),to:Math.min(cap,get()+delta),dur:dur,t0:null,set:set,done:done}; }
+function onTap(){ audio(); if(anim)return;
+  if(phase!=="void") return;
+  if(lightGrow<0.05){ lightGrow=0.06; showCap("And then — far off — <span class='said'>a single point of light.</span>"); return; }
+  pushValue(function(){return lightGrow;},function(v){lightGrow=v;},0.27,1,700,function(){ if(lightGrow>=0.999) boom(); });
+}
+fwd.addEventListener("click",function(e){e.preventDefault();if(phase==="void")onTap();});
+
+/* ── control surface ── */
+var knobs=document.getElementById("knobs"),knoblist=document.getElementById("knoblist"),inputs={};
+SPEC.forEach(function(row){
+  if(row.g){ var g=document.createElement("div"); g.className="grp"; g.textContent=row.g; knoblist.appendChild(g); return; }
+  var wrap=document.createElement("div"); wrap.className="row";
+  var lab=document.createElement("div"); lab.className="lab";
+  var val=document.createElement("b");
+  lab.innerHTML="<span>"+row.t+"</span>"; lab.appendChild(val);
+  wrap.appendChild(lab);
+  var input;
+  if(row.opts){
+    input=document.createElement("select");
+    row.opts.forEach(function(o,i){var op=document.createElement("option");op.value=i;op.textContent=o;input.appendChild(op);});
+    input.value=P[row.k];
+    input.addEventListener("change",function(){ P[row.k]=+input.value; val.textContent=row.opts[+input.value]; persist(); });
+  } else {
+    input=document.createElement("input"); input.type="range";
+    input.min=row.min; input.max=row.max; input.step=row.step; input.value=P[row.k];
+    input.addEventListener("input",function(){
+      P[row.k]=parseFloat(input.value);
+      val.textContent=row.fmt?row.fmt(P[row.k]):String(P[row.k]);
+      if(row.structural) sizeGrid();
+      if(row.k==="spread"||row.k==="hue") doorHues();
+      applyLook(); persist();
+    });
+  }
+  input.addEventListener("keydown",function(e){e.stopPropagation();});
+  val.textContent=row.opts?row.opts[P[row.k]]:(row.fmt?row.fmt(P[row.k]):String(P[row.k]));
+  wrap.appendChild(input); knoblist.appendChild(wrap);
+  inputs[row.k]={i:input,v:val,row:row};
+});
+function syncKnobs(){ for(var k in inputs){ var o=inputs[k];
+  o.i.value=P[k]; o.v.textContent=o.row.opts?o.row.opts[P[k]]:(o.row.fmt?o.row.fmt(P[k]):String(P[k])); } }
+function toggleKnobs(){ knobs.classList.toggle("on"); }
+document.getElementById("knobchip").addEventListener("click",toggleKnobs);
+document.getElementById("kclose").addEventListener("click",toggleKnobs);
+document.getElementById("kreset").addEventListener("click",function(){
+  for(var k in DEFAULTS)P[k]=DEFAULTS[k]; sizeGrid(); doorHues(); applyLook(); syncKnobs(); persist(); });
+document.getElementById("knew").addEventListener("click",function(){
+  makeCorridor((Math.random()*1e9)|0); resetCam();
+  if(phase!=="hall") enterHall("A different hall. Same grain."); });
+document.getElementById("kcopy").addEventListener("click",function(){
+  var t=JSON.stringify(P,null,2); if(navigator.clipboard)navigator.clipboard.writeText(t);
+  var b=document.getElementById("kcopy"),o=b.textContent;b.textContent="copied ✓";setTimeout(function(){b.textContent=o;},1400); });
+
+/* ── loop ── */
+var lastTs=0;
+function renderOnce(dt){
+  if(anim){ /* void easing uses its own clock */ }
+  if(phase==="hall"){
+    stepMove(dt);
+    doorList.forEach(function(d){ if(d.opening&&d.open<1){ d.open=Math.min(1,d.open+dt*0.9); } });
+    aim(); renderHall();
+  }
+  else if(phase==="void"){ renderVoid(); }
+  else if(phase==="booming"){ renderHall(); }
+  else if(phase==="intro"){ renderBlack(); }
+  else { renderHall(); }
+}
 function loop(ts){ now=ts;
+  var dt=Math.min(0.05,(ts-lastTs)/1000||0.016); lastTs=ts;
   if(anim){ if(anim.t0===null)anim.t0=ts; var k=Math.min(1,(ts-anim.t0)/anim.dur), e=easeInOut(k);
     anim.set(anim.from+(anim.to-anim.from)*e); if(k>=1){ var d=anim.done; anim=null; if(d)d(); } }
-  if(phase==="void"){ renderVoid(); }
-  else if(phase==="hall"){
-    if(railT>0.6) opening=true;
-    if(capMarks) for(var i=capMarks.length-1;i>=0;i--){ if(railT>=capMarks[i][0] && !capMarks[i][2]){ capMarks[i][2]=true; showCap(capMarks[i][1]); break; } }
-    pathAt(railT);
-    if(opening&&doorOpen<1) doorOpen=Math.min(1,doorOpen+0.02);
-    renderHall();
-  } else if(phase==="booming"){ renderHall(); }
-  else if(phase==="intro"||phase==="black"){ renderBlack(); }
-  else { renderHall(); }
+  renderOnce(dt);
   requestAnimationFrame(loop);
 }
-intro(); requestAnimationFrame(loop);
+
+/* harness — step frames without a visible tab */
+window.__hall={ P:P, step:function(n,dt){for(var i=0;i<n;i++)renderOnce(dt||0.016);},
+  enter:function(){ makeCorridor(1); resetCam(); phase="hall"; help.classList.add("on"); },
+  cam:cam, doors:function(){return doorList;} };
+
+applyLook();
+/* ?walk=1 drops you straight into the hall — for testing, and for anyone who's
+   already done the breathing part once */
+if(/[?&]walk=1/.test(location.search)){ makeCorridor(1); resetCam();
+  enterHall("The hall runs ahead — <span class='said'>walk it yourself.</span> Doors on both sides. Open the one that pulls."); }
+else intro();
+requestAnimationFrame(loop);
 })();
 </script>
 <style>
