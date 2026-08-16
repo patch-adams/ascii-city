@@ -21,7 +21,8 @@
     background:repeating-linear-gradient(0deg,rgba(0,0,0,.55) 0 1px,transparent 1px 3px)}
   #cap{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 118px);z-index:6;max-width:min(30em,86vw);
     background:#efe7d2;color:#20180c;border:1.5px solid #20180c;border-radius:3px;padding:12px 18px;font-family:"Newsreader",Georgia,serif;
-    font-size:clamp(1.05rem,3.4vw,1.32rem);line-height:1.4;box-shadow:4px 4px 0 rgba(0,0,0,.5);opacity:0;transition:opacity .55s ease;text-align:center}
+    font-size:clamp(1.05rem,3.4vw,1.32rem);line-height:1.4;box-shadow:4px 4px 0 rgba(0,0,0,.5);opacity:0;transition:opacity .55s ease;text-align:center;
+    pointer-events:none}   /* read-only — it must never swallow a tap aimed at the screen */
   #cap.on{opacity:1}
   #cap .said{font-style:italic;color:#7a5a1e}
   /* the read — what the door in reach says about itself */
@@ -41,8 +42,11 @@
     display:none;align-items:center;gap:10px;opacity:.85}
   #fwd.on{display:inline-flex}
   #fwd .arw{font-size:16px}
-  #act{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 36px);z-index:7;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;opacity:0;transition:opacity .5s ease}
-  #act.on{opacity:1}
+  /* opacity:0 does NOT stop a tap. This bar sits directly on top of #fwd, so without
+     pointer-events the invisible "I have" button eats every tap meant for "move
+     forward" — and each hit resets the void to nothing. */
+  #act{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 36px);z-index:7;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;opacity:0;pointer-events:none;transition:opacity .5s ease}
+  #act.on{opacity:1;pointer-events:auto}
   button.b{font-family:"Space Mono",monospace;font-size:13px;color:#efe7d2;background:rgba(20,16,10,.6);border:1px solid var(--ink);border-radius:999px;padding:13px 22px;cursor:pointer}
   #typebox{position:fixed;inset:0;z-index:9;display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:30px;background:rgba(6,5,4,.55)}
   #typebox.on{display:flex}
@@ -495,6 +499,7 @@ addEventListener("pointermove",function(e){
   cam.pitch=Math.max(-0.5,Math.min(0.5,cam.pitch-dy*P.look*0.9));
 });
 addEventListener("pointerup",function(){ dragging=false; });
+/* one handler, not two: pointerdown plus click fired onTap twice per tap on desktop */
 fwd.addEventListener("pointerdown",function(e){e.preventDefault();audio();if(phase==="hall")touchFwd=true;else onTap();});
 addEventListener("pointerup",function(){touchFwd=false;});
 
@@ -536,7 +541,7 @@ function pushValue(get,set,delta,cap,dur,done){ if(anim)return; anim={from:get()
 function onTap(){ audio(); if(anim||phase!=="void") return;
   if(lightGrow<0.05){ lightGrow=0.06; showCap("And then — far off — <span class='said'>a single point of light.</span>"); return; }
   pushValue(function(){return lightGrow;},function(v){lightGrow=v;},0.27,1,700,function(){ if(lightGrow>=0.999) boom(); }); }
-fwd.addEventListener("click",function(e){ e.preventDefault(); if(phase==="void") onTap(); });
+/* (no click handler on #fwd — pointerdown above already covers mouse and touch) */
 
 /* ── control surface ── */
 var knobs=document.getElementById("knobs"),knoblist=document.getElementById("knoblist"),inputs={};
@@ -583,7 +588,16 @@ document.getElementById("kcopy").addEventListener("click",function(){
 
 /* ── loop ── */
 var lastTs=0, frames=0, acc=0, fpsEl=document.getElementById("fps");
+/* driven by dt, not timestamps, so the interval fallback advances it identically */
+function advanceAnim(dt){
+  if(!anim) return;
+  anim.el=(anim.el||0)+dt*1000;
+  var k=Math.min(1,anim.el/anim.dur);
+  anim.set(anim.from+(anim.to-anim.from)*easeInOut(k));
+  if(k>=1){ var d=anim.done; anim=null; if(d) d(); }
+}
 function renderOnce(dt){
+  advanceAnim(dt);
   if(phase==="hall"){
     stepMove(dt);
     for(var i=0;i<doorList.length;i++){ var d=doorList[i]; if(d.opening&&d.open<1) d.open=Math.min(1,d.open+dt*0.9); }
@@ -596,13 +610,16 @@ function renderOnce(dt){
 }
 function loop(ts){ now=ts;
   var dt=Math.min(0.05,(ts-lastTs)/1000||0.016); lastTs=ts;
-  if(anim){ if(anim.t0===null)anim.t0=ts; var k=Math.min(1,(ts-anim.t0)/anim.dur), e=easeInOut(k);
-    anim.set(anim.from+(anim.to-anim.from)*e); if(k>=1){ var d=anim.done; anim=null; if(d)d(); } }
   renderOnce(dt);
-  frames++; acc+=dt;
+  frames++; acc+=dt; beat=ts;
   if(acc>1){ fpsEl.textContent=Math.round(frames/acc)+" fps · "+W+"×"+H; frames=0; acc=0; }
   requestAnimationFrame(loop);
 }
+/* rAF is suspended in a hidden or backgrounded tab, and starved in some headless
+   browsers — without this the piece freezes mid-beat and taps pile up unanswered */
+var beat=0;
+setInterval(function(){ var t=(performance.now?performance.now():Date.now());
+  if(t-beat>250){ now=t; renderOnce(0.05); beat=t; } },100);
 
 /* harness — step frames deterministically without a visible tab */
 window.__hall={ P:P, step:function(n,dt){ for(var i=0;i<n;i++) renderOnce(dt||0.016); },
