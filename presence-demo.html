@@ -10,23 +10,31 @@
 <style>
   :root{--ink:#e7cf9a}
   html,body{margin:0;height:100%;background:#070608;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-  #screen{position:absolute;inset:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);background:#070608;line-height:0.92em;white-space:pre;display:flex;align-items:center;justify-content:center;text-shadow:0 0 6px rgba(231,207,154,.22)}
+  #screen{position:absolute;inset:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);background:#070608;line-height:0.92em;white-space:pre;display:flex;align-items:center;justify-content:center}
+  /* the grid lives in its own block element — a bare span inside a flex box
+     becomes a flex ITEM, which discards the whitespace between runs */
   #grid{display:block;white-space:pre;font-family:inherit;line-height:inherit}
+  #grid .m{color:#a6aeb6}                      /* the moth: no light of its own */
   #vig{position:fixed;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 160px 50px rgba(0,0,0,.72)}
-  #cap{position:fixed;left:50%;bottom:12%;transform:translateX(-50%);z-index:4;font-family:"Newsreader",Georgia,serif;font-style:italic;
-    font-size:clamp(1.2rem,4vw,1.9rem);color:#f2e7cb;text-align:center;max-width:22em;opacity:0;transition:opacity 1.4s ease;pointer-events:none;text-shadow:0 2px 18px rgba(0,0,0,.9);padding:0 1.2em}
+  #cap{position:fixed;left:50%;bottom:11%;transform:translateX(-50%);z-index:4;font-family:"Newsreader",Georgia,serif;font-style:italic;
+    font-size:clamp(1.15rem,3.9vw,1.9rem);color:#f2e7cb;text-align:center;max-width:22em;opacity:0;transition:opacity 1.4s ease;pointer-events:none;text-shadow:0 2px 18px rgba(0,0,0,.95);padding:0 1.2em}
   #cap.on{opacity:1}
   #start{position:fixed;inset:0;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;background:#070608;cursor:pointer}
   #start .t{font-family:"Newsreader",serif;font-style:italic;font-size:clamp(1.6rem,6vw,2.6rem);color:var(--ink);letter-spacing:.02em}
   #start .s{font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:#7a6a44}
-  #end{position:fixed;inset:0;z-index:8;display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:#070608;opacity:0;transition:opacity 2.2s ease;padding:0 8vw;text-align:center}
+  #end{position:fixed;inset:0;z-index:8;display:none;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:#070608;opacity:0;transition:opacity 2.4s ease;padding:0 9vw;text-align:center}
   #end.on{display:flex;opacity:1}
-  #end .l{font-family:"Newsreader",serif;font-style:italic;font-size:clamp(1rem,3.2vw,1.35rem);color:#cbbb93;max-width:26em;line-height:1.6}
+  #end .l{font-family:"Newsreader",serif;font-style:italic;font-size:clamp(1.05rem,3.4vw,1.45rem);color:#cbbb93;max-width:24em;line-height:1.65}
   #end .s{font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:#7a6a44}
   #bar{position:fixed;left:0;bottom:0;height:3px;background:rgba(231,207,154,.55);width:0;z-index:5;transition:width .1s linear}
   #ctl{position:fixed;bottom:14px;right:16px;z-index:10;font-family:"Space Mono",monospace;font-size:12px;color:#7a6a44;cursor:pointer;opacity:.6}
-  #backdoor{position:fixed;bottom:14px;left:16px;z-index:10;font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.14em;color:#6b5c3a;text-decoration:none;opacity:.55}
-  #backdoor:hover{opacity:1}
+  /* the way back to the corridor — the same pill film.html wears */
+  #backdoor{position:fixed;left:calc(env(safe-area-inset-left) + 14px);top:calc(env(safe-area-inset-top) + 12px);
+    z-index:10;display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;
+    border:1px solid rgba(233,226,212,.26);background:rgba(10,9,8,.55);color:rgba(233,226,212,.5);
+    font-family:"Space Mono",ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.16em;
+    text-transform:lowercase;text-decoration:none;line-height:1;transition:color .3s ease,border-color .3s ease}
+  #backdoor:hover,#backdoor:focus{color:#e9e2d4;border-color:rgba(233,226,212,.5)}
 </style>
 </head>
 <body>
@@ -38,7 +46,7 @@
 <a id="backdoor" href="./" title="back to the corridor">↩ corridor</a>
 <div id="start"><div class="t">presence</div><div class="s">tap to begin · 1 min</div></div>
 <div id="end">
-  <div class="l">This runs live on a machine in a house in Salt Lake City. It listens, it answers out loud, and it wears whatever body it's asked for. What you just watched is the same creature, playing alone.</div>
+  <div class="l">This one runs live on a machine in Mike's house, and answers out loud when he talks to it.</div>
   <div class="s">patch · signalform</div>
 </div>
 
@@ -46,42 +54,67 @@
 /* ============================================================================
    presence-demo — the moth and the lantern
 
-   A standalone cut of Patch Presence. The renderer, the body specs and the
-   score are lifted from the live instrument (mini-builds/patch-console) and
-   run here with no hub, no microphone and no session behind them — so it can
-   be sent to somebody who isn't in the room.
+   A standalone cut of Patch Presence. The rasterizer and the body specs are
+   lifted from the live instrument (mini-builds/patch-console/presence.html and
+   forms.json); the score is scripts/patch_scene.py's `lantern` scene, beat for
+   beat, translated rather than rewritten. No hub, no socket, no microphone —
+   so it can be sent to somebody who isn't in the room.
 
-   Bookended with the closing iris from `na koja abad` (film.html), run
-   backwards to open and forwards to close.
+   Bookended with na koja abad's closing iris (film.html scEnd), run backwards
+   to open and forwards to close.
    ========================================================================= */
+(function(){
+"use strict";
 
 var screenEl=document.getElementById("screen"), grid=document.getElementById("grid"),
     capEl=document.getElementById("cap"), barEl=document.getElementById("bar"),
     ctl=document.getElementById("ctl"), startEl=document.getElementById("start"),
     endEl=document.getElementById("end");
 
-/* ---- the grid ---------------------------------------------------------- */
-var W,H,FS,B;
+/* ---- the grid ----------------------------------------------------------
+   Reflows to whatever viewport it lands in: cell size from the smaller
+   dimension, then as many columns and rows as actually fit. BU is the body
+   unit — one creature-height in cells — derived so that the pair reads on a
+   1280-wide desktop AND on a phone held in portrait. */
+var W,H,FS,B,B0,TINT,BU;
+/* The advance of a monospace cell is NOT reliably 0.6em — it depends on which
+   font in the stack actually resolved. Assuming it puts the grid at the wrong
+   width, which overflows the viewport, pushes the centre off centre, and
+   throws the moth off the edge of a phone. So measure it. */
+var probe=document.createElement("span");
+probe.style.cssText="position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre";
+screenEl.appendChild(probe);
+function advance(fs){
+  probe.style.font=fs+"px "+getComputedStyle(screenEl).fontFamily;
+  probe.textContent="MMMMMMMMMMMMMMMMMMMM";
+  var w=probe.getBoundingClientRect().width/20;
+  return (w>0.2*fs&&w<1.2*fs)?w:fs*0.6;         /* if the probe lies, fall back */
+}
 function sizeGrid(){
   var vw=innerWidth, vh=innerHeight;
-  FS=Math.max(5,Math.min(30,Math.round(Math.min(vw,vh)/46)));
+  FS=Math.max(5,Math.min(24,Math.round(Math.min(vw,vh)/48)));
   screenEl.style.fontSize=FS+"px";
-  W=Math.max(20,Math.min(400,Math.floor(vw/(FS*0.60))));
-  H=Math.max(12,Math.min(260,Math.floor(vh/(FS*0.92))));
-  B=new Float32Array(W*H);
+  W=Math.max(28,Math.min(400,Math.floor(vw/advance(FS))));
+  H=Math.max(18,Math.min(260,Math.floor(vh/(FS*0.92))));
+  B=new Float32Array(W*H); B0=new Float32Array(W*H); TINT=new Uint8Array(W*H);
+  /* tall-and-narrow can't be allowed to shrink the body to a speck, and
+     short-and-wide can't be allowed to let it fill the whole width */
+  BU=Math.min(H*0.80, W*0.50);
 }
 sizeGrid();
 addEventListener("resize",sizeGrid);
 addEventListener("orientationchange",function(){setTimeout(sizeGrid,200);});
 
 function Ad(x,y,b){ x|=0;y|=0; if(x<0||y<0||x>=W||y>=H)return; B[y*W+x]+=b; }
-function splat(x,y,b,r){ x|=0;y|=0;r=r|0;
+function splat(x,y,b,r){ x|=0;y|=0;r=r|0; if(r<1)r=1;
   for(var dy=-r;dy<=r;dy++){ var yy=y+dy; if(yy<0||yy>=H)continue;
     for(var dx=-r;dx<=r;dx++){ var xx=x+dx; if(xx<0||xx>=W)continue;
       var d=Math.sqrt(dx*dx+dy*dy*3.0)/r; if(d>1)continue;
       var f=1-d; B[yy*W+xx]+=b*f*f; } } }
-/* dense core, soft rim, aspect-corrected so a circle looks round, dithered so
-   the interior doesn't band into a halftone rectangle */
+/* Volume. A plain splat flattens into a plateau at large radii and every
+   interior cell lands on the same ramp character — a halftone rectangle.
+   This falls off from a dense core, corrects for the cell's aspect so a circle
+   looks round, and dithers a touch so the interior never bands. */
 function blobStamp(x,y,b,r,ay){
   x|=0; y|=0; r=Math.max(1,r);
   var ry=Math.max(1,r*ay), R=Math.ceil(r), RY=Math.ceil(ry);
@@ -93,34 +126,49 @@ function blobStamp(x,y,b,r,ay){
       B[yy*W+xx]+=b*f*n; } } }
 function ss(a,b,x){ x=(x-a)/(b-a); if(x<0)x=0; if(x>1)x=1; return x*x*(3-2*x); }
 function lerp(a,b,k){ return a+(b-a)*k; }
+function hash01(n){ n=Math.sin(n)*43758.5453; return n-Math.floor(n); }
 
-/* ---- the bodies -------------------------------------------------------- */
+/* ---- the bodies --------------------------------------------------------
+   Verbatim from forms.json: blob / line / curve / eye primitives in a
+   -0.6..0.6 box, y positive downward, with optional anim hooks. */
 var FORMS={
 "lantern":{"name":"paper lantern","unit":1.05,"parts":[{"k":"blob","x":0,"y":0,"b":0.3,"r":0.3,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":0,"y":-0.22,"b":0.26,"r":0.22},{"k":"blob","x":0,"y":0.22,"b":0.26,"r":0.22},{"k":"blob","x":0,"y":0.02,"b":0.5,"r":0.14,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"curve","p":[[0,-0.44],[0.26,-0.3],[0.34,0],[0.26,0.3],[0,0.44]],"b":0.55},{"k":"curve","p":[[0,-0.44],[-0.26,-0.3],[-0.34,0],[-0.26,0.3],[0,0.44]],"b":0.55},{"k":"line","p":[[-0.14,-0.44],[0.14,-0.44]],"b":0.6},{"k":"line","p":[[-0.14,0.44],[0.14,0.44]],"b":0.6},{"k":"line","p":[[-0.32,-0.15],[0.32,-0.15]],"b":0.32},{"k":"line","p":[[-0.34,0.02],[0.34,0.02]],"b":0.32},{"k":"line","p":[[-0.32,0.19],[0.32,0.19]],"b":0.32},{"k":"line","p":[[0,-0.44],[0,-0.6]],"b":0.4},{"k":"curve","p":[[-0.05,0.44],[0,0.56],[0.05,0.44]],"b":0.35},{"k":"curve","p":[[0,0.5],[0.03,0.6],[-0.02,0.68]],"b":0.4,"anim":"sway","amp":0.09,"rate":1.1},{"k":"eye","x":-0.05,"y":0,"b":0.95},{"k":"eye","x":0.06,"y":0.06,"b":0.8}]},
-"moth":{"name":"moth","unit":1.05,"parts":[{"k":"blob","x":0,"y":0.02,"b":0.42,"r":0.13,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":0.13,"y":-0.09,"b":0.4,"r":0.075},{"k":"blob","x":-0.16,"y":0.16,"b":0.3,"r":0.09},{"k":"blob","x":-0.06,"y":-0.28,"b":0.24,"r":0.2,"anim":"bob","amp":0.07,"rate":1.4},{"k":"blob","x":0.02,"y":-0.42,"b":0.17,"r":0.13,"anim":"bob","amp":0.09,"rate":1.4},{"k":"blob","x":-0.14,"y":0.3,"b":0.2,"r":0.12,"anim":"bob","amp":0.05,"rate":1.4},{"k":"curve","p":[[0.08,-0.11],[-0.05,-0.32],[-0.26,-0.5],[-0.42,-0.36],[-0.3,-0.1],[-0.06,0]],"b":0.55,"anim":"bob","amp":0.08,"rate":1.4},{"k":"curve","p":[[0.04,0.04],[-0.14,0.16],[-0.34,0.34],[-0.4,0.14],[-0.22,0.02]],"b":0.44,"anim":"bob","amp":0.05,"rate":1.4},{"k":"curve","p":[[0.19,-0.13],[0.1,0.02],[0.02,0.14],[-0.12,0.2],[-0.22,0.14]],"b":0.5},{"k":"curve","p":[[0.19,-0.13],[0.08,-0.16],[-0.04,-0.13],[-0.16,-0.05]],"b":0.45},{"k":"curve","p":[[-0.2,0.16],[-0.3,0.26],[-0.34,0.4]],"b":0.34,"anim":"sway","amp":0.05,"rate":1.1},{"k":"curve","p":[[0.16,-0.18],[0.26,-0.32],[0.42,-0.4]],"b":0.42,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[0.2,-0.16],[0.32,-0.26],[0.46,-0.28]],"b":0.42,"anim":"perk","amp":0.12,"rate":1.5},{"k":"line","p":[[0.16,-0.05],[0.3,0.06]],"b":0.36},{"k":"line","p":[[0.06,0.12],[0.14,0.3]],"b":0.34},{"k":"line","p":[[-0.04,0.13],[-0.02,0.32]],"b":0.32},{"k":"eye","x":0.17,"y":-0.1,"b":0.95}]}
+"moth":{"name":"moth","unit":1.05,"parts":[{"k":"blob","x":0,"y":0.02,"b":0.42,"r":0.13,"anim":"breathe","amp":0.08,"rate":1.5},{"k":"blob","x":0.13,"y":-0.09,"b":0.4,"r":0.075},{"k":"blob","x":-0.16,"y":0.16,"b":0.3,"r":0.09},{"k":"blob","x":-0.06,"y":-0.28,"b":0.24,"r":0.2,"anim":"bob","amp":0.07,"rate":1.4},{"k":"blob","x":0.02,"y":-0.42,"b":0.17,"r":0.13,"anim":"bob","amp":0.09,"rate":1.4},{"k":"blob","x":-0.14,"y":0.3,"b":0.2,"r":0.12,"anim":"bob","amp":0.05,"rate":1.4},{"k":"curve","p":[[0.08,-0.11],[-0.05,-0.32],[-0.26,-0.5],[-0.42,-0.36],[-0.3,-0.1],[-0.06,0]],"b":0.55,"anim":"bob","amp":0.08,"rate":1.4},{"k":"curve","p":[[0.04,0.04],[-0.14,0.16],[-0.34,0.34],[-0.4,0.14],[-0.22,0.02]],"b":0.44,"anim":"bob","amp":0.05,"rate":1.4},{"k":"curve","p":[[0.19,-0.13],[0.1,0.02],[0.02,0.14],[-0.12,0.2],[-0.22,0.14]],"b":0.5},{"k":"curve","p":[[0.19,-0.13],[0.08,-0.16],[-0.04,-0.13],[-0.16,-0.05]],"b":0.45},{"k":"curve","p":[[-0.2,0.16],[-0.3,0.26],[-0.34,0.4]],"b":0.34,"anim":"sway","amp":0.05,"rate":1.1},{"k":"curve","p":[[0.16,-0.18],[0.26,-0.32],[0.42,-0.4]],"b":0.42,"anim":"perk","amp":0.14,"rate":1.5},{"k":"curve","p":[[0.2,-0.16],[0.32,-0.26],[0.46,-0.28]],"b":0.42,"anim":"perk","amp":0.12,"rate":1.5},{"k":"line","p":[[0.16,-0.05],[0.3,0.06]],"b":0.36},{"k":"line","p":[[0.06,0.12],[0.14,0.3]],"b":0.34},{"k":"line","p":[[-0.04,0.13],[-0.02,0.32]],"b":0.32},{"k":"eye","x":0.17,"y":-0.1,"b":0.95}]},
+/* the seed the lantern is struck from: one point of light with two invisible
+   corners to hold the bounding box, so the cloud has somewhere to come from */
+"spark":{"name":"spark","unit":1.05,"parts":[{"k":"blob","x":0,"y":0,"b":0.9,"r":0.055},{"k":"blob","x":-0.4,"y":-0.4,"b":0,"r":0.002},{"k":"blob","x":0.4,"y":0.4,"b":0,"r":0.002}]}
 };
 
-/* ---- drawing one body --------------------------------------------------
-   `tr` is the body's transform: centre in grid cells, scale, facing, opacity,
-   plus a per-body blink and antenna perk. Everything else (breathe, bob, sway,
-   perk) is the involuntary layer, running underneath whatever the score does. */
-function drawSpec(spec,tr,t){
-  if(tr.op<=0.001) return;
-  var s=Math.min(W,H)*0.42*spec.unit*tr.scale;
-  var ay=0.55;                               /* character cells are tall */
-  var cxp=tr.cx, cyp=tr.cy, fac=tr.facing, dim=tr.op;
-  var breathe=1+Math.sin(t*1.35)*0.055;
-  var blink=tr.blink||0, perk=tr.perk||0;
+var AY=0.55;                                  /* character cells are tall */
 
-  function PT(x,y,b,r){ if(r<=1) Ad(cxp+x,cyp+y*ay,b); else splat(cxp+x,cyp+y*ay,b,r); }
+/* ---- drawing one body --------------------------------------------------
+   `tr` is the transform: centre in cells, scale, facing, opacity, and the
+   involuntary layer's current values (blink, antenna perk, wingbeat gain).
+   Facing drives a horizontal squash rather than a mirror — taken raw the body
+   spends far too long as a thin vertical smear, so the curve snaps the width
+   back fast and floors it at a quarter. That squash IS the turn, drawn. */
+function drawSpec(spec,tr,t){
+  if(tr.op<=0.002) return;
+  var s=BU*spec.unit*tr.scale, dim=tr.op;
+  var cxp=tr.cx, cyp=tr.cy;
+  var f=(tr.facing===undefined)?1:tr.facing;
+  var fac=(f<0?-1:1)*(0.25+0.75*Math.pow(Math.abs(f),0.45));
+  var breathe=1+Math.sin(t*1.35)*0.055;
+  var blink=tr.blink||0, perk=tr.perk||0, beat=(tr.beat===undefined)?1:tr.beat;
+
+  function PT(x,y,b,r){ if(r<=1) Ad(cxp+x,cyp+y*AY,b); else splat(cxp+x,cyp+y*AY,b,r); }
+  /* Strokes are a chain of soft stamps, not a Bresenham line: a one-cell line
+     reads as a dotted wireframe at this glyph density. Step spacing is a shade
+     over one cell — closer than that and the overlap clips every stroke to the
+     top of the ramp, which is what turns a silhouette into a solid worm. */
   function LN(x0,y0,x1,y1,w){
-    var X0=cxp+x0, Y0=cyp+y0*ay, X1=cxp+x1, Y1=cyp+y1*ay;
-    var dx=X1-X0, dy=Y1-Y0, steps=Math.max(2,Math.ceil(Math.hypot(dx,dy)*1.7));
+    var X0=cxp+x0, Y0=cyp+y0*AY, X1=cxp+x1, Y1=cyp+y1*AY;
+    var dx=X1-X0, dy=Y1-Y0, steps=Math.max(2,Math.ceil(Math.hypot(dx,dy)*1.05));
     var wgt=w*dim;
     for(var i=0;i<=steps;i++){
       var u=i/steps, px=X0+dx*u, py=Y0+dy*u;
-      splat(px|0,py|0,wgt*0.55,1);
-      Ad(px|0,py|0,wgt*0.85);
+      splat(px|0,py|0,wgt*0.40,1);            /* soft body of the stroke */
+      Ad(px|0,py|0,wgt*0.62);                 /* bright core, keeps it crisp */
     }
   }
 
@@ -128,17 +176,18 @@ function drawSpec(spec,tr,t){
     var q=spec.parts[i], ox=0, oy=0, gain=1, rmul=1;
     if(q.anim==="breathe"){ rmul=breathe; gain=breathe; }
     else if(q.anim==="sway"){ ox+=Math.sin(t*(q.rate||1.5)+i)*(q.amp||0.08)*s; }
-    else if(q.anim==="bob"){ oy+=Math.sin(t*(q.rate||1.2)+i*0.7)*(q.amp||0.06)*s; }
+    else if(q.anim==="bob"){ oy+=Math.sin(t*(q.rate||1.2)*beat+i*0.7)*(q.amp||0.06)*s*beat; }
     else if(q.anim==="perk"){ oy-=(q.amp||0.12)*s*perk; }
 
     if(q.k==="blob"){
-      blobStamp(cxp+(q.x*fac*s+ox), cyp+(q.y*s+oy)*ay, q.b*gain*dim*1.35, s*q.r*rmul, ay);
+      blobStamp(cxp+(q.x*fac*s+ox), cyp+(q.y*s+oy)*AY, q.b*gain*dim*1.15, s*q.r*rmul, AY);
     } else if(q.k==="eye"){
       var eyeB=q.b*(0.8+0.3*Math.sin(t*2))*(1-blink*0.92)*dim;
       PT(q.x*fac*s+ox, q.y*s+oy, eyeB, 1);
-      PT(q.x*fac*s+ox, q.y*s+oy, q.b*0.25*dim, Math.max(1,s*0.03));
+      PT(q.x*fac*s+ox, q.y*s+oy, q.b*0.22*dim, Math.max(1,s*0.03));   /* halo */
     } else if(q.k==="line"||q.k==="curve"){
       for(var j=0;j<q.p.length-1;j++){
+        /* trailing points move more — a tail whips, its root doesn't */
         var w0=q.p.length>2?(j/(q.p.length-1)):1, w1=q.p.length>2?((j+1)/(q.p.length-1)):1;
         LN(q.p[j][0]*fac*s+ox*w0,   q.p[j][1]*s+oy*w0,
            q.p[j+1][0]*fac*s+ox*w1, q.p[j+1][1]*s+oy*w1, q.b);
@@ -147,20 +196,100 @@ function drawSpec(spec,tr,t){
   }
 }
 
-/* ---- atmosphere -------------------------------------------------------- */
-var dustMotes=[];
-(function(){ for(var i=0;i<110;i++) dustMotes.push({x:Math.random(),y:Math.random(),
+/* ---- the morph ---------------------------------------------------------
+   Crossfading one body out while another fades in is a dissolve, not a change.
+   Each spec is sampled once into a cloud of points — scattered through the
+   blobs, walked along the silhouettes — and the SAME cloud is flown from one
+   body's positions to the other's, so the creature visibly comes apart and
+   reassembles as the new thing. Lifted from presence.html. */
+var CLOUD_N=520;
+function cloudOf(spec){
+  if(spec._cloud) return spec._cloud;
+  var pts=[], parts=spec.parts, total=0, i;
+  for(i=0;i<parts.length;i++){ var q=parts[i];
+    total+=(q.k==="blob")?Math.max(2,q.r*160):(q.k==="eye")?3:((q.p.length-1)*22); }
+  for(i=0;i<parts.length;i++){ var q2=parts[i];
+    var share=((q2.k==="blob")?Math.max(2,q2.r*160):(q2.k==="eye")?3:((q2.p.length-1)*22));
+    var n=Math.max(1,Math.round(CLOUD_N*share/Math.max(1,total)));
+    for(var j=0;j<n;j++){
+      var u=(j+0.5)/n, h=hash01(i*97.13+j*3.71);
+      if(q2.k==="blob"){
+        var ang=h*6.2831853, rad=Math.sqrt(hash01(i*13.7+j*7.3))*q2.r;
+        pts.push([q2.x+Math.cos(ang)*rad, q2.y+Math.sin(ang)*rad, q2.b]);
+      } else if(q2.k==="eye"){ pts.push([q2.x,q2.y,q2.b]); }
+      else {
+        var segs=q2.p.length-1, ff=u*segs, k=Math.min(segs-1,ff|0), lf=ff-k;
+        pts.push([q2.p[k][0]+(q2.p[k+1][0]-q2.p[k][0])*lf,
+                  q2.p[k][1]+(q2.p[k+1][1]-q2.p[k][1])*lf, q2.b]);
+      }
+    } }
+  if(!pts.length) pts.push([0,0,0.3]);
+  /* resample to exactly CLOUD_N by walking the source evenly — padding with
+     pts[len % len] maps every extra point onto pts[0] and piles the whole
+     cloud into one dot */
+  var cloud=new Array(CLOUD_N);
+  for(var c=0;c<CLOUD_N;c++) cloud[c]=pts[Math.floor(c*pts.length/CLOUD_N)];
+  spec._cloud=cloud; return cloud;
+}
+/* A and B each get their own transform, so the cloud can change shape and
+   travel at the same time — which is how the moth leaves the lantern. */
+function drawMorph(a,b,k,trA,trB,t){
+  var ca=cloudOf(a), cb=cloudOf(b);
+  var sA=BU*a.unit*trA.scale, sB=BU*b.unit*trB.scale;
+  var e=k*k*(3-2*k);
+  for(var i=0;i<CLOUD_N;i++){
+    var pa=ca[i], pb=cb[i];
+    var ax=trA.cx+pa[0]*sA,      ay1=trA.cy+pa[1]*sA*AY;
+    var bx=trB.cx+pb[0]*sB,      by =trB.cy+pb[1]*sB*AY;
+    /* each point takes its own slightly different path and bows outward on the
+       way — a straight lerp of everything at once looks mechanical */
+    var lag=hash01(i*1.7)*0.35, kk=Math.min(1,Math.max(0,(e-lag)/(1-lag)));
+    var bow=Math.sin(kk*Math.PI)*(0.10+hash01(i*5.1)*0.22);
+    var px=lerp(ax,bx,kk), py=lerp(ay1,by,kk);
+    var nx=-(by-ay1), ny=(bx-ax), nl=Math.sqrt(nx*nx+ny*ny)||1;
+    px+=nx/nl*bow*0.35; py+=ny/nl*bow*0.35;
+    var br=lerp(pa[2],pb[2],kk)*(0.85+0.5*Math.sin(kk*Math.PI))
+           *lerp(trA.op,trB.op,kk);
+    splat(px,py,br*0.62,1);
+  }
+}
+/* the same cloud, thrown: a body coming apart into the dark */
+function drawScatter(spec,tr,k,t){
+  var c=cloudOf(spec), s=BU*spec.unit*tr.scale, e=k*k*(3-2*k);
+  for(var i=0;i<CLOUD_N;i++){
+    var p=c[i], h=hash01(i*3.1), h2=hash01(i*11.7);
+    var lag=h*0.30, kk=Math.min(1,Math.max(0,(e-lag)/(1-lag)));
+    var px=tr.cx+p[0]*s + (h2-0.5)*BU*1.4*kk;
+    var py=tr.cy+p[1]*s*AY - kk*BU*0.55*AY*(0.4+h);
+    splat(px,py,p[2]*tr.op*(1-kk)*0.7,1);
+  }
+}
+
+/* ---- atmosphere: the room the bodies are standing in -------------------- */
+var dust=[];
+(function(){ for(var i=0;i<150;i++) dust.push({x:Math.random(),y:Math.random(),
   z:0.25+Math.random()*0.75, ph:Math.random()*6.28, sp:0.4+Math.random()*0.9}); })();
-function drawAtmosphere(t,amt,hazeAmt){
+function drawAtmosphere(t,amt,hazeAmt,horiz,hx,hy){
   if(hazeAmt>0){
-    var cx=W/2, cy=H/2;
     for(var yy=0;yy<H;yy++) for(var xx=0;xx<W;xx++){
-      var d=Math.sqrt((xx-cx)*(xx-cx)*0.36+(yy-cy)*(yy-cy))/(H*0.6);
+      var d=Math.sqrt((xx-hx)*(xx-hx)*0.36+(yy-hy)*(yy-hy))/(H*0.62);
       if(d<1) B[yy*W+xx]+=hazeAmt*0.10*(1-d)*(1-d);
     }
   }
+  if(horiz>0){
+    /* ground fog, not a drawn line: a flat value per row lights every cell in
+       that row to the same ramp character and reads as a hard stripe */
+    var hyr=Math.round(H*0.86), band=Math.max(3,Math.round(H*0.18));
+    for(var y=hyr-band;y<H;y++){ if(y<0)continue;
+      var fy=1-Math.abs(y-hyr)/band; if(fy<0)fy=0; fy*=fy;
+      for(var x=0;x<W;x++){
+        var fo=1-Math.abs(x-hx)/(W*0.58); if(fo<0)fo=0;
+        var grain=0.55+0.45*Math.sin(x*0.9+y*2.3)*Math.sin(x*0.31-t*0.25+y);
+        B[y*W+x]+=horiz*0.15*fy*fo*fo*grain;
+      } }
+  }
   if(amt<=0) return;
-  for(var i=0;i<dustMotes.length;i++){ var m=dustMotes[i];
+  for(var i=0;i<dust.length;i++){ var m=dust[i];
     var dx=(m.x+t*0.012*m.sp*m.z)%1, dy=(m.y+Math.sin(t*0.18*m.sp+m.ph)*0.03+t*0.004*m.sp)%1;
     if(dx<0)dx+=1; if(dy<0)dy+=1;
     var tw=0.45+0.55*Math.abs(Math.sin(t*1.1+m.ph));
@@ -168,128 +297,292 @@ function drawAtmosphere(t,amt,hazeAmt){
   }
 }
 
-/* ---- the iris, from na koja abad --------------------------------------
-   scEnd in film.html: a disc of light contracting to nothing. p=0 is wide
-   open, p=1 is shut. Run it backwards and it's an opening. */
-function iris(p){
-  var cx=W/2, cy=H/2, rad=Math.max(0.6,(1-p)*Math.max(W,H)*0.55);
-  for(var y=0;y<H;y++) for(var x=0;x<W;x++){
-    var d=Math.hypot((x-cx)*0.55,y-cy);
-    if(d<rad) B[y*W+x]+=(1-d/rad)*(1-p*0.7);
-  }
+/* ---- the iris, from na koja abad ---------------------------------------
+   film.html's scEnd: a disc of light contracting to nothing.
+
+   The radius matters more than it looks. Scaled to the frame it stops being an
+   iris and becomes a floodlight — a linear falloff over sixty cells quantises
+   into wide concentric bands of one ramp character and reads as woven matting.
+   The film used seven cells against a dark screen. This keeps that scale, with
+   the falloff raised to a power so the centre stays hot and the rim stays soft
+   instead of plateauing. */
+function iris(rad,gain,cx,cy){
+  if(gain<=0||rad<=0) return;
+  var R=Math.ceil(rad/0.55)+1, RY=Math.ceil(rad)+1;
+  for(var y=Math.max(0,(cy-RY)|0); y<Math.min(H,cy+RY+1); y++)
+    for(var x=Math.max(0,(cx-R)|0); x<Math.min(W,cx+R+1); x++){
+      var d=Math.hypot((x-cx)*0.55,y-cy);
+      if(d<rad) B[y*W+x]+=Math.pow(1-d/rad,1.7)*gain;
+    }
+}
+/* a body standing in front of a light takes the light away. Without this the
+   moth and the lantern add together into one unreadable mass every time the
+   orbit crosses the paper — which is most of it. */
+function shadow(cx,cy,rx,ry,amt){
+  if(amt<=0) return;
+  for(var y=Math.max(0,(cy-ry)|0); y<Math.min(H,cy+ry+1); y++)
+    for(var x=Math.max(0,(cx-rx)|0); x<Math.min(W,cx+rx+1); x++){
+      var u=(x-cx)/rx, v=(y-cy)/ry, d=u*u+v*v;
+      if(d<1) B[y*W+x]*=1-amt*(1-d);
+    }
 }
 
-/* ---- the score ---------------------------------------------------------
-   Translated beat for beat from scripts/patch_scene.py — the `lantern` scene.
-   Times are absolute seconds. Two bodies on screen at once, which the live
-   instrument can't do: the lantern holds still and the moth does everything. */
-var CAPS=[
-  [ 6.0, 12.5, "Two bodies. Watch which one moves."],
-  [16.0, 23.0, "This one is made of paper and burns anyway."],
-  [27.5, 33.5, "This one makes no light at all."],
-  [38.0, 45.0, "It goes wherever the light is. It can't help that."],
-  [52.0, 58.0, "And then back. It was always going to come back."],
-  [64.0, 69.0, "Same pair. Opposite ends."],
-  [74.5, 80.0, "and you were the one dreaming it."]
-];
-var TOTAL=82;
+/* ============================================================================
+   THE SCORE
 
-/* the moth's path: absolute keyframes of (t, x, y, scale, facing) in body
-   units relative to the lantern, so the whole flight reads as one gesture */
-function K(t,x,y,sc,f){ return {t:t,x:x,y:y,s:sc,f:f}; }
-var MOTH_PATH=[
-  K(0.00,-2.52,-1.22,0.40,1),   /* out in the dark */
-  K(24.00,-2.52,-1.22,0.40,1),
-  K(31.00,-1.38,-0.96,0.58,1),   /* approach */
-  K(36.00,-0.94,-0.60,0.66,1),
-  K(41.00,-0.06,-1.55,0.70,1),   /* circling: over the top */
-  K(45.50,1.10,-0.53,0.66,-1),
-  K(49.00,0.26,1.30,0.64,-1),  /* under */
-  K(51.20,-0.19,0.25,0.72,1),   /* too close */
-  K(51.70,-1.14,-0.77,0.50,1),   /* recoil */
-  K(54.00,-2.04,-1.16,0.42,1),
-  K(62.00,-1.55,-0.42,0.60,1),   /* and back, slower */
-  K(68.00,-1.40,0.10,0.62,1),
-  K(82.00,-1.40,0.10,0.62,1)
+   scripts/patch_scene.py, the `lantern` scene, beat for beat. Score times are
+   the cumulative delays in that file; S() shifts them past the opening iris.
+   The one liberty taken: the live instrument wears one body at a time, so its
+   FORM beats are a morph from lantern to moth. Here both are on screen — the
+   moth is morphed OUT of the lantern and stays a second body, which is what
+   "two bodies, watch which one moves" wants to be able to show.
+   ========================================================================= */
+var OPEN=5.0, TOTAL=72;
+function S(x){ return x+OPEN; }
+
+var LANTERN_IN=S(6.5), LANTERN_MORPH=2.8;      /* FORM "a paper lantern" */
+var MOTH_IN=S(16.2),  MOTH_MORPH=3.4;          /* FORM "a moth"           */
+var ORBIT_A=S(24.0), ORBIT_B=S(33.7);          /* EMOTE circle → startle  */
+var FLARE_AT=S(33.8);                          /* the params beat at "too close" */
+var DISSOLVE=60.5, IRIS_A=62.0, IRIS_B=70.5;
+
+var CAPS=[
+  [S( 4.5), S(10.0), "Two bodies. Watch which one moves."],
+  [S(11.2), S(16.6), "This one is made of paper and burns anyway."],
+  [S(20.0), S(25.0), "This one makes no light at all."],
+  [S(29.2), S(34.4), "It goes wherever the light is. It can't help that."],
+  [S(38.8), S(44.2), "And then back. It was always going to come back."],
+  [S(49.3), S(55.0), "Same pair. Opposite ends."],
+  [ 63.8,    69.6,   "and you were the one dreaming it."]
 ];
-function samplePath(keys,t){
+
+/* the P() beats: master, glow, dust, haze, horizon and the colour of the room.
+   Read at time t rather than accumulated frame to frame, so seeking is exact. */
+var PBEATS=[
+  [S( 0.0), {master:0.55, dust:0.30, haze:0.05, horiz:0.00, ink:[120,112,104]}],
+  [S( 7.7), {master:0.90, dust:0.85, haze:0.26, horiz:0.45, ink:[214,164,92]}],
+  [S(17.0), {master:0.90, dust:0.95, haze:0.26, horiz:0.45, ink:[206,170,110]}],
+  [S(24.2), {master:0.92, dust:1.00, haze:0.28, horiz:0.45, ink:[210,172,112]}],
+  [S(33.8), {master:1.00, dust:1.00, haze:0.38, horiz:0.45, ink:[248,226,180]}],
+  [S(35.8), {master:0.86, dust:0.95, haze:0.22, horiz:0.40, ink:[196,166,114]}],
+  [S(44.8), {master:0.90, dust:1.05, haze:0.30, horiz:0.45, ink:[198,176,146]}],
+  [S(52.3), {master:0.90, dust:0.95, haze:0.26, horiz:0.42, ink:[206,180,148]}]
+];
+var PCUR={};
+function paramsAt(t){
+  var i=0; for(var j=0;j<PBEATS.length;j++) if(t>=PBEATS[j][0]) i=j;
+  var cur=PBEATS[i][1];
+  if(i===0){ for(var k in cur) PCUR[k]=cur[k]; return PCUR; }
+  var prev=PBEATS[i-1][1], u=ss(PBEATS[i][0],PBEATS[i][0]+1.4,t);
+  for(var k2 in cur){
+    if(k2==="ink") PCUR.ink=[lerp(prev.ink[0],cur.ink[0],u),lerp(prev.ink[1],cur.ink[1],u),lerp(prev.ink[2],cur.ink[2],u)];
+    else PCUR[k2]=lerp(prev[k2],cur[k2],u);
+  }
+  return PCUR;
+}
+
+/* ---- where the moth is ------------------------------------------------
+   The EMOTE beats, translated. The instrument's emotes move one body around
+   the field; here they move the moth around the lantern, so `circle` is a real
+   orbit and `approach` closes real distance. Positions are in orbit units
+   (x: ±1 is one orbit radius, y likewise), facing is continuous — at the front
+   it faces right, at the back it faces left, and at each turn it passes
+   edge-on through zero, which is the turn drawn for free. */
+function K(t,x,y,s,f){ return {t:t,x:x,y:y,s:s,f:f}; }
+var PRE=[                                            /* EMOTE approach, S(18) */
+  K(MOTH_IN+MOTH_MORPH, -0.98,-0.58,0.46, 1),
+  K(S(20.5),            -0.92,-0.46,0.58, 1),
+  K(ORBIT_A,            -0.96,-0.22,0.68, 1)
+];
+var POST=[                                           /* startle → retreat → back */
+  K(ORBIT_B,        0.00,-0.34,0.80, 1),             /* right against the paper */
+  K(ORBIT_B+0.22,  -0.52,-0.68,0.62,-1),             /* the recoil: fast, and away */
+  K(ORBIT_B+0.60,  -0.46,-0.60,0.64,-1),
+  K(S(35.4),       -0.62,-0.62,0.58, 1),             /* EMOTE retreat */
+  K(S(39.0),       -1.00,-0.64,0.42, 1),
+  K(S(42.3),       -0.98,-0.60,0.44, 1),             /* EMOTE approach, slower */
+  K(S(47.8),       -0.88,-0.34,0.64, 1),             /* EMOTE settle */
+  K(S(52.3),       -0.84,-0.22,0.74, 1),
+  K(TOTAL,         -0.82,-0.20,0.74, 1)
+];
+function track(keys,t){
   if(t<=keys[0].t) return keys[0];
   for(var i=0;i<keys.length-1;i++){
     var a=keys[i], b=keys[i+1];
     if(t<=b.t){
-      var u=(b.t-a.t)>0?((t-a.t)/(b.t-a.t)):1;
-      u=u*u*(3-2*u);                                   /* ease in-out */
-      return {x:lerp(a.x,b.x,u), y:lerp(a.y,b.y,u), s:lerp(a.s,b.s,u),
-              f:(u<0.5?a.f:b.f)};
+      var u=(b.t-a.t)>0?((t-a.t)/(b.t-a.t)):1; u=u*u*(3-2*u);
+      return {x:lerp(a.x,b.x,u), y:lerp(a.y,b.y,u), s:lerp(a.s,b.s,u), f:lerp(a.f,b.f,u)};
     }
   }
   return keys[keys.length-1];
 }
+function mothAt(t){
+  var p;
+  if(t>=ORBIT_A && t<ORBIT_B){
+    /* Two and a quarter laps, spiralling in, and it ends at the FRONT of the
+       ring rather than the side — so the last of it is the moth right against
+       the paper with the light behind it, which is what makes the next beat a
+       recoil and not a swerve.
+       x is the ring seen side on; cos(th) is BOTH the depth and the facing, so
+       at the front it faces right, at the back it faces left, and at each turn
+       it passes edge-on through zero — the turn, drawn for free. */
+    var u=(t-ORBIT_A)/(ORBIT_B-ORBIT_A);
+    var th=-Math.PI/2 + u*2.25*2*Math.PI;
+    var rr=lerp(1.0,0.42,u*u);
+    p={ x:Math.sin(th)*rr,
+        y:(-0.08-0.62*Math.cos(th)*rr+0.07*Math.sin(th*2)),
+        s:lerp(0.62,0.80,u)*(1+0.10*Math.cos(th)),
+        f:Math.cos(th) };
+  } else p=track(t<ORBIT_A?PRE:POST,t);
+  /* flutter — a moth is never on its line */
+  return { x:p.x+0.030*Math.sin(t*6.7), y:p.y+0.045*Math.sin(t*5.1+1.1),
+           s:p.s, f:p.f };
+}
 
 /* ---- playback ---------------------------------------------------------- */
 var RAMP=" .`^,:;~=+*roahX#%@&", GAMMA=0.82;
-var T=0, playing=false, last=null, blinkT=0, nextBlink=2.4, blink=0;
+var T=0, playing=false, last=null, blinkT=0, nextBlink=2.4, blink=0, curCap="";
 
 function render(){
-  B.fill(0);
-  var t=T;
+  B.fill(0); TINT.fill(0);
+  var t=T, P=paramsAt(t);
+
+  var lx=W*0.50, ly=H*0.46;                     /* where the lantern hangs */
+  /* One orbit radius, in cells. Capped by how much room is actually left over
+     once the moth's own half-width is subtracted from the frame — a phone in
+     portrait is narrow and a desktop is short, and sizing the ring off the body
+     alone throws the moth off the edge of one or the other. On a tall frame the
+     ring opens out vertically instead, which is where the room is. */
+  var ux=Math.min(BU*1.15, W*0.50-BU*0.48),
+      uy=Math.min(BU*0.95, H*0.50-BU*0.30);
 
   /* the room */
-  var roomUp=ss(3,10,t)*(1-ss(72,79,t));
-  drawAtmosphere(t, roomUp*1.0, roomUp*0.24);
+  var roomUp=ss(OPEN-1.2,OPEN+4.0,t)*(1-ss(DISSOLVE+1.5,IRIS_B-1.5,t));
+  drawAtmosphere(t, P.dust*roomUp, P.haze*roomUp, P.horiz*roomUp, lx, ly);
 
-  /* bookends */
-  if(t<6.5)  iris(1-ss(0.4,6.0,t));            /* opening: light expands */
-  if(t>72.5) iris(ss(72.5,79.5,t));            /* closing: light contracts */
+  /* ---- the bookends ----------------------------------------------------
+     Opening: a point of light expands out of black, then gathers back into a
+     point and WAITS there. That waiting point is the seed the lantern is
+     struck from — without it there are four seconds of pure black between the
+     bloom and the first body, and the film dies in the gap. */
+  var RMAX=Math.min(W*0.30,H*0.46);
+  if(t<LANTERN_IN+0.6){
+    var rad;
+    if(t<3.4)      rad=lerp(0.6,RMAX,ss(0.25,3.4,t));
+    else if(t<6.8) rad=lerp(RMAX,2.6,ss(3.4,6.8,t));
+    else           rad=2.6+0.35*Math.sin(t*1.15);
+    /* the held point has to stay unmistakably a light, not a smudge — the room
+       is at master 0.55 here and anything subtle simply disappears */
+    var sg=1-ss(LANTERN_IN-0.4,LANTERN_IN+0.6,t);
+    iris(rad, sg*(t<3.4?1:1.9), lx, ly);
+    if(t>3.4) splat(lx,ly,sg*0.7,2);
+  }
+  if(t>IRIS_A) iris(Math.max(0.6,(1-ss(IRIS_A,IRIS_B,t))*RMAX*0.85),
+                    1-ss(IRIS_B-0.9,IRIS_B+0.4,t), W/2, H/2);
 
-  /* the lantern — still, warm, centre-right */
-  var lanOp=ss(9,15,t)*(1-ss(71,76,t));
-  drawSpec(FORMS.lantern,{cx:W*0.62,cy:H*0.46,scale:1.00,facing:1,op:lanOp,blink:0,perk:0},t);
+  /* ---- the lantern: struck from the seed the iris left behind ---------- */
+  var lanScale=1.0, lanFade=1-ss(DISSOLVE,DISSOLVE+3.0,t);
+  var lanTr={cx:lx,cy:ly,scale:lanScale,facing:1,op:lanFade,blink:0,perk:0};
+  if(t<LANTERN_IN){ /* nothing yet — the seed is the iris */ }
+  else if(t<LANTERN_IN+LANTERN_MORPH){
+    var k=(t-LANTERN_IN)/LANTERN_MORPH;
+    drawMorph(FORMS.spark,FORMS.lantern,k,
+      {cx:lx,cy:ly,scale:0.55,op:0.85},{cx:lx,cy:ly,scale:lanScale,op:1},t);
+    if(k>0.82) drawSpec(FORMS.lantern,{cx:lx,cy:ly,scale:lanScale,facing:1,
+      op:ss(0.82,1,k),blink:0,perk:0},t);
+  }
+  else if(t<DISSOLVE) drawSpec(FORMS.lantern,lanTr,t);
+  else if(t<DISSOLVE+3.4) drawScatter(FORMS.lantern,{cx:lx,cy:ly,scale:lanScale,op:1},
+    (t-DISSOLVE)/3.4,t);
 
-  /* the moth — everything that moves */
-  var mothOp=ss(24,29,t)*(1-ss(71,75,t));
-  var pth=samplePath(MOTH_PATH,t);
-  var bu=Math.min(W,H)*0.42;
-  var ux=bu*0.64, uy=bu*0.42;
-  drawSpec(FORMS.moth,{
-    cx:W*0.62+pth.x*ux, cy:H*0.46+pth.y*uy,
-    scale:pth.s, facing:pth.f, op:mothOp,
-    blink:blink, perk:0.35+0.35*Math.sin(t*0.7)
-  },t);
+  /* ---- the moth: everything that moves --------------------------------- */
+  var m=mothAt(t);
+  var mx=lx+m.x*ux, my=ly+m.y*uy;
+  /* it flutters harder the closer it gets, and dims as it passes behind */
+  var near=1-Math.min(1,Math.hypot(m.x,m.y*0.8));
+  var depth=(t>=ORBIT_A&&t<ORBIT_B)?m.f:1;
+  var mothOp=(0.42+0.58*(0.5+0.5*depth))*(1-ss(DISSOLVE,DISSOLVE+2.6,t));
+  var ms=BU*1.05*m.s;
+  /* in front of the paper it blocks the light — that silhouette is the only
+     thing that keeps two overlapping bodies legible as two bodies */
+  if(depth>0.02 && t>=MOTH_IN+MOTH_MORPH && t<DISSOLVE)
+    shadow(mx,my,ms*0.50,ms*0.50*AY,0.72*depth*mothOp);
+  B0.set(B);                                    /* remember the light so far */
+  var mothTr={cx:mx,cy:my,scale:m.s,facing:m.f,op:mothOp,blink:blink,
+              perk:0.30+0.45*near, beat:1+0.5*near};
+  if(t>=MOTH_IN && t<MOTH_IN+MOTH_MORPH){
+    /* it comes OUT of the lantern — the thing drawn to light, made of it */
+    var k2=(t-MOTH_IN)/MOTH_MORPH;
+    drawMorph(FORMS.lantern,FORMS.moth,k2,
+      {cx:lx,cy:ly,scale:lanScale,op:0.55},{cx:mx,cy:my,scale:m.s,op:1},t);
+    if(k2>0.80){ mothTr.op=ss(0.80,1,k2)*mothOp; drawSpec(FORMS.moth,mothTr,t); }
+  }
+  else if(t>=MOTH_IN+MOTH_MORPH && t<DISSOLVE) drawSpec(FORMS.moth,mothTr,t);
+  else if(t>=DISSOLVE && t<DISSOLVE+3.0) drawScatter(FORMS.moth,
+    {cx:mx,cy:my,scale:m.s,op:1},(t-DISSOLVE)/3.0,t);
 
-  /* the flare when it gets too close */
-  var flare=Math.max(0, 1-Math.abs(t-51.2)/0.85);
-  if(flare>0){ var cxf=W*0.56, cyf=H*0.48;
-    for(var y=0;y<H;y++) for(var x=0;x<W;x++){
-      var d=Math.hypot((x-cxf)*0.55,y-cyf)/(H*0.5);
-      if(d<1) B[y*W+x]+=flare*flare*0.55*(1-d);
-    } }
+  /* whatever the moth put down that the lantern hadn't, is the moth */
+  for(var i=0;i<B.length;i++) if(B[i]-B0[i] > B0[i]*0.9 && B[i]-B0[i] > 0.05) TINT[i]=1;
 
-  /* to characters */
-  var out="", g=RAMP.length-1;
-  for(var y2=0;y2<H;y2++){ var row="";
-    for(var x2=0;x2<W;x2++){
-      var b=B[y2*W+x2]; if(b<=0){row+=" ";continue;} if(b>1)b=1;
-      var ci=(Math.pow(b,GAMMA)*g)|0; if(ci>g)ci=g; row+=RAMP[ci];
+  /* ---- the flare: it gets too close ------------------------------------
+     A flare is the light getting brighter, not the room getting brighter.
+     Additive over the whole frame just floods every empty cell to a mid ramp
+     character and the picture disappears, so this multiplies what is already
+     lit and adds only a tight core at the paper. */
+  var flare=Math.max(0, 1-Math.abs(t-FLARE_AT)/0.95);
+  if(flare>0){
+    var fb=flare*flare;
+    for(var fi=0;fi<B.length;fi++) B[fi]*=1+fb*1.25;
+    iris(Math.min(W*0.14,H*0.24)*(0.55+0.45*fb), fb*0.75, lx, ly);
+  }
+
+  /* ---- the words get room made for them -------------------------------
+     A caption drawn over a dense field loses its shape — the light behind it
+     is as bright as the letters. So the band the words sit in is pushed back
+     while they're up, the way the instrument knocks out behind a glyph. */
+  if(curCap){
+    var c0=Math.floor(H*0.78);
+    for(var yy2=c0;yy2<H;yy2++){
+      var w=ss(c0,c0+Math.max(1,(H*0.06)|0),yy2)*(1-ss(H-2,H,yy2));
+      var f2=1-0.66*w;
+      for(var xx2=0;xx2<W;xx2++) B[yy2*W+xx2]*=f2;
     }
-    out+=row+"\n"; }
-  grid.textContent=out;
+  }
+
+  /* ---- to characters --------------------------------------------------- */
+  var mf=P.master*(1-ss(IRIS_B-1.0,IRIS_B+0.8,t));
+  var g=RAMP.length-1, html="", run=0, ink=P.ink;
+  for(var y3=0;y3<H;y3++){
+    for(var x3=0;x3<W;x3++){
+      var idx=y3*W+x3, b=B[idx]*mf, ch=" ";
+      if(b>0){ if(b>1)b=1; var ci=(Math.pow(b,GAMMA)*g)|0; if(ci>g)ci=g; ch=RAMP[ci]; }
+      var k3=(ch===" ")?0:TINT[idx];
+      if(k3!==run){ if(run) html+="</span>"; if(k3) html+='<span class="m">'; run=k3; }
+      html+=(ch==="&")?"&amp;":(ch==="<")?"&lt;":ch;
+    }
+    if(run){ html+="</span>"; run=0; }
+    html+="\n";
+  }
+  grid.innerHTML=html;
+  var rgb="rgb("+(ink[0]|0)+","+(ink[1]|0)+","+(ink[2]|0)+")";
+  screenEl.style.color=rgb;
+  screenEl.style.textShadow="0 0 7px rgba("+(ink[0]|0)+","+(ink[1]|0)+","+(ink[2]|0)+",.26)";
 }
 
 function captions(){
-  var show=null;
-  for(var i=0;i<CAPS.length;i++){ if(T>=CAPS[i][0]&&T<CAPS[i][1]) show=CAPS[i][2]; }
-  if(show!==captions.cur){
-    captions.cur=show;
+  var show="";
+  for(var i=0;i<CAPS.length;i++) if(T>=CAPS[i][0]&&T<CAPS[i][1]) show=CAPS[i][2];
+  if(show!==curCap){
+    curCap=show;
     if(show){ capEl.textContent=show; capEl.classList.add("on"); }
     else capEl.classList.remove("on");
   }
 }
-captions.cur=undefined;
 
 function frame(ts){
   if(playing){
-    if(last!==null){ var dt=Math.min(0.05,(ts-last)/1000); T+=dt;
+    if(last!==null){
+      var dt=Math.min(0.05,(ts-last)/1000); T+=dt;
       blinkT+=dt;
       if(blinkT>nextBlink){ blink=Math.min(1,blink+dt*11); if(blink>=1){ blinkT=0; nextBlink=2+Math.random()*4.5; } }
       else blink=Math.max(0,blink-dt*7);
@@ -297,31 +590,37 @@ function frame(ts){
     last=ts;
     if(T>=TOTAL){ T=TOTAL; playing=false; ctl.textContent="▶"; endEl.classList.add("on"); }
   } else last=null;
-  render(); captions();
+  captions(); render();
   barEl.style.width=(T/TOTAL*100)+"%";
+  /* the screening room's notepad reads these to stamp a note with its moment */
+  if(window.parent!==window){
+    try{ parent.postMessage({type:"nkafilm",film:"presence",t:T,total:TOTAL,
+      scene:curCap,playing:playing},"*"); }catch(e){}
+  }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
 
 startEl.addEventListener("click",function(){
-  startEl.style.display="none";
-  playing=true; ctl.textContent="❚❚";
+  startEl.style.display="none"; playing=true; ctl.textContent="❚❚";
+});
+ctl.addEventListener("click",function(){
+  if(T>=TOTAL){ T=0; curCap=""; capEl.classList.remove("on"); endEl.classList.remove("on"); }
+  playing=!playing; ctl.textContent=playing?"❚❚":"▶";
 });
 
 /* ?t=41 seeks to a moment with the title card out of the way — how the build
-   gets looked at, since a screenshot can't tap to begin. */
+   gets looked at, since a screenshot cannot tap to begin. ?play=1 runs on. */
 (function(){
-  var m=/[?&]t=([0-9.]+)/.exec(location.search);
-  if(!m) return;
-  T=Math.max(0,Math.min(TOTAL,parseFloat(m[1])||0));
+  var mm=/[?&]t=([0-9.]+)/.exec(location.search);
+  if(!mm) return;
+  T=Math.max(0,Math.min(TOTAL,parseFloat(mm[1])||0));
   startEl.style.display="none";
   playing=/[?&]play=1/.test(location.search);
   ctl.textContent=playing?"❚❚":"▶";
+  if(T>=TOTAL) endEl.classList.add("on");
 })();
-ctl.addEventListener("click",function(){
-  if(T>=TOTAL){ T=0; captions.cur=undefined; endEl.classList.remove("on"); }
-  playing=!playing; ctl.textContent=playing?"❚❚":"▶";
-});
+})();
 </script>
 </body>
 </html>
