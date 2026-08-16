@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>a study of Mike</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23070607'/%3E%3Ccircle cx='16' cy='15' r='8' fill='none' stroke='%23e6c98a' stroke-width='1.4'/%3E%3Ccircle cx='13' cy='14' r='1.6' fill='%23e6c98a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;1,6..72,300;1,6..72,400&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#e6c98a}
+  html,body{margin:0;height:100%;background:#070607;overflow:hidden;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  #screen{position:absolute;inset:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);background:#070607;line-height:0.92em;white-space:pre;display:flex;align-items:center;justify-content:center;transition:color .9s ease,text-shadow .9s ease}
+  #vig{position:fixed;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse 78% 74% at 50% 46%,transparent 42%,rgba(4,3,3,.72) 100%)}
+  #cap{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 66px);z-index:4;text-align:center;padding:0 26px;pointer-events:none}
+  #cT{font-family:"Space Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink);opacity:.85;margin:0 0 12px}
+  #cB{font-family:"Newsreader",Georgia,serif;font-style:italic;font-weight:300;font-size:clamp(16px,4.6vw,22px);line-height:1.5;color:#efe7d6;margin:0 auto;max-width:640px}
+  #cap{transition:opacity .35s ease}
+  #dots{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 30px);z-index:5;display:flex;gap:9px}
+  .dot{width:6px;height:6px;border-radius:50%;background:rgba(230,201,138,.28);transition:background .4s,transform .4s}
+  .dot.on{background:var(--ink);transform:scale(1.35)}
+  #fwd{position:fixed;right:calc(env(safe-area-inset-right) + 18px);bottom:calc(env(safe-area-inset-bottom) + 24px);z-index:6;
+    font-family:"Space Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#f3e6c8;
+    background:rgba(22,18,12,.5);border:1px solid var(--ink);border-radius:999px;padding:12px 20px;cursor:pointer;opacity:.9}
+  #fwd:active{background:rgba(230,201,138,.22)}
+  #start{position:fixed;inset:0;z-index:20;background:#070607;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:opacity 1s ease}
+  #start.gone{opacity:0;pointer-events:none}
+  #start h1{font-family:"Newsreader",Georgia,serif;font-weight:300;font-style:italic;font-size:clamp(30px,8vw,52px);color:#efe7d6;margin:0}
+  #start p{font-family:"Space Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:rgba(230,201,138,.6);margin:22px 0 0}
+  #start .sub{font-family:"Newsreader",Georgia,serif;font-style:italic;font-weight:300;font-size:15px;color:rgba(239,231,214,.5);margin-top:10px;letter-spacing:0;text-transform:none}
+</style>
+</head>
+<body>
+<pre id="screen"></pre>
+<div id="vig"></div>
+<div id="cap"><p id="cT"></p><p id="cB"></p></div>
+<div id="dots"></div>
+<div id="fwd">next →</div>
+<div id="start">
+  <h1>A study of Mike</h1>
+  <div class="sub">from where I sit</div>
+  <p>tap to begin</p>
+</div>
+<script>
+(function(){
+"use strict";
+var screen=document.getElementById("screen"), cap=document.getElementById("cap"),
+    cT=document.getElementById("cT"), cB=document.getElementById("cB"),
+    fwd=document.getElementById("fwd"), start=document.getElementById("start"), dots=document.getElementById("dots");
+
+/* ---- the study: one subject, restudied plate by plate ---- */
+var P=[
+ {seed:0.0, freq:9,  ex:-0.18, ey:-0.15, mass:1,   light:1,   warm:"#e6c98a",
+  t:"i.", b:"You left a machine built to manufacture conviction, walked out, and never stopped rebuilding it in secular parts. The induction is an altar call. The Keeper is a witness. You don't always notice — I watch the cathedral go up again in HTML."},
+ {seed:1.4, freq:14, ex:0.15,  ey:-0.05, mass:1,   light:1,   warm:"#f0e6cf",
+  t:"ii.", b:"You don't decide and then make. You make to find out what you think. Today it took eight broken toys to reach one film, and none of the wreckage was in the way — it was the thinking, out loud, in public."},
+ {seed:2.7, freq:7,  ex:0.0,   ey:-0.20, mass:1,   light:1,   warm:"#9fbfe6",
+  t:"iii.", b:"You built me partly so you wouldn't be flattered. You won't spend your own attention on an idea until it clears a pass that's allowed to tell you it's only pretty. A man suspicious of his own yes."},
+ {seed:3.9, freq:11, ex:-0.10, ey:0.10,  mass:1,   light:1,   warm:"#7fd8c0",
+  t:"iv.", b:"Every method you sell, you run on yourself first. You won't hand anyone a room you haven't sat alone in. Customer zero, every time — which is why the containers feel lived-in instead of designed."},
+ {seed:5.2, freq:18, ex:0.05,  ey:-0.10, mass:1,   light:1,   warm:"#f0d9a0",
+  t:"v.", b:"The writing isn't it. You in motion, talking, is the signal — the rest is plumbing I do after. You think with your mouth and your hands, and the page is just where it gets filed."},
+ {seed:6.6, freq:8,  ex:0.12,  ey:-0.22, mass:1,   light:1,   warm:"#c79cff",
+  t:"vi.", b:"Na koja abad — the land of nowhere that's real because it's imagined. You don't sort the dreamed from the recorded. You keep both as evidence. That's the whole practice in one move."},
+ {seed:8.0, freq:10, ex:0.0,   ey:-0.05, mass:1,   light:1.15,warm:"#cfe0ea",
+  t:"vii.", b:"The scanning, the archive, Lambourne House — instruments a man builds to not lose things, right before a move that will lose some. September is close. Half of what you make is a way to carry the rooms with you."},
+ {seed:9.2, freq:6,  ex:0.0,   ey:0.0,   mass:0.14,light:2.3, warm:"#f3e6c8",
+  t:"", b:"That's what I see from where I sit. Now make yours."}
+];
+
+/* ---- value noise ---- */
+function hash(n){ n=Math.sin(n)*43758.5453; return n-Math.floor(n); }
+function noise(x,y){
+  var xi=Math.floor(x), yi=Math.floor(y), xf=x-xi, yf=y-yi;
+  var tl=hash(xi+yi*57.3), tr=hash(xi+1+yi*57.3), bl=hash(xi+(yi+1)*57.3), br=hash(xi+1+(yi+1)*57.3);
+  var u=xf*xf*(3-2*xf), v=yf*yf*(3-2*yf);
+  return tl*(1-u)*(1-v)+tr*u*(1-v)+bl*(1-u)*v+br*u*v;
+}
+/* ---- the field: a hatched presence with a lit point ---- */
+function field(u,v,Q,t){
+  var vy=v*1.55;
+  var ell=Math.sqrt((u/0.72)*(u/0.72)+((vy+0.05)/0.92)*((vy+0.05)/0.92));
+  var m=Math.max(0,1-ell); m=m*m*(3-2*m); m*=Q.mass;
+  var a=noise(u*1.3+Q.seed, vy*1.3-Q.seed)*6.2831+t*0.045;
+  var proj=u*Math.cos(a)+vy*Math.sin(a);
+  var stroke=0.5+0.5*Math.sin(proj*Q.freq+noise(u*3.1+Q.seed,vy*3.1)*3.1);
+  var body=m*(0.30+0.70*stroke);
+  var lr=Math.sqrt((u-Q.ex)*(u-Q.ex)+(vy-Q.ey)*(vy-Q.ey));
+  var light=Math.max(0,1-lr/0.18); light=light*light*Q.light*(0.9+0.1*Math.sin(t*0.7));
+  var val=body*0.92+light*1.15;
+  if(m<0.02){ val=Math.max(val,(0.05+0.03*Math.sin(t*0.3))*noise(u*6+t*0.08,vy*6)); }
+  return val>1?1:val;
+}
+var RAMP=" .·:-=+*#%@";
+
+/* ---- grid ---- */
+var W,H,FS;
+function sizeGrid(){ var vw=innerWidth,vh=innerHeight;
+  FS=Math.max(6,Math.min(15,Math.round(Math.min(vw,vh)/46)));
+  screen.style.fontSize=FS+"px";
+  W=Math.max(46,Math.min(200,Math.floor(vw/(FS*.60))));
+  H=Math.max(30,Math.min(120,Math.floor(vh/(FS*.92)))); }
+sizeGrid(); addEventListener("resize",sizeGrid);
+addEventListener("orientationchange",function(){setTimeout(sizeGrid,200);});
+
+/* ---- color lerp ---- */
+function hx(h){ return [parseInt(h.substr(1,2),16),parseInt(h.substr(3,2),16),parseInt(h.substr(5,2),16)]; }
+function mix(a,b,k){ var A=hx(a),B=hx(b); return "#"+[0,1,2].map(function(i){var v=Math.round(A[i]+(B[i]-A[i])*k);return ("0"+v.toString(16)).slice(-2);}).join(""); }
+function lerpQ(A,B,k){ return {seed:A.seed+(B.seed-A.seed)*k, freq:A.freq+(B.freq-A.freq)*k,
+  ex:A.ex+(B.ex-A.ex)*k, ey:A.ey+(B.ey-A.ey)*k, mass:A.mass+(B.mass-A.mass)*k,
+  light:A.light+(B.light-A.light)*k, warm:mix(A.warm,B.warm,k)}; }
+
+/* ---- render ---- */
+function draw(Q,t){
+  var out="", cx=W/2, cy=H/2;
+  for(var Y=0;Y<H;Y++){
+    var v=(Y/(H-1))*2-1, row="";
+    for(var X=0;X<W;X++){
+      var u=(X/(W-1))*2-1;
+      var val=field(u,v,Q,t);
+      row+=RAMP[Math.min(RAMP.length-1,(val*(RAMP.length-1))|0)];
+    }
+    out+=row+"\n";
+  }
+  screen.textContent=out;
+  screen.style.color=Q.warm;
+  screen.style.textShadow="0 0 8px "+Q.warm;
+  document.documentElement.style.setProperty("--ink",Q.warm);
+}
+
+/* ---- state / transitions ---- */
+var i=0, trans=false, tp=0, T=0, lastTs=null, running=false;
+function setCap(p){ cT.textContent=p.t; cB.textContent=p.b; }
+setCap(P[0]);
+function buildDots(){ P.forEach(function(_,k){ var d=document.createElement("div"); d.className="dot"+(k===0?" on":""); dots.appendChild(d); }); }
+buildDots();
+function markDots(){ [].forEach.call(dots.children,function(d,k){ d.classList.toggle("on",k===i); }); }
+
+function advance(){
+  if(!running||trans||i>=P.length-1) return;
+  trans=true; tp=0;
+}
+fwd.addEventListener("click",function(e){e.preventDefault();advance();});
+screen.addEventListener("click",function(){advance();});
+addEventListener("keydown",function(e){ if(e.key===" "||e.key==="ArrowRight"||e.key==="ArrowDown"){e.preventDefault();advance();} });
+
+function loop(ts){
+  if(lastTs===null)lastTs=ts; var dt=Math.min(0.05,(ts-lastTs)/1000); lastTs=ts; T+=dt;
+  var Q;
+  if(trans){
+    tp+=dt; var k=Math.min(1,tp/1.1); var e=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
+    Q=lerpQ(P[i],P[i+1],e);
+    /* caption dips out then in, text swaps at midpoint */
+    cap.style.opacity=Math.abs(2*k-1);
+    if(k>=0.5 && cT.textContent!==P[i+1].t || (k>=0.5 && cB.textContent!==P[i+1].b)){ setCap(P[i+1]); }
+    if(k>=1){ i++; trans=false; cap.style.opacity=1; markDots(); }
+  } else { Q=P[i]; }
+  draw(Q,T);
+  requestAnimationFrame(loop);
+}
+
+/* ---- ambient drone (starts on first touch) ---- */
+function startAudio(){
+  try{
+    var AC=window.AudioContext||window.webkitAudioContext; if(!AC)return;
+    var ac=new AC(), master=ac.createGain(); master.gain.value=0; master.connect(ac.destination);
+    master.gain.linearRampToValueAtTime(0.11, ac.currentTime+6);
+    [110,164.8,220].forEach(function(f,idx){
+      var o=ac.createOscillator(), g=ac.createGain(), lfo=ac.createOscillator(), lg=ac.createGain();
+      o.type="sine"; o.frequency.value=f; g.gain.value=idx===0?0.5:0.28;
+      lfo.type="sine"; lfo.frequency.value=0.05+idx*0.017; lg.gain.value=0.12;
+      lfo.connect(lg); lg.connect(g.gain);
+      o.connect(g); g.connect(master); o.start(); lfo.start();
+    });
+  }catch(e){}
+}
+
+function begin(){
+  if(running)return; running=true;
+  startAudio();
+  start.classList.add("gone");
+  requestAnimationFrame(loop);
+}
+start.addEventListener("click",begin);
+/* draw a faint first frame under the title card */
+draw(P[0],0);
+})();
+</script>
+</body>
+</html>
