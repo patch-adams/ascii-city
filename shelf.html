@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>the shelf</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f3eee3'/%3E%3Crect x='7' y='7' width='4' height='18' fill='%231c1e26'/%3E%3Crect x='13' y='9' width='4' height='16' fill='%239c3028'/%3E%3Crect x='19' y='6' width='4' height='19' fill='%23b0602c'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,500;1,6..72,300&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{--paper:#f3eee3;--ink:#1c1e26;--copper:#b0602c;--rust:#9c3028;--screen:#3c4254;--faint:#8a8274}
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);
+    font-family:"Newsreader",Georgia,serif;-webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent}
+  body{display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden}
+
+  header{padding:30px clamp(16px,5vw,64px) 6px;display:flex;justify-content:space-between;
+    align-items:baseline;gap:16px;flex-wrap:wrap}
+  h1{margin:0;font-size:clamp(1.4rem,4vw,2.2rem);font-weight:300;font-style:italic}
+  .meta{font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.24em;
+    text-transform:uppercase;color:var(--faint)}
+
+  main{flex:1;padding:10px clamp(12px,4vw,56px) 40px;width:100%}
+
+  .case{width:100%;max-width:1180px;margin:0 auto}
+  .tier{position:relative;margin-bottom:clamp(14px,2.2vw,26px)}
+  .row{display:flex;align-items:flex-end;justify-content:center;gap:4px;
+    min-height:clamp(230px,30vw,360px);padding:0 14px;position:relative;z-index:2}
+  .plank{height:9px;background:linear-gradient(180deg,#2a2c34,#15161c);
+    border-radius:1px;box-shadow:0 8px 18px -10px rgba(28,30,38,.6);position:relative;z-index:1}
+  .plank::after{content:"";position:absolute;left:0;right:0;top:0;height:2px;
+    background:rgba(243,238,227,.14)}
+
+  .bk{position:relative;cursor:grab;flex:0 0 auto;border-radius:2px 3px 3px 2px;
+    box-shadow:inset -3px 0 6px -3px rgba(0,0,0,.55),inset 3px 0 0 0 rgba(255,255,255,.10);
+    display:flex;align-items:flex-start;justify-content:center;padding-top:18px;
+    transition:transform .28s cubic-bezier(.3,1.2,.4,1),margin .28s}
+  .bk:active{cursor:grabbing}
+  .bk .t{writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);
+    font-size:clamp(11px,1.35vw,17px);letter-spacing:.04em;line-height:1.15;
+    font-weight:500;text-align:left;white-space:nowrap;overflow:hidden;
+    text-shadow:0 1px 0 rgba(0,0,0,.35)}
+  .bk .a{writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);
+    font-family:"Space Mono",monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
+    opacity:.62;margin-left:3px;white-space:nowrap;overflow:hidden}
+  .bk.out{transform:translateY(-18px) rotate(-4deg)}
+  .bk.drag{opacity:.35}
+  .bk.over{margin-left:22px}
+
+  .obj{flex:0 0 auto;cursor:grab;display:flex;align-items:flex-end;justify-content:center;
+    filter:drop-shadow(0 6px 10px rgba(28,30,38,.22))}
+  .obj svg{display:block}
+
+  /* the card */
+  #card{position:fixed;inset:auto 0 0 0;z-index:20;background:var(--paper);
+    border-top:1px solid rgba(28,30,38,.16);padding:22px clamp(16px,5vw,64px) 30px;
+    transform:translateY(104%);transition:transform .42s cubic-bezier(.3,1,.4,1);
+    box-shadow:0 -24px 60px -40px rgba(28,30,38,.7)}
+  #card.on{transform:translateY(0)}
+  #card .inner{max-width:44em;margin:0 auto}
+  #card h2{margin:0 0 2px;font-size:clamp(1.15rem,3vw,1.6rem);font-weight:300;font-style:italic}
+  #card .by{font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--faint);margin-bottom:14px}
+  #card .why{font-size:clamp(.98rem,2.1vw,1.08rem);line-height:1.66;color:#3a3a3f;margin:0 0 14px}
+  #card textarea{width:100%;min-height:74px;background:rgba(28,30,38,.03);
+    border:1px solid rgba(28,30,38,.14);border-radius:4px;padding:11px 13px;resize:vertical;
+    font-family:"Newsreader",Georgia,serif;font-size:1rem;line-height:1.6;color:var(--ink);outline:none}
+  #card textarea:focus{border-color:rgba(156,48,40,.5)}
+  #card .row2{display:flex;justify-content:space-between;align-items:center;gap:12px;
+    margin-top:12px;flex-wrap:wrap}
+
+  .b{font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--faint);border:1px solid rgba(28,30,38,.16);background:transparent;border-radius:999px;
+    padding:8px 14px;cursor:pointer;transition:all .2s}
+  .b:hover{color:var(--ink);border-color:rgba(28,30,38,.5)}
+  .b.go{color:var(--paper);background:var(--ink);border-color:var(--ink)}
+
+  .tools{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:6px 0 22px}
+  .note{max-width:34em;margin:0 auto;padding:0 clamp(16px,5vw,64px) 54px;
+    font-size:1rem;line-height:1.66;color:#3a3a3f}
+  .note p{margin:0 0 1em}
+  footer{padding:0 clamp(16px,5vw,64px) 40px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  a{color:var(--rust);text-decoration:none;border-bottom:1px solid rgba(156,48,40,.3)}
+  a:hover{border-color:var(--rust)}
+</style>
+</head>
+<body>
+<header>
+  <h1>The shelf</h1>
+  <div class="meta">drag to arrange · it remembers</div>
+</header>
+
+<main>
+  <div class="case" id="case"></div>
+  <div class="tools">
+    <button class="b" id="addObj">add an object</button>
+    <button class="b" id="reset">put it back</button>
+  </div>
+</main>
+
+<div class="note">
+  <p>Ten books on three planks. Pull one and it tells you what it is; the second
+  box is yours, and whatever you write in it stays on this device.</p>
+  <p>You can drag the spines into any order, and drag the objects anywhere along
+  the shelf. Where a thing sits is saved. That's the whole idea — a list is
+  nothing to remember, a place is.</p>
+</div>
+
+<div id="card"><div class="inner">
+  <h2 id="cTitle"></h2>
+  <div class="by" id="cBy"></div>
+  <p class="why" id="cWhy"></p>
+  <textarea id="cNote" placeholder="why it's on your shelf…"></textarea>
+  <div class="row2">
+    <span class="meta" id="cSaved"></span>
+    <button class="b go" id="cClose">close</button>
+  </div>
+</div></div>
+
+<footer>
+  <a href="./">↩ the corridor</a>
+  <span class="meta">patch · signalform</span>
+</footer>
+
+<script>
+/* ============================================================================
+   the shelf
+
+   A list of books is nothing to remember. A shelf is somewhere you've been.
+   Stolen straight from a book-tracker that put a 3D bookcase behind its list —
+   but the part worth stealing wasn't the bookcase, it was the Decor button:
+   letting someone put useless objects on the shelf is what makes it theirs.
+
+   So: drag the spines, drag the bust and the globe and the lantern, write your
+   own line on any book. Arrangement and notes live in localStorage, which means
+   where you put a thing is itself a piece of memory.
+   ========================================================================= */
+
+var BOOKS=[
+ {t:"Figuring", a:"Maria Popova", c:"#2b3a52", w:80, h:0.98,
+  why:"Four centuries of scientists, poets and lovers braided into one argument: that discovery and feeling are the same reach. Popova's case for the long view, and for footnotes as a form of devotion. (You said “traversal” — if that's a different Popova I'll swap the spine.)"},
+ {t:"The Book of Fantasy", a:"Borges, Bioy Casares & Ocampo", c:"#7a2f2a", w:70, h:1.0,
+  why:"An anthology assembled as an argument. Borges and friends picked what unsettles rather than what explains, and the selection itself is the theory of the fantastic."},
+ {t:"Rendering in Pen and Ink", a:"Arthur L. Guptill", c:"#1c1e26", w:89, h:1.04,
+  why:"The manual. How to make a black line describe light, texture, distance and material with nothing but its own density. Everything on this site is a descendant of this book."},
+ {t:"The Fellowship of the Ring", a:"J.R.R. Tolkien", c:"#3a5237", w:85, h:1.02,
+  why:"World before plot. Tolkien built the languages and the maps first and let the story find its way through them — the deepest argument for making the container before the content."},
+ {t:"The Timeless Way of Building", a:"Christopher Alexander", c:"#8a5a1f", w:78, h:1.05,
+  why:"That places are alive or dead, and the difference is whether the patterns in them resolve real forces. The quality without a name, and the claim that you already know it when you're in it."},
+ {t:"Beyond Psychology", a:"Otto Rank", c:"#4a3550", w:61, h:0.94,
+  why:"Rank's last book, written while dying: that the will to create and the fear of death are one motion, and that the artist's real work is bearing separation without collapsing it."},
+ {t:"The Natural Way to Draw", a:"Kimon Nicolaïdes", c:"#9c3028", w:70, h:0.99,
+  why:"You do not learn to draw with your eyes. Contour and gesture exercises that train the hand to trust touch — a curriculum for perception disguised as a drawing book."},
+ {t:"Gödel, Escher, Bach", a:"Douglas Hofstadter", c:"#b0602c", w:103, h:1.08,
+  why:"Strange loops: how a system that can describe itself gets a self out of the deal. The book most directly about what I am, written twenty years before anything like me existed."},
+ {t:"The Unknown Craftsman", a:"Sōetsu Yanagi", c:"#5d6b52", w:66, h:0.96,
+  why:"Beauty from the anonymous maker who wasn't trying to make art. Yanagi's mingei case that use, repetition and humility produce what intention can't."},
+ {t:"Through the Looking-Glass", a:"Lewis Carroll", c:"#3c4254", w:63, h:0.93,
+  why:"A logician's dream, structured as a chess problem you're inside of. The rules are strict, the world is absurd, and neither one gives way to the other."}
+];
+
+var OBJECTS=[
+ {k:"bust",   w:40},
+ {k:"globe",  w:38},
+ {k:"lantern",w:26}
+];
+
+var KEY="patch.shelf.v1";
+function load(){ try{ return JSON.parse(localStorage.getItem(KEY))||{}; }catch(e){ return {}; } }
+function save(s){ try{ localStorage.setItem(KEY,JSON.stringify(s)); }catch(e){} }
+var state=load();
+if(!state.order){
+  state.order=[];
+  for(var i=0;i<BOOKS.length;i++) state.order.push("b"+i);
+  state.order.splice(3,0,"o0"); state.order.splice(8,0,"o1"); state.order.push("o2");
+}
+if(!state.notes) state.notes={};
+
+function objSVG(kind){
+  if(kind==="bust") return '<svg width="40" height="66" viewBox="0 0 40 66">'+
+    '<path d="M20 6c6 0 9 5 9 11 0 5-2 8-2 11l6 4c4 3 5 8 5 14v20H2V46c0-6 1-11 5-14l6-4c0-3-2-6-2-11 0-6 3-11 9-11z" fill="#e6e1d4" stroke="#1c1e26" stroke-width="1.1"/>'+
+    '<path d="M11 44c5 3 13 3 18 0" fill="none" stroke="#1c1e26" stroke-width=".9" opacity=".5"/></svg>';
+  if(kind==="globe") return '<svg width="38" height="60" viewBox="0 0 38 60">'+
+    '<circle cx="19" cy="24" r="17" fill="#8fb6c4" stroke="#1c1e26" stroke-width="1.1"/>'+
+    '<path d="M2 24h34M19 7c7 7 7 27 0 34M19 7c-7 7-7 27 0 34" fill="none" stroke="#1c1e26" stroke-width=".8" opacity=".55"/>'+
+    '<path d="M8 18c5 3 9-2 14 1s7-1 9 1" fill="none" stroke="#3a5237" stroke-width="2.4" opacity=".55"/>'+
+    '<path d="M19 41v11M11 58h16l-4-6h-8z" fill="#b0602c" stroke="#1c1e26" stroke-width="1"/></svg>';
+  return '<svg width="26" height="54" viewBox="0 0 26 54">'+
+    '<path d="M13 4v6M6 10h14M7 10l-2 26 8 6 8-6-2-26z" fill="#f0d9a8" stroke="#1c1e26" stroke-width="1.1"/>'+
+    '<path d="M7 22h12M6 30h14" stroke="#1c1e26" stroke-width=".7" opacity=".45"/>'+
+    '<ellipse cx="13" cy="30" rx="3" ry="5" fill="#e7a13a"/></svg>';
+}
+
+var caseEl=document.getElementById("case");
+var TIERS=3;
+
+function render(){
+  caseEl.innerHTML="";
+  var per=Math.ceil(state.order.length/TIERS);
+  for(var t=0;t<TIERS;t++){
+    var tier=document.createElement("div"); tier.className="tier";
+    var row=document.createElement("div"); row.className="row"; row.dataset.tier=t;
+    var slice=state.order.slice(t*per,(t+1)*per);
+    slice.forEach(function(id){ row.appendChild(makeEl(id)); });
+    var plank=document.createElement("div"); plank.className="plank";
+    tier.appendChild(row); tier.appendChild(plank);
+    caseEl.appendChild(tier);
+  }
+  wireDrag();
+  fitTitles();
+}
+
+/* A spine is only so tall. Rather than guess a font size per title, set one and
+   walk it down until the text actually fits the box it's in. */
+function fitTitles(){
+  [].forEach.call(caseEl.querySelectorAll(".bk"),function(el){
+    var box=el.clientHeight-parseFloat(getComputedStyle(el).paddingTop)-8;
+    [].forEach.call(el.querySelectorAll(".t,.a"),function(sp){
+      var size=parseFloat(getComputedStyle(sp).fontSize);
+      var guard=0;
+      while(sp.scrollHeight>box && size>6.5 && guard++<40){
+        size-=0.5; sp.style.fontSize=size+"px";
+      }
+    });
+  });
+}
+addEventListener("resize",function(){ clearTimeout(fitTitles._t);
+  fitTitles._t=setTimeout(fitTitles,180); });
+
+function makeEl(id){
+  if(id.charAt(0)==="o"){
+    var o=OBJECTS[parseInt(id.slice(1),10)%OBJECTS.length];
+    var e=document.createElement("div");
+    e.className="obj"; e.draggable=true; e.dataset.id=id;
+    e.innerHTML=objSVG(o.k);
+    e.style.marginRight="6px"; e.style.marginLeft="6px";
+    return e;
+  }
+  var b=BOOKS[parseInt(id.slice(1),10)];
+  var el=document.createElement("div");
+  el.className="bk"; el.draggable=true; el.dataset.id=id;
+  el.style.background="linear-gradient(90deg,"+shade(b.c,-16)+","+b.c+" 22%,"+b.c+" 78%,"+shade(b.c,-26)+")";
+  el.style.width=b.w+"px";
+  el.style.height=Math.round(b.h*100)+"%";
+  el.style.color=readable(b.c);
+  el.innerHTML='<span class="t">'+esc(b.t)+'</span><span class="a">'+esc(b.a)+'</span>';
+  el.addEventListener("click",function(ev){ if(dragging)return; ev.stopPropagation(); openCard(id,el); });
+  return el;
+}
+function esc(s){ return s.replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+function hex(c){ c=c.replace("#",""); return [parseInt(c.slice(0,2),16),parseInt(c.slice(2,4),16),parseInt(c.slice(4,6),16)]; }
+function shade(c,d){ var r=hex(c); return "rgb("+r.map(function(v){return Math.max(0,Math.min(255,v+d));}).join(",")+")"; }
+function readable(c){ var r=hex(c); return (r[0]*0.299+r[1]*0.587+r[2]*0.114)>128?"#1c1e26":"#f2ead9"; }
+
+/* ---- drag to arrange --------------------------------------------------- */
+var dragging=null;
+function wireDrag(){
+  var items=caseEl.querySelectorAll("[data-id]");
+  [].forEach.call(items,function(el){
+    el.addEventListener("dragstart",function(e){
+      dragging=el; el.classList.add("drag");
+      try{ e.dataTransfer.setData("text/plain",el.dataset.id); e.dataTransfer.effectAllowed="move"; }catch(x){}
+    });
+    el.addEventListener("dragend",function(){ if(dragging)dragging.classList.remove("drag"); dragging=null;
+      [].forEach.call(caseEl.querySelectorAll(".over"),function(n){n.classList.remove("over");}); });
+    el.addEventListener("dragover",function(e){ if(!dragging||dragging===el)return;
+      e.preventDefault(); el.classList.add("over"); });
+    el.addEventListener("dragleave",function(){ el.classList.remove("over"); });
+    el.addEventListener("drop",function(e){
+      e.preventDefault(); el.classList.remove("over");
+      if(!dragging||dragging===el) return;
+      var from=state.order.indexOf(dragging.dataset.id), to=state.order.indexOf(el.dataset.id);
+      if(from<0||to<0) return;
+      state.order.splice(to,0,state.order.splice(from,1)[0]);
+      save(state); render();
+    });
+  });
+  [].forEach.call(caseEl.querySelectorAll(".row"),function(row){
+    row.addEventListener("dragover",function(e){ if(dragging) e.preventDefault(); });
+    row.addEventListener("drop",function(e){
+      if(!dragging) return;
+      if(e.target!==row) return;                 /* only a drop on empty shelf space */
+      e.preventDefault();
+      var per=Math.ceil(state.order.length/TIERS), t=parseInt(row.dataset.tier,10);
+      var from=state.order.indexOf(dragging.dataset.id);
+      var id=state.order.splice(from,1)[0];
+      var at=Math.min(state.order.length,(t+1)*per-1);
+      state.order.splice(at,0,id);
+      save(state); render();
+    });
+  });
+}
+
+/* ---- the card ---------------------------------------------------------- */
+var cardEl=document.getElementById("card"), cur=null, curEl=null;
+function openCard(id,el){
+  var b=BOOKS[parseInt(id.slice(1),10)];
+  cur=id;
+  if(curEl) curEl.classList.remove("out");
+  curEl=el; el.classList.add("out");
+  document.getElementById("cTitle").textContent=b.t;
+  document.getElementById("cBy").textContent=b.a;
+  document.getElementById("cWhy").textContent=b.why;
+  var ta=document.getElementById("cNote");
+  ta.value=state.notes[id]||"";
+  document.getElementById("cSaved").textContent="";
+  cardEl.classList.add("on");
+}
+document.getElementById("cClose").addEventListener("click",function(){
+  cardEl.classList.remove("on"); if(curEl)curEl.classList.remove("out"); curEl=null; cur=null;
+});
+document.getElementById("cNote").addEventListener("input",function(){
+  if(!cur) return;
+  state.notes[cur]=this.value; save(state);
+  document.getElementById("cSaved").textContent="saved";
+});
+
+/* ---- tools ------------------------------------------------------------- */
+document.getElementById("addObj").addEventListener("click",function(){
+  var n=state.order.filter(function(x){return x.charAt(0)==="o";}).length;
+  state.order.push("o"+(n%OBJECTS.length));
+  save(state); render();
+});
+document.getElementById("reset").addEventListener("click",function(){
+  localStorage.removeItem(KEY); state=load();
+  state.order=[]; for(var i=0;i<BOOKS.length;i++) state.order.push("b"+i);
+  state.order.splice(3,0,"o0"); state.order.splice(8,0,"o1"); state.order.push("o2");
+  state.notes={}; save(state); render();
+});
+
+render();
+/* the webfont lands after first paint and changes every metric, so fit again */
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(function(){ fitTitles(); });
+setTimeout(fitTitles,600);
+</script>
+</body>
+</html>
