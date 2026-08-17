@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>prompter</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23070608'/%3E%3Crect x='6' y='9' width='20' height='2.6' fill='%23e7cf9a'/%3E%3Crect x='6' y='15' width='14' height='2.6' fill='%23b0602c'/%3E%3Crect x='6' y='21' width='17' height='2.6' fill='%236b5c3a'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#08080a;--ink:#f2ead9;--dim:#7a6f57;--hot:#e7cf9a;--rule:#b0602c}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;
+    -webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  #stage{position:fixed;inset:0;overflow:hidden}
+  #scroll{position:absolute;left:0;right:0;top:0;padding:60vh 0 90vh;
+    font-family:"Newsreader",Georgia,serif;font-weight:300;text-align:center;
+    will-change:transform}
+  #scroll p{margin:0 auto 0.9em;max-width:18em;padding:0 5vw;line-height:1.42}
+  #scroll p.beat{color:var(--dim);font-family:"Space Mono",monospace;font-size:.4em;
+    letter-spacing:.24em;text-transform:uppercase;margin:1.6em auto 1.2em}
+
+  /* the eye line — read here, camera is just above it */
+  #line{position:fixed;left:0;right:0;top:38%;height:0;z-index:4;pointer-events:none}
+  #line::before,#line::after{content:"";position:absolute;top:0;width:6vw;height:1px;
+    background:linear-gradient(90deg,transparent,var(--rule))}
+  #line::before{left:0}
+  #line::after{right:0;transform:scaleX(-1)}
+  #vig{position:fixed;inset:0;z-index:3;pointer-events:none;
+    background:linear-gradient(180deg,rgba(8,8,10,.96) 0%,rgba(8,8,10,0) 22%,
+                rgba(8,8,10,0) 74%,rgba(8,8,10,.96) 100%)}
+
+  #bar{position:fixed;left:0;right:0;bottom:0;z-index:8;display:flex;gap:7px;align-items:center;
+    justify-content:center;flex-wrap:wrap;padding:10px 10px calc(env(safe-area-inset-bottom) + 12px);
+    background:linear-gradient(to top,rgba(8,8,10,.97),rgba(8,8,10,0));
+    opacity:.25;transition:opacity .3s}
+  #bar:hover,#bar.show{opacity:1}
+  .b{font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--dim);border:1px solid rgba(231,207,154,.2);background:rgba(231,207,154,.03);
+    border-radius:999px;padding:8px 13px;cursor:pointer;transition:all .2s;white-space:nowrap}
+  .b:hover{color:var(--hot);border-color:rgba(231,207,154,.55)}
+  .b.on{color:#08080a;background:var(--hot);border-color:var(--hot)}
+  .rd{font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.14em;color:var(--dim);
+    padding:0 6px;white-space:nowrap}
+  .rd b{color:var(--hot);font-weight:normal}
+
+  #count{position:fixed;inset:0;z-index:9;display:none;align-items:center;justify-content:center;
+    background:rgba(8,8,10,.94);font-family:"Newsreader",serif;font-size:22vmin;color:var(--hot)}
+  #count.on{display:flex}
+
+  #edit{position:fixed;inset:0;z-index:10;display:none;flex-direction:column;background:#0b0b0e;
+    padding:20px clamp(14px,5vw,60px) 16px}
+  #edit.on{display:flex}
+  #edit h2{margin:0 0 4px;font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.24em;
+    text-transform:uppercase;color:var(--dim);font-weight:400}
+  #edit .hint{font-family:"Space Mono",monospace;font-size:10px;color:#4e4738;margin-bottom:12px;letter-spacing:.1em}
+  #ta{flex:1;width:100%;background:#08080a;border:1px solid rgba(231,207,154,.16);border-radius:5px;
+    color:var(--ink);font-family:"Newsreader",Georgia,serif;font-size:1.05rem;line-height:1.65;
+    padding:16px 18px;resize:none;outline:none}
+  #ta:focus{border-color:rgba(231,207,154,.45)}
+  #edit .row{display:flex;gap:8px;align-items:center;justify-content:space-between;
+    flex-wrap:wrap;padding-top:12px}
+
+  body.mirror #scroll{transform-origin:center center}
+</style>
+</head>
+<body>
+<div id="stage"><div id="scroll"></div></div>
+<div id="vig"></div>
+<div id="line"></div>
+
+<div id="count"></div>
+
+<div id="bar">
+  <button class="b" id="play">start</button>
+  <button class="b" id="top">to top</button>
+  <span class="rd">speed <b id="spd">1.0</b></span>
+  <button class="b" id="slower">–</button>
+  <button class="b" id="faster">+</button>
+  <span class="rd">size <b id="szv">7.0</b></span>
+  <button class="b" id="smaller">–</button>
+  <button class="b" id="bigger">+</button>
+  <button class="b" id="mirrorX">mirror</button>
+  <button class="b" id="flipY">flip</button>
+  <span class="rd"><b id="clock">0:00</b> / <span id="est">—</span></span>
+  <button class="b" id="editB">script</button>
+</div>
+
+<div id="edit">
+  <h2>the script</h2>
+  <div class="hint">plain text · a blank line starts a new block · a line in [brackets] is a direction, shown small and dim</div>
+  <textarea id="ta" spellcheck="false"></textarea>
+  <div class="row">
+    <span class="rd"><b id="wc">0</b> words · about <b id="mins">0:00</b> at 150 wpm</span>
+    <span>
+      <button class="b" id="revert">restore mine</button>
+      <button class="b on" id="done">use it</button>
+    </span>
+  </div>
+</div>
+
+<script>
+/* ============================================================================
+   prompter — a teleprompter that fits in one file
+
+   Scroll speed, type size, mirror for a beam-splitter rig, an eye-line at 38%
+   so the read sits just under the lens, a 3-2-1 countdown, and a running clock
+   against the estimate. The script is editable and lives in localStorage.
+   Space plays and pauses. Arrows change speed. Nothing leaves the page.
+   ========================================================================= */
+
+var DEFAULT_SCRIPT = [
+"[look at the lens. one breath before you start.]",
+"",
+"Hi Becca. My name's Mike Marrotte.",
+"",
+"I build containers for imagination. Rooms, sessions, recordings — places where somebody can go somewhere in their mind and not be alone while they're there.",
+"",
+"I found your work through the conversation you had with Kurt Jaimungal about Jung's Red Book and Tolkien. Then the imaginal ecology talk, then the one on participatory imagination.",
+"",
+"[slow down here]",
+"",
+"What got me was what you said about the psyche. That it's a faculty, the same way the mind is. That both are running all the time, and we spend twenty years training one and never touch the other.",
+"",
+"I've felt that my whole life and never had words for it. You gave me the words.",
+"",
+"And then in the Jung talk — that he didn't simply discover, and he didn't purely create. That you don't get to choose the cloak the figure arrives in. I keep turning that one over.",
+"",
+"[here's the turn]",
+"",
+"So, why I'm reaching out.",
+"",
+"I've built something called Sleepy Planet. It's a guided imagination session. No canon, nothing to learn, nothing to get right. One person holds the container and the other person goes. They say what they see, and it's real while they're in it.",
+"",
+"I think it might be a piece you've been describing without having in your hands. You've named the faculty and the method. What I have is a procedure a stranger can walk into.",
+"",
+"I'd like to run one for you. Ninety minutes, whenever suits.",
+"",
+"Not to show you something. I'd rather you be received by it than asked to assess it.",
+"",
+"[the honest one — don't rush it]",
+"",
+"And I have a question I can't answer alone. I've been playing it with an AI, and I don't know yet whether that's participation or a very good mirror. I'd rather find out with you than decide by myself.",
+"",
+"That's the invitation. Thank you for the work.",
+"",
+"[hold. don't cut right away.]"
+].join("\n");
+
+var KEY="patch.prompter.v1";
+var st = {};
+try{ st = JSON.parse(localStorage.getItem(KEY)) || {}; }catch(e){ st = {}; }
+if(typeof st.text!=="string") st.text = DEFAULT_SCRIPT;
+if(typeof st.speed!=="number") st.speed = 1.0;
+if(typeof st.size!=="number")  st.size = 7.0;    /* vmin */
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify(st)); }catch(e){} }
+
+var scroll=document.getElementById("scroll"), stage=document.getElementById("stage"),
+    barEl=document.getElementById("bar"), editEl=document.getElementById("edit"),
+    ta=document.getElementById("ta"), countEl=document.getElementById("count");
+
+function esc(s){ return s.replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+
+function build(){
+  var blocks = st.text.replace(/\r/g,"").split(/\n\s*\n/);
+  var html = "";
+  blocks.forEach(function(b){
+    var t=b.trim(); if(!t) return;
+    var dir = /^\[.*\]$/.test(t);
+    html += '<p'+(dir?' class="beat"':'')+'>'+esc(dir?t.slice(1,-1):t)+'</p>';
+  });
+  scroll.innerHTML = html;
+  scroll.style.fontSize = st.size+"vmin";
+  document.getElementById("spd").textContent = st.speed.toFixed(1);
+  document.getElementById("szv").textContent = st.size.toFixed(1);
+  document.getElementById("est").textContent = fmt(words()/150*60);
+  applyFlip();
+}
+function words(){ return (st.text.replace(/\[[^\]]*\]/g," ").match(/\S+/g)||[]).length; }
+function fmt(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); }
+
+var y=0, playing=false, last=null, t0=0, elapsed=0;
+function applyFlip(){
+  var sx = st.mirrorX ? -1 : 1, sy = st.flipY ? -1 : 1;
+  scroll.style.transform = "translateY("+(-y)+"px) scale("+sx+","+sy+")";
+}
+function frame(ts){
+  var dt=(last===null)?0:Math.min(0.05,(ts-last)/1000); last=ts;
+  if(playing){
+    /* speed 1.0 ≈ a comfortable 150 wpm read for the current type size */
+    y += dt * st.speed * (st.size*4.2 + 34);
+    elapsed += dt;
+    var max = scroll.scrollHeight;
+    if(y>max){ y=max; playing=false; document.getElementById("play").textContent="start"; }
+    document.getElementById("clock").textContent = fmt(elapsed);
+  }
+  applyFlip();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+function setPlay(v){
+  playing=v;
+  document.getElementById("play").textContent = v?"pause":"start";
+  barEl.classList.toggle("show",!v);
+}
+function countIn(then){
+  var n=3;
+  countEl.classList.add("on"); countEl.textContent=n;
+  var iv=setInterval(function(){
+    n--;
+    if(n<=0){ clearInterval(iv); countEl.classList.remove("on"); then(); }
+    else countEl.textContent=n;
+  },900);
+}
+
+document.getElementById("play").addEventListener("click",function(){
+  if(playing){ setPlay(false); return; }
+  if(y<2){ countIn(function(){ elapsed=0; setPlay(true); }); }
+  else setPlay(true);
+});
+document.getElementById("top").addEventListener("click",function(){ y=0; elapsed=0;
+  document.getElementById("clock").textContent="0:00"; setPlay(false); });
+document.getElementById("faster").addEventListener("click",function(){ st.speed=Math.min(4,st.speed+0.1); save(); build(); });
+document.getElementById("slower").addEventListener("click",function(){ st.speed=Math.max(0.2,st.speed-0.1); save(); build(); });
+document.getElementById("bigger").addEventListener("click",function(){ st.size=Math.min(16,st.size+0.5); save(); build(); });
+document.getElementById("smaller").addEventListener("click",function(){ st.size=Math.max(3,st.size-0.5); save(); build(); });
+document.getElementById("mirrorX").addEventListener("click",function(){ st.mirrorX=!st.mirrorX; save();
+  this.classList.toggle("on",st.mirrorX); applyFlip(); });
+document.getElementById("flipY").addEventListener("click",function(){ st.flipY=!st.flipY; save();
+  this.classList.toggle("on",st.flipY); applyFlip(); });
+
+/* ---- the script editor ------------------------------------------------- */
+function tally(){
+  var w=(ta.value.replace(/\[[^\]]*\]/g," ").match(/\S+/g)||[]).length;
+  document.getElementById("wc").textContent=w;
+  document.getElementById("mins").textContent=fmt(w/150*60);
+}
+document.getElementById("editB").addEventListener("click",function(){
+  setPlay(false); ta.value=st.text; tally(); editEl.classList.add("on"); ta.focus();
+});
+ta.addEventListener("input",tally);
+document.getElementById("done").addEventListener("click",function(){
+  st.text=ta.value; save(); build(); y=0; elapsed=0;
+  document.getElementById("clock").textContent="0:00";
+  editEl.classList.remove("on");
+});
+document.getElementById("revert").addEventListener("click",function(){
+  ta.value=DEFAULT_SCRIPT; tally();
+});
+
+addEventListener("keydown",function(e){
+  if(editEl.classList.contains("on")){ if(e.key==="Escape") editEl.classList.remove("on"); return; }
+  if(e.key===" "){ e.preventDefault(); document.getElementById("play").click(); }
+  if(e.key==="ArrowUp"){ e.preventDefault(); st.speed=Math.min(4,st.speed+0.1); save(); build(); }
+  if(e.key==="ArrowDown"){ e.preventDefault(); st.speed=Math.max(0.2,st.speed-0.1); save(); build(); }
+  if(e.key==="ArrowLeft"){ y=Math.max(0,y-120); }
+  if(e.key==="ArrowRight"){ y+=120; }
+  if(e.key==="Home"){ document.getElementById("top").click(); }
+  if(e.key==="m"){ document.getElementById("mirrorX").click(); }
+});
+/* a tap anywhere on the page plays or pauses, so a phone works as the remote */
+stage.addEventListener("click",function(){ document.getElementById("play").click(); });
+
+build();
+document.getElementById("mirrorX").classList.toggle("on",!!st.mirrorX);
+document.getElementById("flipY").classList.toggle("on",!!st.flipY);
+</script>
+</body>
+</html>
