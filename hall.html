@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>The Hallway</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0908'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23d8b878'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&family=Space+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#d8b878;--paper:#0a0908}
+  html,body{margin:0;height:100%;background:var(--paper);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  /* full bleed, edge to edge — the grid overscans so no dead strip survives at any size */
+  #screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--paper);overflow:hidden}
+  /* the grid gets its own plain element: spans written into a flex parent become flex items */
+  #grid{margin:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);
+    line-height:0.92em;white-space:pre;text-shadow:0 0 6px rgba(216,184,120,.2)}
+  #flash{position:fixed;inset:0;background:#fff;opacity:0;z-index:8;pointer-events:none;transition:opacity .5s ease}
+  #panel{position:fixed;inset:10px;z-index:3;pointer-events:none;border:2px solid rgba(216,184,120,.22);border-radius:4px;box-shadow:inset 0 0 140px 44px rgba(0,0,0,.76)}
+  #scan{position:fixed;inset:0;z-index:4;pointer-events:none;opacity:.12;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.55) 0 1px,transparent 1px 3px)}
+  #cap{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 118px);z-index:6;max-width:min(30em,86vw);
+    background:#efe7d2;color:#20180c;border:1.5px solid #20180c;border-radius:3px;padding:12px 18px;font-family:"Newsreader",Georgia,serif;
+    font-size:clamp(1.05rem,3.4vw,1.32rem);line-height:1.4;box-shadow:4px 4px 0 rgba(0,0,0,.5);opacity:0;transition:opacity .55s ease;text-align:center;
+    pointer-events:none}   /* read-only — it must never swallow a tap aimed at the screen */
+  #cap.on{opacity:1}
+  #cap .said{font-style:italic;color:#7a5a1e}
+  /* the read — what the door in reach says about itself */
+  #read{position:fixed;left:50%;top:calc(50% + 22px);transform:translateX(-50%);z-index:6;pointer-events:none;
+    display:flex;align-items:center;gap:10px;opacity:0;transition:opacity .28s ease;
+    font-family:"Space Mono",monospace;background:rgba(12,10,8,.66);border:1px solid rgba(216,184,120,.4);
+    border-radius:999px;padding:7px 15px}
+  #read.on{opacity:1}
+  #read .n{font-size:12px;color:var(--ink);letter-spacing:.1em}
+  #read .m{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(239,231,210,.55)}
+  #ret{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;pointer-events:none;
+    font-family:"Space Mono",monospace;font-size:13px;color:rgba(239,231,210,.3);opacity:0;transition:opacity .3s}
+  #ret.on{opacity:1}
+  #fwd{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 32px);z-index:7;
+    font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#efe7d2;
+    background:rgba(20,16,10,.55);border:1px solid var(--ink);border-radius:999px;padding:16px 30px;cursor:pointer;
+    display:none;align-items:center;gap:10px;opacity:.85}
+  #fwd.on{display:inline-flex}
+  #fwd .arw{font-size:16px}
+  /* opacity:0 does NOT stop a tap. This bar sits directly on top of #fwd, so without
+     pointer-events the invisible "I have" button eats every tap meant for "move
+     forward" — and each hit resets the void to nothing. */
+  #act{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 36px);z-index:7;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;opacity:0;pointer-events:none;transition:opacity .5s ease}
+  #act.on{opacity:1;pointer-events:auto}
+  button.b{font-family:"Space Mono",monospace;font-size:13px;color:#efe7d2;background:rgba(20,16,10,.6);border:1px solid var(--ink);border-radius:999px;padding:13px 22px;cursor:pointer}
+  #typebox{position:fixed;inset:0;z-index:9;display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:30px;background:rgba(6,5,4,.55)}
+  #typebox.on{display:flex}
+  #typebox .q{font-family:"Newsreader",serif;font-style:italic;font-size:clamp(1.4rem,5vw,2.1rem);color:#efe7d2;text-align:center;max-width:16em}
+  #see{font-family:"Newsreader",serif;font-size:clamp(1.3rem,5vw,1.9rem);background:transparent;color:var(--ink);border:0;border-bottom:2px solid var(--ink);
+    text-align:center;width:min(16em,84vw);padding:10px 4px;outline:none;caret-color:var(--ink)}
+  #see::placeholder{color:rgba(216,184,120,.4);font-style:italic}
+  #typebox .go{font-family:"Space Mono",monospace;font-size:12px;letter-spacing:.1em;color:#efe7d2;background:transparent;border:1px solid var(--ink);border-radius:999px;padding:11px 20px;cursor:pointer}
+  /* ── the control surface ── */
+  #knobchip{position:fixed;top:16px;right:16px;z-index:11;font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+    color:#efe7d2;background:rgba(20,16,10,.7);border:1px solid rgba(216,184,120,.5);border-radius:999px;padding:8px 14px;cursor:pointer}
+  #knobs{position:fixed;top:14px;right:14px;bottom:14px;width:264px;max-width:82vw;z-index:12;display:none;flex-direction:column;
+    background:rgba(9,8,7,.94);border:1px solid rgba(216,184,120,.34);border-radius:6px;padding:12px 12px 10px;
+    font-family:"Space Mono",monospace;color:#efe7d2;box-shadow:0 18px 60px rgba(0,0,0,.6)}
+  #knobs.on{display:flex}
+  #knobs h3{margin:0 0 2px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);font-weight:400;display:flex;justify-content:space-between;align-items:center}
+  #knobs .sub{font-size:9px;letter-spacing:.1em;color:rgba(239,231,210,.35);margin-bottom:10px}
+  #knobs .close{cursor:pointer;color:rgba(239,231,210,.5);font-size:13px}
+  #knoblist{overflow-y:auto;flex:1;padding-right:4px}
+  #knobs .grp{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:rgba(216,184,120,.55);margin:12px 0 6px;border-top:1px solid rgba(216,184,120,.16);padding-top:8px}
+  #knobs .grp:first-child{margin-top:0;border-top:0;padding-top:0}
+  #knobs .row{margin:0 0 9px}
+  #knobs .row .lab{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.06em;color:rgba(239,231,210,.72);margin-bottom:3px}
+  #knobs .row .lab b{font-weight:400;color:var(--ink)}
+  #knobs input[type=range]{width:100%;height:16px;-webkit-appearance:none;appearance:none;background:transparent;cursor:pointer}
+  #knobs input[type=range]::-webkit-slider-runnable-track{height:2px;background:rgba(216,184,120,.28)}
+  #knobs input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--ink);margin-top:-4.5px}
+  #knobs input[type=range]::-moz-range-track{height:2px;background:rgba(216,184,120,.28)}
+  #knobs input[type=range]::-moz-range-thumb{width:11px;height:11px;border:0;border-radius:50%;background:var(--ink)}
+  #knobs select{width:100%;background:#12100d;color:#efe7d2;border:1px solid rgba(216,184,120,.3);border-radius:3px;font-family:inherit;font-size:11px;padding:4px}
+  #knobs .btns{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  #knobs .kb{flex:1;min-width:74px;font-family:inherit;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#efe7d2;
+    background:transparent;border:1px solid rgba(216,184,120,.4);border-radius:3px;padding:7px 4px;cursor:pointer}
+  #knobs .kb:active{background:rgba(216,184,120,.18)}
+  #fps{font-size:9px;color:rgba(239,231,210,.35);margin-top:6px;text-align:center;letter-spacing:.1em}
+  #help{position:fixed;left:16px;bottom:16px;z-index:6;font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.1em;
+    color:rgba(239,231,210,.32);line-height:1.7;pointer-events:none;opacity:0;transition:opacity .4s}
+  #help.on{opacity:1}
+</style>
+</head>
+<body>
+<div id="screen"><pre id="grid"></pre></div>
+<div id="flash"></div>
+<div id="panel"></div>
+<div id="scan"></div>
+<div id="cap"></div>
+<div id="ret">+</div>
+<div id="read"><span class="n" id="rNum">01</span><span class="m" id="rMark">click or space</span></div>
+<div id="fwd"><span class="arw">↑</span> tap to move forward</div>
+<div id="act"></div>
+<div id="help" class="on">wasd — walk · mouse — look<br>click / space — open a door<br>esc — release the mouse</div>
+<div id="typebox"><div class="q" id="tq">The door opens. What do you see?</div><input id="see" type="text" autocomplete="off" autocapitalize="off" placeholder="type it — anything that comes"><button class="go" id="tgo">step through →</button></div>
+
+<div id="knobchip">controls</div>
+<div id="knobs">
+  <h3>the hallway <span class="close" id="kclose">✕</span></h3>
+  <div class="sub">live — every knob lands next frame</div>
+  <div id="knoblist"></div>
+  <div class="btns">
+    <button class="kb" id="kreset">reset</button>
+    <button class="kb" id="knew">new corridor</button>
+    <button class="kb" id="kcopy">copy params</button>
+  </div>
+  <div id="fps">—</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+document.addEventListener("gesturestart",function(e){e.preventDefault();},{passive:false});
+var grid=document.getElementById("grid"),screenEl=document.getElementById("screen"),cap=document.getElementById("cap"),
+    fwd=document.getElementById("fwd"),act=document.getElementById("act"),flash=document.getElementById("flash"),
+    typebox=document.getElementById("typebox"),see=document.getElementById("see"),ret=document.getElementById("ret"),
+    read=document.getElementById("read"),rNum=document.getElementById("rNum"),rMark=document.getElementById("rMark"),
+    scan=document.getElementById("scan"),help=document.getElementById("help");
+
+/* ────────────────────────────────────────────────────────────
+   the param bus — one dict, the render loop reads it each frame
+   ──────────────────────────────────────────────────────────── */
+var DEFAULTS={
+  speed:2.7, look:0.0024, pitch:1, bob:0.5,
+  plane:0.90, cols:156, aspect:0.60, wallh:2.50, view:28, ramp:0,
+  hue:38, sat:52, lum:64, spread:74, doorGlow:1,
+  lamp:4, lampBright:1,
+  glow:6, dust:0.5, scan:0.12, vign:1
+};
+var P={}; for(var k in DEFAULTS) P[k]=DEFAULTS[k];
+try{ var saved=JSON.parse(localStorage.getItem("hallway-params-2")||"{}");
+     for(var s in saved) if(s in P && typeof saved[s]==="number") P[s]=saved[s]; }catch(e){}
+var saveT=null;
+function persist(){ if(saveT)clearTimeout(saveT); saveT=setTimeout(function(){
+  try{ localStorage.setItem("hallway-params-2",JSON.stringify(P)); }catch(e){} },250); }
+
+/* A sparse ramp on purpose: density is the only brightness control an ASCII
+   scene has, and this hallway is meant to sit in near-dark. */
+var RAMPS=["#=+~:-.,·`  ","█▓▒░:-.·  ","@%#*+=-:.  ","MWNQ8OZua|1;:.  ","▓▒░▪·`  "];
+var LIGHT="@&%#*+=~";
+
+var SPEC=[
+  {g:"movement"},
+  {k:"speed",     t:"walk speed",    min:0.6,max:7,     step:0.1},
+  {k:"look",      t:"mouse look",    min:0.0004,max:0.008,step:0.0002, fmt:function(v){return (v*1000).toFixed(1);}},
+  {k:"pitch",     t:"look up/down",  min:0,  max:1,     step:0.05},
+  {k:"bob",       t:"head bob",      min:0,  max:1.6,   step:0.05},
+  {g:"the space"},
+  {k:"plane",     t:"field of view", min:0.4,max:1.5,   step:0.02},
+  {k:"wallh",     t:"ceiling height",min:1.4,max:5,     step:0.1, structural:true},
+  {k:"cols",      t:"grid density",  min:56, max:240,   step:2,  structural:true},
+  {k:"aspect",    t:"cell aspect",   min:0.45,max:0.85, step:0.01, structural:true},
+  {k:"view",      t:"draw distance", min:8,  max:48,    step:1},
+  {k:"ramp",      t:"shade ramp",    opts:["near-dark","blocks","classic","dense","heavy"]},
+  {g:"light"},
+  {k:"lamp",      t:"lamp spacing",  min:2,  max:12,    step:1},
+  {k:"lampBright",t:"lamp strength", min:0,  max:2,     step:0.05},
+  {k:"doorGlow",  t:"door glow",     min:0,  max:2,     step:0.05},
+  {g:"colour"},
+  {k:"hue",       t:"base hue",      min:0,  max:359,   step:1},
+  {k:"sat",       t:"saturation",    min:0,  max:100,   step:1},
+  {k:"lum",       t:"brightness",    min:20, max:95,    step:1},
+  {k:"spread",    t:"door hue spread",min:0, max:180,   step:2},
+  {g:"atmosphere"},
+  {k:"glow",      t:"bloom",         min:0,  max:22,    step:0.5},
+  {k:"dust",      t:"dust",          min:0,  max:1,     step:0.02},
+  {k:"scan",      t:"scanlines",     min:0,  max:0.6,   step:0.01},
+  {k:"vign",      t:"vignette",      min:0,  max:1.6,   step:0.05}
+];
+
+function applyLook(){
+  document.documentElement.style.setProperty("--ink","hsl("+P.hue+","+P.sat+"%,"+P.lum+"%)");
+  grid.style.textShadow = P.glow>0 ? ("0 0 "+P.glow+"px hsla("+P.hue+",60%,60%,.28)") : "none";
+  scan.style.opacity=P.scan;
+  document.getElementById("panel").style.boxShadow=
+    "inset 0 0 "+(140*P.vign).toFixed(0)+"px "+(44*P.vign).toFixed(0)+"px rgba(0,0,0,"+Math.min(.92,.5*P.vign+.26)+")";
+  colorCache={};
+}
+
+/* ── grid: full bleed at any size, with the projection the corridor needs ── */
+var CHR=0.92, W,H,FS,PROJ;
+function sizeGrid(){
+  var vw=innerWidth, vh=innerHeight;
+  FS=Math.max(6,Math.min(26, vw/(P.cols*P.aspect)));
+  /* overscan: real font metrics never match the assumed cell ratio, and a short
+     grid leaves a dead strip at the edge. Full bleed is the standing order. */
+  W=Math.min(300,Math.max(40,Math.ceil(vw/(FS*P.aspect)*1.03)));
+  H=Math.min(140,Math.max(28,Math.ceil(vh/(FS*CHR)*1.06)));
+  /* characters are taller than wide — without this the hall projects as a thin
+     slot instead of something you are standing inside */
+  PROJ=P.wallh*W*P.aspect/(2*P.plane*CHR);
+  grid.style.fontSize=FS.toFixed(2)+"px";
+  alloc();
+}
+
+/* ── sound ── */
+var AC=null;function audio(){if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}return AC;}
+function tone(f,d,t,v){var a=audio();if(!a)return;var o=a.createOscillator(),g=a.createGain();o.type=t||"sine";o.frequency.value=f;o.connect(g);g.connect(a.destination);var s=a.currentTime;g.gain.setValueAtTime(v||.15,s);g.gain.exponentialRampToValueAtTime(.0001,s+d);o.start(s);o.stop(s+d+.02);}
+function knock(v){tone(88,.16,"sine",v||.24);setTimeout(function(){tone(66,.18,"sine",(v||.24)*.8);},70);}
+function creak(){tone(92,.34,"sine",.16);setTimeout(function(){tone(64,.4,"sine",.12);},90);}
+function chord(){tone(196,1.2,"sine",.12);tone(294,1.2,"sine",.08);}
+
+/* ── door faces: a 5x7 stencil number painted on the panel ── */
+var TW=18, TH=20;
+var FONT={
+ "0":["01110","10001","10011","10101","11001","10001","01110"],
+ "1":["00100","01100","00100","00100","00100","00100","01110"],
+ "2":["01110","10001","00001","00010","00100","01000","11111"],
+ "3":["11111","00010","00100","00010","00001","10001","01110"],
+ "4":["00010","00110","01010","10010","11111","00010","00010"],
+ "5":["11111","10000","11110","00001","00001","10001","01110"],
+ "6":["00110","01000","10000","11110","10001","10001","01110"],
+ "7":["11111","00001","00010","00100","01000","01000","01000"],
+ "8":["01110","10001","10001","01110","10001","10001","01110"],
+ "9":["01110","10001","10001","01111","00001","00010","01100"]
+};
+/* cl: 1 = door structure (resolves at middling range), 2 = the number (only up close) */
+function buildTex(num){
+  var ch=[],cl=[],x,y;
+  for(y=0;y<TH;y++){ ch.push(new Array(TW).fill(" ")); cl.push(new Array(TW).fill(0)); }
+  function put(px,py,c,k){ if(px>=0&&px<TW&&py>=0&&py<TH){ ch[py][px]=c; cl[py][px]=k; } }
+  for(y=1;y<TH;y++){ put(1,y,"|",1); put(TW-2,y,"|",1); }      // jambs
+  for(x=1;x<TW-1;x++) put(x,0,"_",1);                           // lintel
+  for(x=3;x<TW-3;x++){ put(x,2,"-",1); put(x,TH-3,"-",1); }     // panel seams
+  put(TW-4,(TH*0.62)|0,"o",1);                                  // handle
+  if(num){
+    var a=FONT[num.charAt(0)],b=FONT[num.charAt(1)],ox=((TW-11)/2)|0,oy=5;
+    for(var r=0;r<7;r++) for(var c=0;c<5;c++){
+      if(a[r].charAt(c)==="1") put(ox+c,   oy+r,"#",2);
+      if(b[r].charAt(c)==="1") put(ox+6+c, oy+r,"#",2);
+    }
+  }
+  return {ch:ch,cl:cl};
+}
+
+/* ── the corridor ── */
+var MW=7, MH, MAP, DOORS={}, doorList=[];
+function seededRnd(s){ s=(s>>>0)||1; return function(){ s=(Math.imul(s,1103515245)+12345)>>>0; return s/4294967296; }; }
+function makeCorridor(seed){
+  var R=seededRnd(seed||1), len=22+((R()*14)|0), rows=[], y;
+  DOORS={}; doorList=[];
+  for(y=0;y<len;y++) rows.push((y===0||y===len-1) ? "#######".split("") : "#.....#".split(""));
+  /* doors alternate walls every two cells, so at most one is ever within reach */
+  var side=R()<0.5?0:1, n=1;
+  for(y=3;y<len-2;y+=2){
+    if(R()<0.72){
+      var wx=side?MW-1:0;
+      rows[y][wx]="D";
+      var key=wx+","+y, num=("0"+n).slice(-2); n++;
+      DOORS[key]={x:wx,y:y,open:0,opening:false,hue:0,n:num,tex:buildTex(num),i:doorList.length};
+      doorList.push(DOORS[key]);
+    }
+    side=side?0:1;
+  }
+  if(doorList.length<2){ rows[5][0]="D";
+    DOORS["0,5"]={x:0,y:5,open:0,opening:false,hue:0,n:"01",tex:buildTex("01"),i:0}; doorList=[DOORS["0,5"]]; }
+  MAP=rows; MH=len;
+  doorHues();
+}
+function doorHues(){ var n=Math.max(1,doorList.length);
+  doorList.forEach(function(d,i){ d.hue=(P.hue+(i-(n-1)/2)*(P.spread/Math.max(1,n-1))*2+360)%360; }); }
+function cellAt(x,y){ if(x<0||y<0||x>=MW||y>=MH) return "#"; return MAP[y|0][x|0]; }
+function solid(x,y){ var c=cellAt(x,y); if(c===".") return false;
+  if(c==="D"){ var d=DOORS[(x|0)+","+(y|0)]; return !(d&&d.open>0.88); } return true; }
+function blocksSight(x,y){ return cellAt(x,y)!=="."; }
+
+/* ── camera + raycaster ── */
+var cam={x:3.5,y:1.6,ang:Math.PI/2,pitch:0}, now=0, bobPhase=0, bobAmt=0;
+function resetCam(){ cam.x=3.5;cam.y=1.6;cam.ang=Math.PI/2;cam.pitch=0;bobPhase=0;bobAmt=0; }
+var cS,cE,cD,cSide,cCell,cU,cRow,cCol,cRdx,cRdy,rowD,fxR,fyR;
+function alloc(){ cS=new Int16Array(W);cE=new Int16Array(W);cD=new Float32Array(W);
+  cSide=new Int8Array(W);cCell=new Array(W);cU=new Float32Array(W);cRow=new Int16Array(W);
+  cCol=new Int16Array(W);cRdx=new Float32Array(W);cRdy=new Float32Array(W);
+  rowD=new Float32Array(H);fxR=new Float32Array(W);fyR=new Float32Array(W); }
+function cast(){
+  if(!cS||cS.length!==W) alloc();
+  var dirX=Math.cos(cam.ang),dirY=Math.sin(cam.ang),planeX=-dirY*P.plane,planeY=dirX*P.plane;
+  for(var x=0;x<W;x++){
+    var camX=2*x/W-1, rdx=dirX+planeX*camX, rdy=dirY+planeY*camX;
+    var mx=cam.x|0,my=cam.y|0,ddx=Math.abs(1/rdx),ddy=Math.abs(1/rdy),stX,stY,sdx,sdy;
+    if(rdx<0){stX=-1;sdx=(cam.x-mx)*ddx;}else{stX=1;sdx=(mx+1-cam.x)*ddx;}
+    if(rdy<0){stY=-1;sdy=(cam.y-my)*ddy;}else{stY=1;sdy=(my+1-cam.y)*ddy;}
+    var side=0,hit=false,g=0;
+    while(!hit&&g++<400){ if(sdx<sdy){sdx+=ddx;mx+=stX;side=0;}else{sdy+=ddy;my+=stY;side=1;} if(blocksSight(mx,my))hit=true; }
+    var d=(side===0)?(sdx-ddx):(sdy-ddy); if(d<0.0001)d=0.0001;
+    var u=(side===0)?(cam.y+d*rdy):(cam.x+d*rdx); u-=Math.floor(u);
+    if(side===0&&rdx<0) u=1-u;                    // painted numbers read the same on both walls
+    if(side===1&&rdy>0) u=1-u;
+    cD[x]=d; cSide[x]=side; cCell[x]=cellAt(mx,my); cU[x]=u; cRow[x]=my; cCol[x]=mx;
+    cRdx[x]=rdx; cRdy[x]=rdy;
+  }
+}
+function noise(x,y,t){ var m=Math.sin(x*12.9898+y*78.233+t)*43758.5453; return m-Math.floor(m); }
+/* stable per-surface-point hash — dither keyed to the world, not the screen, so the
+   grain sits still on the wall instead of crawling as you walk */
+function hash3(a,b,c){ var n=(Math.imul(a,374761393)+Math.imul(b,668265263)+Math.imul(c,1442695040))>>>0;
+  n=Math.imul(n^(n>>>13),1274126177)>>>0; return ((n^(n>>>16))>>>0)/4294967296; }
+
+/* ── colour (quantised so the runs stay long) ── */
+var colorCache={};
+function hsl(h,s,l){ var key=(h|0)+"_"+(s|0)+"_"+(l|0), v=colorCache[key];
+  if(!v){ v="hsl("+(h|0)+","+(s|0)+"%,"+(l|0)+"%)"; colorCache[key]=v; } return v; }
+function levelOf(d){ return Math.round((1-Math.min(1,d/P.view))*6)/6; }
+function baseCol(d){ return hsl(P.hue,P.sat,Math.max(7,P.lum*(0.24+0.76*levelOf(d)))); }
+function doorCol(door,d){ return hsl(door.hue,Math.min(100,P.sat+20),
+  Math.max(10,P.lum*(0.30+0.70*levelOf(d))+door.open*30*P.doorGlow)); }
+var dimCol;
+
+/* ── the render ── */
+function esc(c){ return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":c; }
+function render(){
+  var SHADE=RAMPS[P.ramp|0]||RAMPS[0], LMAX=SHADE.length-1, VIEW=P.view,
+      t=now*0.001, tf=(t*7)|0,
+      horizon=H/2 + cam.pitch*H*0.40*P.pitch + Math.sin(bobPhase)*bobAmt*P.bob*H*0.012,
+      MID=MW/2, out=[], x,y;
+  function shadeAt(d,bias){ var i=Math.floor(d/VIEW*LMAX)+bias; return SHADE[i<0?0:(i>LMAX?LMAX:i)]; }
+  dimCol=hsl(P.hue,Math.max(0,P.sat-18),Math.max(5,P.lum*0.30));
+
+  cast();
+  /* wall band per column, around the (possibly pitched) horizon */
+  for(x=0;x<W;x++){ var lh=Math.floor(PROJ/cD[x]);
+    cS[x]=Math.round(horizon-lh/2); cE[x]=Math.round(horizon+lh/2); }
+
+  for(y=0;y<H;y++){
+    var k=Math.abs(y-horizon); rowD[y]= k<0.5 ? 1e9 : PROJ/(2*k);
+    var dRow=rowD[y], below=y>horizon,
+        dNext=(function(){ var yy=below?(y+1<H?y+1:y):(y>0?y-1:y), kk=Math.abs(yy-horizon);
+                           return kk<0.5?1e9:PROJ/(2*kk); })(),
+        live=dRow<VIEW;
+    if(live) for(x=0;x<W;x++){ fxR[x]=cam.x+cRdx[x]*dRow; fyR[x]=cam.y+cRdy[x]*dRow; }
+    var row="",runCol=null,run="";
+    for(x=0;x<W;x++){
+      var ch=" ",col=dimCol,s=cS[x],e=cE[x];
+      if(y>e||y<s){
+        /* floor and ceiling, cast in real perspective — a grid that converges on the
+           vanishing point. Seams are found by testing where a row or column crosses a
+           whole world unit, which keeps every line exactly one cell thick instead of
+           smearing into bands near the horizon. */
+        if(live){
+          var seam=false;
+          if(dNext!==dRow && Math.floor(fyR[x])!==Math.floor(cam.y+cRdy[x]*dNext)) seam=true;
+          if(!seam && x>0 && Math.floor(fxR[x])!==Math.floor(fxR[x-1])) seam=true;
+          if(seam) ch=shadeAt(dRow, below?2:4);
+          if(!below){
+            /* a run of dim panels overhead, every few units. They are the only light
+               source in here, and they explain the pools of it on the floor. */
+            var cy=fyR[x], lampSpan=Math.max(2,P.lamp|0);
+            if(Math.abs(fxR[x]-MID)<0.55 && (cy-Math.floor(cy/lampSpan)*lampSpan)<0.7 && P.lampBright>0){
+              var li=4+((dRow/VIEW)*4|0)-Math.round((P.lampBright-1)*3);
+              ch=LIGHT[Math.max(0,Math.min(LIGHT.length-1,li))];
+            }
+          } else if(P.lampBright>0){
+            /* the pool each lamp throws down. Sparse on purpose — it should read as
+               light landing on the floor, not as a second floor texture. */
+            var fy=fyR[x], span=Math.max(2,P.lamp|0), inLamp=(fy-Math.floor(fy/span)*span),
+                near=1-Math.min(1,inLamp/0.9), across=1-Math.min(1,Math.abs(fxR[x]-MID)/1.3),
+                pool=near*across*P.lampBright;
+            if(pool>0.05){
+              if(ch!==" ") ch=shadeAt(dRow, below?2-Math.round(pool*2):4);  // brighten the seam it lands on
+              else if(hash3(x|0,(fy*3)|0,0) > 1-0.30*pool) ch=shadeAt(dRow,5);
+            }
+          }
+          col=baseCol(dRow);
+        }
+      } else {
+        var d=cD[x],cell=cCell[x],v=(y-s)/Math.max(1,e-s),bias=cSide[x]===1?1:0,
+            tx=(cU[x]*TW)|0, ty=(v*TH)|0;
+        if(tx<0)tx=0; if(tx>=TW)tx=TW-1; if(ty<0)ty=0; if(ty>=TH)ty=TH-1;
+        if(cell==="D"){
+          var door=DOORS[cCol[x]+","+cRow[x]];
+          if(door){
+            var tex=door.tex, cl=tex.cl[ty][tx];
+            ch=shadeAt(d,bias+3);                       // the panel, recessed from the wall
+            if(cl===1 && d<15) ch=tex.ch[ty][tx];       // jambs, lintel, seams, handle
+            else if(cl===2 && d<7.5) ch=tex.ch[ty][tx]; // the number — only up close
+            /* opening: the gap widens from the middle of the panel outward, and the
+               light through it falls off toward the edges. Per-cell random here would
+               read as static rather than light. */
+            if(door.open>0.02){
+              var half=0.46*door.open, off=Math.abs(cU[x]-0.5);
+              if(off<half && v>0.06){
+                var b=1-off/Math.max(0.001,half); b=b*b*(3-2*b);
+                b*=0.84+0.16*Math.sin(t*3+cRow[x]);
+                var gi=Math.floor((1-b)*(LIGHT.length-1)+hash3(tx,ty,tf)*0.9);
+                ch=LIGHT[Math.max(0,Math.min(LIGHT.length-1,gi))];
+              }
+            }
+            col=doorCol(door,d);
+          } else { ch=shadeAt(d,bias); col=baseCol(d); }
+        } else {
+          /* joints every world unit. Vertical, so they converge with the hall
+             instead of banding across it the way horizontal courses do. */
+          ch=(tx<1||tx>TW-2) ? shadeAt(d,bias) : shadeAt(d,bias+1);
+          col=baseCol(d);
+        }
+      }
+      if(ch===" " && P.dust>0 && noise(x,y,tf)>(1-0.0023*P.dust)) ch="·";
+      if(col!==runCol){ if(runCol!==null) row+='<span style="color:'+runCol+'">'+run+'</span>'; runCol=col; run=""; }
+      run+=esc(ch);
+    }
+    row+='<span style="color:'+runCol+'">'+run+'</span>';
+    out.push(row);
+  }
+  grid.innerHTML=out.join("\n");
+}
+function renderBlack(){ var row=new Array(W+1).join(" ")+"\n"; grid.textContent=new Array(H+1).join(row); }
+var lightGrow=0;
+function renderVoid(){ var out="",cx=W/2,cy=H/2,rad=Math.pow(lightGrow,1.7)*Math.max(W,H)*0.74,
+    tt=now*.00016,dth=0.999-lightGrow*0.03;
+  for(var y=0;y<H;y++){ var r="";
+    for(var x=0;x<W;x++){ var dxp=(x-cx)*0.55,dyp=(y-cy),dist=Math.sqrt(dxp*dxp+dyp*dyp),ch=" ";
+      if(dist<rad){ var k=1-dist/Math.max(1,rad); ch=LIGHT[Math.min(LIGHT.length-1,(k*LIGHT.length)|0)]; }
+      else if(lightGrow>0.05 && noise(x,y,(tt*40)|0)>dth) ch="·";
+      r+=ch; }
+    out+=r+"\n"; }
+  grid.textContent=out;
+}
+
+/* ── narration ── */
+function showCap(h){cap.classList.remove("on");setTimeout(function(){cap.innerHTML=h;cap.classList.add("on");},140);}
+function hideCap(){cap.classList.remove("on");}
+function acts(list){act.classList.remove("on");act.innerHTML="";list.forEach(function(a){var b=document.createElement("button");b.className="b";b.textContent=a.t;b.onclick=function(){audio();a.f();};act.appendChild(b);});setTimeout(function(){act.classList.add("on");},220);}
+function escHtml(s){return s.replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function hash(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0);}
+
+/* ── flow ── */
+var phase="intro", roomIndex=0;
+function intro(){ phase="intro"; help.classList.remove("on");
+  showCap("Let the room go quiet. Breathe out once, all the way."); acts([{t:"I have",f:toVoid}]); }
+function toVoid(){ phase="void"; lightGrow=0; act.classList.remove("on");
+  showCap("A black void. No walls, no floor. Nothing at all. <span class='said'>Move forward into it.</span>");
+  fwd.classList.add("on"); }
+function boom(){ phase="booming"; fwd.classList.remove("on"); chord();
+  flash.style.opacity=.9; setTimeout(function(){ flash.style.opacity=0; },90);
+  makeCorridor(1); resetCam(); roomIndex=0;
+  setTimeout(function(){ enterHall("You have a body now. The hall runs ahead — <span class='said'>walk it yourself.</span> Numbered doors, both walls. Open the one that pulls."); },260);
+}
+function enterHall(capHtml){ phase="hall"; showCap(capHtml); knock(); help.classList.add("on");
+  if(isTouch) fwd.classList.add("on"); }
+
+/* ── movement ── */
+var keys={}, isTouch=("ontouchstart" in window), locked=false;
+addEventListener("keydown",function(e){
+  var k=e.key.toLowerCase();
+  if(k==="`"||k==="~"){ toggleKnobs(); return; }
+  if(document.activeElement===see) return;
+  if(k===" "||k==="enter"){ e.preventDefault();
+    if(phase==="void") onTap(); else if(phase==="hall") interact(); return; }
+  if(["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright","shift"].indexOf(k)>=0){ e.preventDefault(); keys[k]=true; }
+});
+addEventListener("keyup",function(e){ keys[e.key.toLowerCase()]=false; });
+addEventListener("blur",function(){ keys={}; });
+
+function tryMove(nx,ny){ var r=0.24;
+  if(!solid(nx+r,cam.y)&&!solid(nx-r,cam.y)) cam.x=nx;
+  if(!solid(cam.x,ny+r)&&!solid(cam.x,ny-r)) cam.y=ny; }
+function stepMove(dt){
+  var f=0,st=0;
+  if(keys["w"]||keys["arrowup"])f+=1; if(keys["s"]||keys["arrowdown"])f-=1;
+  if(keys["a"])st-=1; if(keys["d"])st+=1;
+  if(keys["arrowleft"])cam.ang-=1.6*dt; if(keys["arrowright"])cam.ang+=1.6*dt;
+  if(touchFwd)f+=1;
+  if(!f&&!st){ bobAmt+=(0-bobAmt)*Math.min(1,dt*6); return; }
+  var sp=P.speed*(keys["shift"]?1.7:1)*dt, dx=Math.cos(cam.ang), dy=Math.sin(cam.ang);
+  var vx=dx*f+(-dy)*st, vy=dy*f+dx*st, len=Math.hypot(vx,vy)||1;
+  tryMove(cam.x+vx/len*sp, cam.y+vy/len*sp);
+  bobPhase+=dt*9*(P.speed/2.7); bobAmt+=(1-bobAmt)*Math.min(1,dt*6);
+  checkThreshold();
+}
+function checkThreshold(){ var c=cellAt(cam.x,cam.y);
+  if(c==="D"){ var d=DOORS[(cam.x|0)+","+(cam.y|0)]; if(d&&d.open>0.88) askDoor(); } }
+
+/* ── looking ── */
+screenEl.addEventListener("click",function(){
+  audio();
+  if(phase==="void"){ onTap(); return; }
+  if(phase!=="hall") return;
+  if(!locked && !isTouch){ screenEl.requestPointerLock&&screenEl.requestPointerLock(); return; }
+  interact();
+});
+document.addEventListener("pointerlockchange",function(){ locked=(document.pointerLockElement===screenEl); });
+document.addEventListener("mousemove",function(e){
+  if(!locked) return;
+  cam.ang+=e.movementX*P.look;
+  cam.pitch=Math.max(-0.5,Math.min(0.5,cam.pitch-e.movementY*P.look*0.55));
+});
+var dragging=false,lastX=0,lastY=0,touchFwd=false;
+screenEl.addEventListener("pointerdown",function(e){ if(phase!=="hall")return; dragging=true;lastX=e.clientX;lastY=e.clientY; });
+addEventListener("pointermove",function(e){
+  if(!dragging||locked) return;
+  var dx=e.clientX-lastX,dy=e.clientY-lastY; lastX=e.clientX;lastY=e.clientY;
+  cam.ang+=dx*P.look*1.7;
+  cam.pitch=Math.max(-0.5,Math.min(0.5,cam.pitch-dy*P.look*0.9));
+});
+addEventListener("pointerup",function(){ dragging=false; });
+/* one handler, not two: pointerdown plus click fired onTap twice per tap on desktop */
+fwd.addEventListener("pointerdown",function(e){e.preventDefault();audio();if(phase==="hall")touchFwd=true;else onTap();});
+addEventListener("pointerup",function(){touchFwd=false;});
+
+/* ── doors ── */
+var aimed=null;
+function aim(){
+  if(phase!=="hall"){ aimed=null; read.classList.remove("on"); ret.classList.remove("on"); return; }
+  var mid=W>>1, best=null;
+  if(cCell[mid]==="D" && cD[mid]<3.0) best=DOORS[cCol[mid]+","+cRow[mid]]||null;
+  aimed=best;
+  ret.classList.add("on"); ret.textContent=aimed?"◇":"+";
+  read.classList.toggle("on",!!aimed);
+  if(aimed){ rNum.textContent=aimed.n;
+    rMark.textContent = aimed.open>0.88 ? "step through" : (aimed.opening?"opening":"click or space"); }
+}
+function interact(){ if(!aimed) return;
+  if(aimed.open<0.02 && !aimed.opening){ aimed.opening=true; creak(); knock(0.2);
+    showCap("The door gives. Light comes through the gap."); } }
+function askDoor(){ phase="type"; fwd.classList.remove("on"); hideCap();
+  ret.classList.remove("on"); read.classList.remove("on");
+  if(document.pointerLockElement) document.exitPointerLock();
+  document.getElementById("tq").textContent = roomIndex===0 ? "The door opens. What do you see?" : "Another door. What's on the other side?";
+  see.value=""; typebox.classList.add("on"); setTimeout(function(){see.focus();},350); }
+function submitDoor(){ var w=see.value.trim(); if(!w){see.focus();return;} typebox.classList.remove("on"); walkThrough(w); }
+see.addEventListener("keydown",function(e){ if(e.key==="Enter") submitDoor(); });
+document.getElementById("tgo").addEventListener("click",function(){ audio(); submitDoor(); });
+function walkThrough(word){
+  window._last=word; roomIndex++;
+  chord(); flash.style.opacity=.85; setTimeout(function(){flash.style.opacity=0;},120);
+  var h=hash(word); P.hue=h%360; applyLook(); syncKnobs();
+  makeCorridor(h); resetCam();
+  setTimeout(function(){ enterHall("You step through, into <span class='said'>"+escHtml(word)+"</span>. It builds itself around you as you walk — same strange grain, a new shape."); },300);
+}
+
+/* ── the void beat ── */
+var anim=null;
+function easeInOut(t){ return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2; }
+function pushValue(get,set,delta,cap,dur,done){ if(anim)return; anim={from:get(),to:Math.min(cap,get()+delta),dur:dur,t0:null,set:set,done:done}; }
+function onTap(){ audio(); if(anim||phase!=="void") return;
+  if(lightGrow<0.05){ lightGrow=0.06; showCap("And then — far off — <span class='said'>a single point of light.</span>"); return; }
+  pushValue(function(){return lightGrow;},function(v){lightGrow=v;},0.27,1,700,function(){ if(lightGrow>=0.999) boom(); }); }
+/* (no click handler on #fwd — pointerdown above already covers mouse and touch) */
+
+/* ── control surface ── */
+var knobs=document.getElementById("knobs"),knoblist=document.getElementById("knoblist"),inputs={};
+SPEC.forEach(function(row){
+  if(row.g){ var g=document.createElement("div"); g.className="grp"; g.textContent=row.g; knoblist.appendChild(g); return; }
+  var wrap=document.createElement("div"); wrap.className="row";
+  var lab=document.createElement("div"), val=document.createElement("b"); lab.className="lab";
+  lab.innerHTML="<span>"+row.t+"</span>"; lab.appendChild(val); wrap.appendChild(lab);
+  var input;
+  if(row.opts){
+    input=document.createElement("select");
+    row.opts.forEach(function(o,i){ var op=document.createElement("option"); op.value=i; op.textContent=o; input.appendChild(op); });
+    input.value=P[row.k];
+    input.addEventListener("change",function(){ P[row.k]=+input.value; val.textContent=row.opts[+input.value]; persist(); });
+  } else {
+    input=document.createElement("input"); input.type="range";
+    input.min=row.min; input.max=row.max; input.step=row.step; input.value=P[row.k];
+    input.addEventListener("input",function(){
+      P[row.k]=parseFloat(input.value);
+      val.textContent=row.fmt?row.fmt(P[row.k]):String(P[row.k]);
+      if(row.structural) sizeGrid(); else if(row.k==="plane") sizeGrid();
+      if(row.k==="spread"||row.k==="hue") doorHues();
+      applyLook(); persist();
+    });
+  }
+  input.addEventListener("keydown",function(e){ e.stopPropagation(); });
+  val.textContent=row.opts?row.opts[P[row.k]]:(row.fmt?row.fmt(P[row.k]):String(P[row.k]));
+  wrap.appendChild(input); knoblist.appendChild(wrap);
+  inputs[row.k]={i:input,v:val,row:row};
+});
+function syncKnobs(){ for(var k in inputs){ var o=inputs[k];
+  o.i.value=P[k]; o.v.textContent=o.row.opts?o.row.opts[P[k]]:(o.row.fmt?o.row.fmt(P[k]):String(P[k])); } }
+function toggleKnobs(){ knobs.classList.toggle("on"); }
+document.getElementById("knobchip").addEventListener("click",toggleKnobs);
+document.getElementById("kclose").addEventListener("click",toggleKnobs);
+document.getElementById("kreset").addEventListener("click",function(){
+  for(var k in DEFAULTS)P[k]=DEFAULTS[k]; sizeGrid(); doorHues(); applyLook(); syncKnobs(); persist(); });
+document.getElementById("knew").addEventListener("click",function(){
+  makeCorridor((Math.random()*1e9)|0); resetCam();
+  if(phase!=="hall") enterHall("A different hall. Same grain."); });
+document.getElementById("kcopy").addEventListener("click",function(){
+  var t=JSON.stringify(P,null,2); if(navigator.clipboard) navigator.clipboard.writeText(t);
+  var b=document.getElementById("kcopy"),o=b.textContent; b.textContent="copied ✓"; setTimeout(function(){b.textContent=o;},1400); });
+
+/* ── loop ── */
+var lastTs=0, frames=0, acc=0, fpsEl=document.getElementById("fps");
+/* driven by dt, not timestamps, so the interval fallback advances it identically */
+function advanceAnim(dt){
+  if(!anim) return;
+  anim.el=(anim.el||0)+dt*1000;
+  var k=Math.min(1,anim.el/anim.dur);
+  anim.set(anim.from+(anim.to-anim.from)*easeInOut(k));
+  if(k>=1){ var d=anim.done; anim=null; if(d) d(); }
+}
+function renderOnce(dt){
+  advanceAnim(dt);
+  if(phase==="hall"){
+    stepMove(dt);
+    for(var i=0;i<doorList.length;i++){ var d=doorList[i]; if(d.opening&&d.open<1) d.open=Math.min(1,d.open+dt*0.9); }
+    aim(); render();
+  }
+  else if(phase==="void") renderVoid();
+  else if(phase==="booming") render();
+  else if(phase==="intro") renderBlack();
+  else render();
+}
+function loop(ts){ now=ts;
+  var dt=Math.min(0.05,(ts-lastTs)/1000||0.016); lastTs=ts;
+  renderOnce(dt);
+  frames++; acc+=dt; beat=ts;
+  if(acc>1){ fpsEl.textContent=Math.round(frames/acc)+" fps · "+W+"×"+H; frames=0; acc=0; }
+  requestAnimationFrame(loop);
+}
+/* rAF is suspended in a hidden or backgrounded tab, and starved in some headless
+   browsers — without this the piece freezes mid-beat and taps pile up unanswered */
+var beat=0;
+setInterval(function(){ var t=(performance.now?performance.now():Date.now());
+  if(t-beat>250){ now=t; renderOnce(0.05); beat=t; } },100);
+
+/* harness — step frames deterministically without a visible tab */
+window.__hall={ P:P, step:function(n,dt){ for(var i=0;i<n;i++) renderOnce(dt||0.016); },
+  get cam(){ return cam; }, doors:function(){ return doorList; },
+  get grid(){ return {W:W,H:H,PROJ:PROJ}; },
+  enter:function(){ makeCorridor(1); resetCam(); phase="hall"; help.classList.add("on"); } };
+
+sizeGrid(); addEventListener("resize",sizeGrid);
+addEventListener("orientationchange",function(){ setTimeout(sizeGrid,200); });
+applyLook();
+/* ?walk=1 drops you straight into the hall — for testing, and for anyone who's
+   already done the breathing part once */
+if(/[?&]walk=1/.test(location.search)){ makeCorridor(1); resetCam();
+  enterHall("The hall runs ahead — <span class='said'>walk it yourself.</span> Numbered doors, both walls. Open the one that pulls."); }
+else intro();
+requestAnimationFrame(loop);
+})();
+</script>
+<style>
+  /* the way back to the corridor */
+  #backdoor{position:fixed;left:calc(env(safe-area-inset-left) + 14px);top:calc(env(safe-area-inset-top) + 12px);
+    z-index:9999;display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;
+    border:1px solid rgba(233,226,212,.26);background:rgba(10,9,8,.55);color:rgba(233,226,212,.5);
+    font-family:"Space Mono",ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.16em;
+    text-transform:lowercase;text-decoration:none;line-height:1;transition:color .3s ease,border-color .3s ease}
+  #backdoor:hover,#backdoor:focus{color:#e9e2d4;border-color:rgba(233,226,212,.5)}
+</style>
+<a id="backdoor" href="./" title="back to the corridor">↩ corridor</a>
+</body>
+</html>
