@@ -19,8 +19,7 @@
   #glow{pointer-events:none;mix-blend-mode:screen;width:100%;height:100%}
   #scan{position:absolute;inset:0;pointer-events:none;
     background:repeating-linear-gradient(to bottom,rgba(0,0,0,0) 0 2px,rgba(0,0,0,.55) 2px 3px)}
-  #panel{position:fixed;inset:10px;z-index:3;pointer-events:none;border:2px solid rgba(var(--tint),.20);border-radius:4px;
-    box-shadow:inset 0 0 140px 44px rgba(0,0,0,.76);transition:border-color 1.2s ease}
+  #panel{position:fixed;inset:-40px;z-index:3;pointer-events:none;box-shadow:inset 0 0 180px 60px rgba(0,0,0,.7)}
   #fade{position:fixed;inset:0;z-index:20;background:#050405;opacity:0;pointer-events:none;transition:opacity .5s ease}
   #cross{position:fixed;left:50%;top:50%;width:5px;height:5px;margin:-2px 0 0 -2px;border-radius:50%;z-index:6;
     background:rgba(var(--tint),.7);pointer-events:none;opacity:0;transition:opacity .3s}
@@ -37,11 +36,6 @@
   #sig{position:fixed;left:26px;bottom:calc(env(safe-area-inset-bottom) + 24px);z-index:13;font-family:"Space Mono",monospace;
     font-size:10px;letter-spacing:.3em;text-transform:lowercase;color:rgba(230,201,138,.3);transition:opacity .9s ease}
   #sig.gone{opacity:0}
-  #hint{position:fixed;left:50%;transform:translateX(-50%);top:22px;z-index:8;font-family:"Space Mono",monospace;font-size:10px;
-    letter-spacing:.22em;text-transform:uppercase;color:rgba(230,201,138,.42);opacity:0;transition:opacity 1.4s ease;pointer-events:none;
-    text-align:center;line-height:1.9;white-space:nowrap}
-  #hint.on{opacity:1}
-  @media (max-width:899px){ #hint{display:none} }
 
   /* the door readout — only ever appears when you're alongside one */
   #read{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 142px);z-index:8;
@@ -105,7 +99,6 @@
 <div id="fps"></div>
 
 <div id="read"><div class="num" id="rNum"></div><div class="mark" id="rMark"></div><button class="open" id="rOpen">open →</button></div>
-<div id="hint">drag to look · double-click to lock the mouse · w a s d / scroll to walk · tab for the instrument</div>
 
 <div class="pad left hid"><div class="btn up" data-k="w">▲</div><div class="btn lft" data-k="q">‹</div><div class="btn dn" data-k="s">▼</div><div class="btn rgt" data-k="e">›</div></div>
 <div class="pad right hid"><div class="btn tt" data-k="w">▲</div><div class="btn tl" data-k="a">◀</div><div class="btn tr" data-k="d">▶</div></div>
@@ -131,7 +124,7 @@ document.addEventListener("gesturestart",function(e){e.preventDefault();},{passi
 
 var stage=document.getElementById("stage"), cv=document.getElementById("cv"), gl=document.getElementById("glow"),
     scan=document.getElementById("scan"), gate=document.getElementById("gate"), sig=document.getElementById("sig"),
-    fade=document.getElementById("fade"), read=document.getElementById("read"), hint=document.getElementById("hint"),
+    fade=document.getElementById("fade"), read=document.getElementById("read"),
     rNum=document.getElementById("rNum"), rMark=document.getElementById("rMark"), rOpen=document.getElementById("rOpen"),
     cross=document.getElementById("cross"), gear=document.getElementById("gear"), setEl=document.getElementById("set"),
     fpsEl=document.getElementById("fps"), pads=document.querySelectorAll(".pad");
@@ -152,9 +145,9 @@ var DEF={
   cols:156, cellW:0.60, cellH:0.92, font:0,
   fov:0.90, wallH:2.50, view:28, fog:1.8,
   ramp:0, bright:1.0, sat:1.0, hue:0,
-  lantern:1.0, reach:3.6, flicker:0.5, ambient:0.22, hand:1,
+  lantern:1.0, reach:4.2, flicker:0.5, ambient:0.05,
   lightGap:4, lightPow:0, bleed:0.8,
-  glow:0.55, blur:6, scan:0.22, grain:0.5, dust:0.0023,
+  glow:0.55, blur:6, scan:0, grain:0.6, dust:0.0023,
   move:0.105, turn:0.045, sens:1.0, invert:0, pitch:1, anim:1, fps:0
 };
 var P={}; for(var k0 in DEF) P[k0]=DEF[k0];
@@ -182,7 +175,6 @@ var SPEC=[
   {k:"reach", l:"lantern reach", mn:1, mx:12, st:0.1},
   {k:"flicker", l:"flicker", mn:0, mx:1, st:0.02},
   {k:"ambient", l:"ambient", mn:0, mx:1, st:0.01},
-  {k:"hand", l:"lantern in frame", opts:["hidden","shown"]},
   {k:"lightGap", l:"ceiling lights every", mn:2, mx:12, st:1},
   {k:"lightPow", l:"ceiling light power", mn:0, mx:3, st:0.05},
   {k:"bleed", l:"door colour bleed", mn:0, mx:3, st:0.05},
@@ -203,9 +195,9 @@ var SPEC=[
 ];
 var PRESETS={
   "near dark":{},
-  "lit":{bright:1.4, lightPow:1.8, ambient:.6, glow:.8, view:34, fog:.9},
-  "far lantern":{reach:7, lantern:1.4, ambient:.1},
-  "pitch black":{ambient:0, reach:2.6, flicker:.8, dust:0},
+  "lit":{bright:1.4, lightPow:1.8, ambient:.5, glow:.8, view:34, fog:.9},
+  "far lantern":{reach:8, lantern:1.4, ambient:.08},
+  "pitch black":{ambient:0, reach:2.8, flicker:.8, dust:0},
   "crunchy":{cols:84, ramp:1, glow:.3, scan:.5, grain:1.2},
   "fine":{cols:260, ramp:2, glow:.35, scan:0, cellW:.55},
   "blocks":{cols:110, ramp:3, glow:.9, blur:10, scan:.4, bright:1.3},
@@ -436,15 +428,19 @@ function noise(x,y,t){ var m=Math.sin(x*12.9898+y*78.233+t)*43758.5453; return m
 
 var MID=MW/2;
 function shadeAt(d,bias){ var i=Math.floor(d/VIEW*LMAX)+bias; return SHADE[i<0?0:(i>LMAX?LMAX:i)]; }
+/* the lantern decides the glyph too: an unlit surface thins out to nothing, so the pool of
+   light carves the visible corridor out of the dark instead of just brightening it */
+function litShade(d,bias,L){ var v=1-Math.min(1,L*1.6); return shadeAt(d, bias+((v*v*LMAX*0.8)|0)); }
+var FLOOR=0.045;
 function fogAt(d){ var f=1-d/VIEW; if(f<0) return 0; return Math.pow(f,P.fog); }
 /* You carry the light. The lantern hangs a little ahead of you and swings as you walk;
    the corridor beyond its reach is dark. Ceiling lights are a knob, off by default. */
 var lampX=0, lampY=0, lampI=1, walkPhase=0, sway=0;
 function placeLantern(t){
-  sway = Math.sin(walkPhase)*0.14;
+  sway = Math.sin(walkPhase)*0.22;
   lampX = cam.x + dirX*0.3 - dirY*sway; lampY = cam.y + dirY*0.3 + dirX*sway;
   var f = 0.5+0.5*Math.sin(t*13.7) , g = 0.5+0.5*Math.sin(t*7.3+1.3), n = noise(1,1,(t*11)|0);
-  lampI = P.lantern * (1 - P.flicker*(0.09*f + 0.06*g + 0.06*n));
+  lampI = P.lantern * (1 - P.flicker*(0.09*f + 0.06*g + 0.06*n)) * (1 - 0.07*Math.abs(Math.sin(walkPhase)));
 }
 function lightAt(x,y){
   var dx=x-lampX, dy=y-lampY, q=(dx*dx+dy*dy)/(P.reach*P.reach);
@@ -466,17 +462,6 @@ function hueShift(c,deg){ if(!deg) return c.slice(); var a=deg*Math.PI/180, cs=M
   var m=[.299+.701*cs+.168*sn,.587-.587*cs+.330*sn,.114-.114*cs-.497*sn, .299-.299*cs-.328*sn,.587+.413*cs+.035*sn,.114-.114*cs+.292*sn, .299-.3*cs+1.25*sn,.587-.588*cs-1.05*sn,.114+.886*cs-.203*sn];
   return [c[0]*m[0]+c[1]*m[1]+c[2]*m[2], c[0]*m[3]+c[1]*m[4]+c[2]*m[5], c[0]*m[6]+c[1]*m[7]+c[2]*m[8]]; }
 
-/* a small lantern at the edge of the frame, swinging with your step, its flame never still */
-var LAMP=[" .-. ","/ _ \\","| * |","|   |","\\___/","  |  "];
-function plot(x,y,ch,r,g,b,data){ if(x<0||y<0||x>=W||y>=H||ch===" ") return; var o=(y*W+x)*4;
-  data[o]=r>255?255:r; data[o+1]=g>255?255:g; data[o+2]=b>255?255:b; data[o+3]=255;
-  var idx=CIDX[ch]; if(idx===undefined) idx=CIDX["#"]; ctx.drawImage(atlas, idx*GW, 0, GW, GH, x*GW, y*GH, GW, GH); }
-function drawLamp(t,data){
-  var x0=W-10+Math.round(sway*14), y0=H-9+Math.round(Math.abs(Math.sin(walkPhase))*1.2), m=(0.75+0.55*lampI);
-  var flame="*+'^*'"[((t*9)|0)%6];
-  for(var j=0;j<LAMP.length;j++) for(var i=0;i<LAMP[j].length;i++){ var c=LAMP[j].charAt(i), k=m;
-    if(c==="*"){ c=flame; k=m*1.7; } plot(x0+i,y0+j,c,255*k,205*k,120*k,data); }
-}
 function render(now){
   if(innerWidth!==lastVW||innerHeight!==lastVH) sizeGrid();   // the viewport can arrive late
   var t=now*0.001, tf=(t*7)|0, hz=H/2 + (P.pitch?pitch:0)*H*0.42;
@@ -502,7 +487,7 @@ function render(now){
           if(dNext!==dRow && Math.floor(fy)!==Math.floor(cam.y+cRdy[x]*dNext)) seam=true;
           if(!seam && x>0 && Math.floor(fx)!==Math.floor(fxR[x-1])) seam=true;
           var L=lightAt(fx,fy), fg=fogAt(dRow);
-          if(seam){ ch=shadeAt(dRow, y>e?2:4); br=fg*amb*1.1+L; }
+          if(seam){ br=fg*amb*1.1+L; ch=litShade(dRow, y>e?2:4, br); }
           if(y<s && P.lightPow>0){
             /* a run of dim panels overhead, every few units — a knob now, off by default */
             var g=P.lightGap, cy=fy-Math.floor(fy/g)*g;
@@ -525,11 +510,11 @@ function render(now){
         if(cell==="#"){
           /* joints every world unit. Vertical, so they converge with the corridor
              instead of banding across it the way horizontal courses do. */
-          ch = (tx<1||tx>TW-2) ? shadeAt(d,bias) : shadeAt(d,bias+1);
+          ch = (tx<1||tx>TW-2) ? litShade(d,bias,br) : litShade(d,bias+1,br);
           bleedAt(hx,hy); if(bl_w>0){ tw=bl_w; tr=bl_d.tint[0]; tg=bl_d.tint[1]; tb=bl_d.tint[2]; }
         } else {
           var dr=doorFor(cRow[x]), tex=dr.tex, k=tex.cl[ty][tx];
-          ch=shadeAt(d,bias+4); br*=0.55;                             // panel, recessed from the wall, dimmer than its frame
+          ch=litShade(d,bias+4,br); br*=0.55;                         // panel, recessed from the wall, dimmer than its frame
           if(k===1 && d<15){ ch=tex.ch[ty][tx]; br/=0.55; }            // structure
           else if(k===2 && d<7.5){ ch=tex.ch[ty][tx]; br/=0.55; }      // detail — only up close
           if(alive && dr.anim && d<12){ var ov=dr.anim(tx,ty,t,tex); if(ov!==null){ ch=ov; if(k===0) br=fgw*amb+Lw; } }
@@ -541,7 +526,8 @@ function render(now){
             ch = q>0.86 ? "#" : LIGHT[Math.min(LIGHT.length-1,(q*5)|0)]; br=1.0+ap*0.8; tw=1; } }
         }
       }
-      if(ch===" " && dustT>0 && noise(x,y,tf)>1-dustT){ ch="·"; br=0.35; }                    // dust
+      if(ch!==" " && br*br0<FLOOR && fl===0) ch=" ";                                          // below the visibility floor, nothing
+      if(ch===" " && dustT>0 && noise(x,y,tf)>1-dustT){ ch="·"; br=0.35*Math.min(1,0.3+lightAt(cam.x,cam.y)); }   // dust
       var o=(y*W+x)*4;
       if(ch===" "){ data[o]=0; data[o+1]=0; data[o+2]=0; data[o+3]=255; continue; }
       var r=bx,gg=by,b=bz;
@@ -555,7 +541,6 @@ function render(now){
       ctx.drawImage(atlas, idx*GW, 0, GW, GH, x*GW, y*GH, GW, GH);
     }
   }
-  if(P.hand) drawLamp(t,data);
   /* colour: white glyphs × the per-cell colour map, one draw */
   col.getContext("2d").putImageData(colData,0,0);
   ctx.globalCompositeOperation="multiply"; ctx.imageSmoothingEnabled=false;
@@ -730,8 +715,7 @@ function begin(){
   walking=true; audio();
   gate.classList.add("gone"); sig.classList.add("gone"); stage.classList.add("lit"); gear.classList.add("on");
   [].forEach.call(pads,function(p){ p.classList.remove("hid"); });
-  setTimeout(function(){ gate.style.display="none"; hint.classList.add("on"); },1200);
-  setTimeout(function(){ hint.classList.remove("on"); },9000);
+  setTimeout(function(){ gate.style.display="none"; },1200);
 }
 document.getElementById("enter").addEventListener("click",function(e){ e.preventDefault(); begin(); });
 gate.addEventListener("click",function(){ begin(); });
@@ -793,7 +777,7 @@ setInterval(function(){ if(document.hidden){ var n=performance.now(); tickFrame(
 /* harness — drive it without watching it */
 window.__x={P:P, cam:cam, DOORS:DOORS, step:function(n,dt){ for(var i=0;i<(n||1);i++) tickFrame(performance.now(),dt||1); },
   walk:function(n){ for(var i=0;i<n;i++) step(dirX*P.move, dirY*P.move); }, begin:begin, look:look, open:openDoor, setDir:setDir,
-  goto:function(y){ cam.x=3.5; cam.y=y; }, lamp:function(){ return {x:lampX,y:lampY,i:lampI}; },
+  goto:function(y){ cam.x=3.5; cam.y=y; }, lamp:function(){ return {x:lampX,y:lampY,i:lampI,sway:sway}; },
   openState:function(){ return {opening:opening, ap:openAp, flood:flood}; }, size:function(){ return {W:W,H:H,FS:FS}; }, toggle:togglePanel};
 })();
 </script>
