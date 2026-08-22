@@ -24,13 +24,15 @@
     background:rgba(var(--tint),.7);pointer-events:none;opacity:0;transition:opacity .3s}
   #cross.on{opacity:1}
 
-  /* the arrival — no words. A slit of light under a door. Touch it. */
+  /* the arrival — no words. A lantern, hung in the dark. Touch it. */
   #gate{position:fixed;inset:0;z-index:12;display:flex;align-items:center;justify-content:center;cursor:pointer;
     transition:opacity 1.1s ease}
   #gate.gone{opacity:0;pointer-events:none}
-  #gate .slit{width:3px;height:clamp(70px,18vh,150px);background:var(--ink);border-radius:2px;
-    box-shadow:0 0 18px 4px rgba(230,201,138,.35),0 0 60px 14px rgba(230,201,138,.12);animation:breathe 4.2s ease-in-out infinite}
-  @keyframes breathe{0%,100%{opacity:.55;transform:scaleY(.92)}50%{opacity:1;transform:scaleY(1)}}
+  #gate .lamp{margin:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;font-size:clamp(13px,2.6vh,22px);line-height:1.05;
+    color:var(--ink);white-space:pre;text-align:left;transform-origin:50% 0;animation:sway 5.6s ease-in-out infinite;
+    text-shadow:0 0 10px rgba(230,201,138,.45),0 0 40px rgba(230,201,138,.18)}
+  #gate .lamp i{font-style:normal;color:#fff3d0;text-shadow:0 0 8px rgba(255,220,150,.9),0 0 30px rgba(255,190,110,.6)}
+  @keyframes sway{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
 
   /* the door readout — only ever appears when you're alongside one */
   #read{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 142px);z-index:8;
@@ -108,7 +110,7 @@
   <span class="chip" id="pReset">reset</span><span class="chip" id="pCopy">copy json</span><span class="chip" id="pClose">close</span>
 </div>
 
-<div id="gate"><div class="slit"></div></div>
+<div id="gate"><pre class="lamp" id="lamp"></pre></div>
 <div id="fade"></div>
 
 <script>
@@ -717,6 +719,33 @@ function begin(){
   setTimeout(function(){ gate.style.display="none"; },1200);
 }
 gate.addEventListener("click",function(){ begin(); });
+/* the lantern at the threshold: a glyph lamp, its flame never still */
+(function(){
+  var el=document.getElementById("lamp"); if(!el) return;
+  var body=[
+    "      _      ",
+    "     (_)     ",
+    "    _|_|_    ",
+    "   /     \\   ",
+    "  |  ___  |  ",
+    "  | /   \\ | ",
+    "  | |FFF| |  ",
+    "  | |GGG| |  ",
+    "  | |HHH| |  ",
+    "  | \\___/ | ",
+    "  |_______|  ",
+    "    |___|    "];
+  var top=["   ","   "," ' ","   "," . "], mid=[" * "," + "," ^ "," * "," ' "], low=[" | ","/|\\"," | ","/|\\"," | "];
+  var t0=performance.now();
+  function flame(){
+    if(gate.classList.contains("gone")) return;
+    var t=(performance.now()-t0)/1000, k=(t*7)|0, a=top[(k+((t*3)|0))%5], b=mid[k%5], c=low[(k>>1)%5];
+    var out=body.join("\n").replace("FFF","<i>"+a+"</i>").replace("GGG","<i>"+b+"</i>").replace("HHH","<i>"+c+"</i>");
+    el.innerHTML=out; var br=0.82+0.18*Math.abs(Math.sin(t*1.3))*(0.6+0.4*noise(1,2,k));
+    el.style.opacity=br; setTimeout(flame, 110);
+  }
+  flame();
+})();
 
 sizeGrid(); recomputeProj(); setDir(Math.PI/2);
 
