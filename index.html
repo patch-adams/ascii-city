@@ -9,16 +9,22 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&family=Space+Mono&display=swap" rel="stylesheet">
 <style>
-  :root{--ink:#e6c98a;--paper:#070607}
-  html,body{margin:0;height:100%;background:var(--paper);overflow:hidden;touch-action:manipulation;
+  :root{--ink:#e6c98a;--paper:#070607;--tint:230,201,138}
+  html,body{margin:0;height:100%;background:var(--paper);overflow:hidden;touch-action:none;
     -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
-  #screen{position:absolute;inset:0;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace;color:var(--ink);
-    background:var(--paper);line-height:0.92em;white-space:pre;display:flex;align-items:center;justify-content:center;
-    text-shadow:0 0 6px rgba(230,201,138,.18);opacity:.10;transition:opacity 2.4s ease}
-  #screen.lit{opacity:1}
-  #panel{position:fixed;inset:10px;z-index:3;pointer-events:none;border:2px solid rgba(230,201,138,.20);border-radius:4px;
-    box-shadow:inset 0 0 140px 44px rgba(0,0,0,.76)}
+  #stage{position:absolute;inset:0;overflow:hidden;opacity:.10;transition:opacity 2.4s ease;cursor:crosshair}
+  #stage.lit{opacity:1}
+  #stage.locked{cursor:none}
+  #cv,#glow{position:absolute;left:0;top:0;display:block}
+  #glow{pointer-events:none;mix-blend-mode:screen;width:100%;height:100%}
+  #scan{position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(to bottom,rgba(0,0,0,0) 0 2px,rgba(0,0,0,.55) 2px 3px)}
+  #panel{position:fixed;inset:10px;z-index:3;pointer-events:none;border:2px solid rgba(var(--tint),.20);border-radius:4px;
+    box-shadow:inset 0 0 140px 44px rgba(0,0,0,.76);transition:border-color 1.2s ease}
   #fade{position:fixed;inset:0;z-index:20;background:#050405;opacity:0;pointer-events:none;transition:opacity .5s ease}
+  #cross{position:fixed;left:50%;top:50%;width:5px;height:5px;margin:-2px 0 0 -2px;border-radius:50%;z-index:6;
+    background:rgba(var(--tint),.7);pointer-events:none;opacity:0;transition:opacity .3s}
+  #cross.on{opacity:1}
 
   /* the arrival — one line, near dark */
   #gate{position:fixed;inset:0;z-index:12;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -31,20 +37,26 @@
   #sig{position:fixed;left:26px;bottom:calc(env(safe-area-inset-bottom) + 24px);z-index:13;font-family:"Space Mono",monospace;
     font-size:10px;letter-spacing:.3em;text-transform:lowercase;color:rgba(230,201,138,.3);transition:opacity .9s ease}
   #sig.gone{opacity:0}
+  #hint{position:fixed;left:50%;transform:translateX(-50%);top:22px;z-index:8;font-family:"Space Mono",monospace;font-size:10px;
+    letter-spacing:.22em;text-transform:uppercase;color:rgba(230,201,138,.42);opacity:0;transition:opacity 1.4s ease;pointer-events:none;
+    text-align:center;line-height:1.9;white-space:nowrap}
+  #hint.on{opacity:1}
+  @media (max-width:899px){ #hint{display:none} }
 
   /* the door readout — only ever appears when you're alongside one */
   #read{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 142px);z-index:8;
     display:flex;flex-direction:column;align-items:center;gap:7px;opacity:0;pointer-events:none;text-align:center;max-width:88vw}
-  #read .num{font-family:"Space Mono",monospace;font-size:13px;letter-spacing:.42em;color:rgba(230,201,138,.62);text-indent:.42em}
-  #read .mark{font-family:"Newsreader",Georgia,serif;font-style:italic;font-size:clamp(1.25rem,4.6vw,1.7rem);color:#efe7d2;line-height:1.1}
+  #read .num{font-family:"Space Mono",monospace;font-size:13px;letter-spacing:.42em;color:rgba(var(--tint),.7);text-indent:.42em}
+  #read .mark{font-family:"Newsreader",Georgia,serif;font-style:italic;font-size:clamp(1.25rem,4.6vw,1.7rem);color:#efe7d2;line-height:1.1;
+    text-shadow:0 0 18px rgba(var(--tint),.45)}
   #read .open{margin-top:6px;font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;
-    color:#efe7d2;background:rgba(20,16,10,.55);border:1px solid var(--ink);border-radius:999px;padding:12px 24px;cursor:pointer}
-  #read .open:active{background:rgba(230,201,138,.26)}
+    color:#efe7d2;background:rgba(20,16,10,.55);border:1px solid rgba(var(--tint),.9);border-radius:999px;padding:12px 24px;cursor:pointer}
+  #read .open:active{background:rgba(var(--tint),.26)}
   #read.shut .open{display:none}
   #read.shut .mark{color:rgba(233,226,212,.42)}
 
   /* touch controls — same pattern as city.html / hallway-walk.html */
-  .pad{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 18px);z-index:5;display:grid;gap:8px;opacity:.55}
+  .pad{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 18px);z-index:5;display:grid;gap:8px;opacity:.55;touch-action:none}
   .pad.left{left:16px;grid-template-columns:repeat(3,50px);grid-template-rows:repeat(2,50px);grid-template-areas:". up ." "lft dn rgt"}
   .pad.right{right:16px;grid-template-columns:repeat(3,50px);grid-template-rows:repeat(2,50px);grid-template-areas:". tt ." "tl . tr"}
   .btn{width:50px;height:50px;border:1px solid rgba(230,201,138,.55);border-radius:12px;background:rgba(127,127,127,.07);
@@ -54,16 +66,59 @@
   .up{grid-area:up}.dn{grid-area:dn}.lft{grid-area:lft}.rgt{grid-area:rgt}.tl{grid-area:tl}.tt{grid-area:tt}.tr{grid-area:tr}
   .pad.hid{opacity:0;pointer-events:none}
   @media (min-width:900px){ .pad{opacity:.3} }
+
+  /* ---------- the instrument panel ---------- */
+  #gear{position:fixed;right:18px;top:16px;z-index:15;width:34px;height:34px;border-radius:50%;border:1px solid rgba(230,201,138,.35);
+    background:rgba(10,8,6,.55);color:rgba(230,201,138,.7);font-family:"Space Mono",monospace;font-size:13px;display:flex;
+    align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity 1s ease}
+  #gear.on{opacity:.75}
+  #gear:hover{opacity:1}
+  #set{position:fixed;right:0;top:0;bottom:0;width:min(330px,92vw);z-index:14;background:rgba(8,7,6,.88);backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);border-left:1px solid rgba(230,201,138,.18);transform:translateX(104%);transition:transform .35s ease;
+    overflow-y:auto;padding:22px 20px 40px;font-family:"Space Mono",monospace;color:#e6c98a;box-sizing:border-box;touch-action:pan-y}
+  #set.open{transform:none}
+  #set h1{font-family:"Newsreader",Georgia,serif;font-style:italic;font-weight:400;font-size:20px;margin:0 0 2px;color:#efe7d2}
+  #set .sub{font-size:9px;letter-spacing:.22em;text-transform:uppercase;opacity:.5;margin-bottom:18px}
+  #set h2{font-size:9px;letter-spacing:.24em;text-transform:uppercase;opacity:.55;margin:20px 0 8px;padding-bottom:5px;
+    border-bottom:1px solid rgba(230,201,138,.14)}
+  .row{display:grid;grid-template-columns:1fr 54px;align-items:center;gap:8px;margin:7px 0}
+  .row label{font-size:10px;letter-spacing:.08em;display:flex;justify-content:space-between;grid-column:1/3}
+  .row label b{font-weight:400;opacity:.55}
+  .row input[type=range]{grid-column:1/3;width:100%;-webkit-appearance:none;appearance:none;height:2px;background:rgba(230,201,138,.25);outline:none}
+  .row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#e6c98a;border:2px solid #0a0806;cursor:pointer}
+  .row input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:#e6c98a;border:2px solid #0a0806;cursor:pointer}
+  .row select,.row input[type=text]{grid-column:1/3;background:rgba(20,16,10,.8);color:#e6c98a;border:1px solid rgba(230,201,138,.3);
+    font-family:"Space Mono",monospace;font-size:11px;padding:6px 8px;border-radius:3px}
+  .row input[type=text]{letter-spacing:.05em}
+  .chip{display:inline-block;font-size:9px;letter-spacing:.16em;text-transform:uppercase;border:1px solid rgba(230,201,138,.35);
+    border-radius:999px;padding:6px 11px;margin:3px 4px 3px 0;cursor:pointer;opacity:.75}
+  .chip:hover,.chip.on{opacity:1;background:rgba(230,201,138,.14)}
+  #fps{position:fixed;left:18px;top:16px;z-index:15;font-family:"Space Mono",monospace;font-size:10px;letter-spacing:.14em;
+    color:rgba(230,201,138,.5);display:none;pointer-events:none}
+  #fps.on{display:block}
 </style>
 </head>
 <body>
-<pre id="screen"></pre>
+<div id="stage"><canvas id="cv"></canvas><canvas id="glow"></canvas><div id="scan"></div></div>
 <div id="panel"></div>
+<div id="cross"></div>
+<div id="fps"></div>
 
 <div id="read"><div class="num" id="rNum"></div><div class="mark" id="rMark"></div><button class="open" id="rOpen">open →</button></div>
+<div id="hint">drag to look · double-click to lock the mouse · w a s d / scroll to walk · tab for the instrument</div>
 
 <div class="pad left hid"><div class="btn up" data-k="w">▲</div><div class="btn lft" data-k="q">‹</div><div class="btn dn" data-k="s">▼</div><div class="btn rgt" data-k="e">›</div></div>
 <div class="pad right hid"><div class="btn tt" data-k="w">▲</div><div class="btn tl" data-k="a">◀</div><div class="btn tr" data-k="d">▶</div></div>
+
+<div id="gear" title="the instrument (tab)">⚙</div>
+<div id="set">
+  <h1>the instrument</h1>
+  <div class="sub">every knob lands on the next frame</div>
+  <div id="presets"></div>
+  <div id="rows"></div>
+  <h2>keep</h2>
+  <span class="chip" id="pReset">reset</span><span class="chip" id="pCopy">copy json</span><span class="chip" id="pClose">close</span>
+</div>
 
 <div id="gate"><div class="line">Nothing here announces itself. Walk up to a door.</div><button class="in" id="enter">enter</button></div>
 <div id="sig">patch</div>
@@ -74,10 +129,80 @@
 "use strict";
 document.addEventListener("gesturestart",function(e){e.preventDefault();},{passive:false});
 
-var screen=document.getElementById("screen"), gate=document.getElementById("gate"), sig=document.getElementById("sig"),
-    fade=document.getElementById("fade"), read=document.getElementById("read"),
+var stage=document.getElementById("stage"), cv=document.getElementById("cv"), gl=document.getElementById("glow"),
+    scan=document.getElementById("scan"), gate=document.getElementById("gate"), sig=document.getElementById("sig"),
+    fade=document.getElementById("fade"), read=document.getElementById("read"), hint=document.getElementById("hint"),
     rNum=document.getElementById("rNum"), rMark=document.getElementById("rMark"), rOpen=document.getElementById("rOpen"),
-    pads=document.querySelectorAll(".pad");
+    cross=document.getElementById("cross"), gear=document.getElementById("gear"), setEl=document.getElementById("set"),
+    fpsEl=document.getElementById("fps"), pads=document.querySelectorAll(".pad");
+var ctx=cv.getContext("2d"), gctx=gl.getContext("2d");
+
+/* =====================================================================
+   THE PARAM BUS — one dict, every surface reads it every frame.
+   ===================================================================== */
+var RAMPS=[
+  {n:"near-dark", s:"#=+~:-.,·`  "},
+  {n:"classic",   s:"@%#*+=-:.  "},
+  {n:"fine",      s:"$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,\"^`'.  "},
+  {n:"blocks",    s:"█▓▒░∙·  "},
+  {n:"dots",      s:"●◉◎○∘·   "},
+  {n:"lines",     s:"║╫╪┼╬│┆┊·  "}
+];
+var DEF={
+  cols:156, cellW:0.60, cellH:0.92, font:0,
+  fov:0.90, wallH:2.50, view:28, fog:1.8,
+  ramp:0, bright:1.0, sat:1.0, hue:0,
+  lightGap:4, lightPow:1.0, bleed:0.8,
+  glow:0.55, blur:6, scan:0.22, grain:0.5, dust:0.0023,
+  move:0.105, turn:0.045, sens:1.0, invert:0, pitch:1, anim:1, fps:0
+};
+var P={}; for(var k0 in DEF) P[k0]=DEF[k0];
+try{ var sv=JSON.parse(localStorage.getItem("corridorP")||"{}"); for(var k1 in sv) if(k1 in DEF) P[k1]=sv[k1]; }catch(e){}
+var FONTS=['"SF Mono",ui-monospace,Menlo,Consolas,monospace','"Space Mono",monospace','"Courier New",Courier,monospace','monospace'];
+
+/* slider spec: one row per key. struct = needs a regrid. */
+var SPEC=[
+  {h:"resolution"},
+  {k:"cols", l:"columns", mn:40, mx:320, st:2, struct:1},
+  {k:"cellW", l:"cell width", mn:0.40, mx:0.90, st:0.01, struct:1},
+  {k:"cellH", l:"cell height", mn:0.70, mx:1.30, st:0.01, struct:1},
+  {k:"font", l:"font", opts:["system mono","space mono","courier","browser mono"], struct:1},
+  {h:"the room"},
+  {k:"fov", l:"field of view", mn:0.40, mx:1.60, st:0.01},
+  {k:"wallH", l:"wall height", mn:1.0, mx:5.0, st:0.05},
+  {k:"view", l:"view distance", mn:6, mx:60, st:1},
+  {k:"fog", l:"fog curve", mn:0.4, mx:3.0, st:0.05},
+  {h:"the light"},
+  {k:"ramp", l:"shade ramp", opts:RAMPS.map(function(r){return r.n;})},
+  {k:"bright", l:"brightness", mn:0.2, mx:2.5, st:0.02},
+  {k:"sat", l:"saturation", mn:0, mx:2, st:0.02},
+  {k:"hue", l:"hue shift", mn:-180, mx:180, st:1},
+  {k:"lightGap", l:"ceiling lights every", mn:2, mx:12, st:1},
+  {k:"lightPow", l:"light power", mn:0, mx:3, st:0.05},
+  {k:"bleed", l:"door colour bleed", mn:0, mx:3, st:0.05},
+  {h:"the glass"},
+  {k:"glow", l:"glow", mn:0, mx:1.5, st:0.02},
+  {k:"blur", l:"glow radius", mn:1, mx:24, st:1},
+  {k:"scan", l:"scanlines", mn:0, mx:1, st:0.02},
+  {k:"grain", l:"floor grain", mn:0, mx:2, st:0.02},
+  {k:"dust", l:"dust", mn:0, mx:0.02, st:0.0002},
+  {h:"the body"},
+  {k:"move", l:"walk speed", mn:0.02, mx:0.4, st:0.005},
+  {k:"turn", l:"key turn speed", mn:0.01, mx:0.15, st:0.005},
+  {k:"sens", l:"mouse sensitivity", mn:0.2, mx:3, st:0.05},
+  {k:"invert", l:"invert mouse y", opts:["no","yes"]},
+  {k:"pitch", l:"look up / down", opts:["off","on"]},
+  {k:"anim", l:"door faces move", opts:["still","alive"]},
+  {k:"fps", l:"frame readout", opts:["hidden","shown"]}
+];
+var PRESETS={
+  "near dark":{},
+  "lit":{bright:1.6, lightPow:1.8, glow:.8, view:34, fog:.9},
+  "crunchy":{cols:84, ramp:1, glow:.3, scan:.5, grain:1.2},
+  "fine":{cols:260, ramp:2, glow:.35, scan:0, cellW:.55},
+  "blocks":{cols:110, ramp:3, glow:.9, blur:10, scan:.4, bright:1.3},
+  "phone":{cols:76, glow:.4, scan:0, dust:.001}
+};
 
 /* ---------- sound: only ever on your own action ---------- */
 var AC=null;
@@ -89,44 +214,51 @@ function tone(f,d,t,v){ var a=audio(); if(!a) return;
 function tick(){ tone(150,.05,"sine",.035); }
 function creak(){ tone(92,.34,"sine",.16); setTimeout(function(){ tone(64,.4,"sine",.12); },90); }
 
-/* ---------- the doors ---------- */
-/* A door carries a number and, at most, a one-word mark. Nothing about what's inside.
-   Doors without a destination are unlit — an honest locked door beats a dead link. */
+/* =====================================================================
+   THE DOORS — each carries a number, at most a one-word mark, a colour,
+   a face, and a note. Nothing about what's inside.
+   ===================================================================== */
 var DOORS=[
-  {y:3,  s:"L", n:"01", mark:"city",      url:"city.html"},
-  {y:5,  s:"R", n:"02", mark:"hallway",   url:"hallway-walk.html"},
-  {y:7,  s:"L", n:"03", mark:"breath",    url:"hallway.html"},
-  {y:9,  s:"R", n:"04", mark:"routes",    url:"century.html"},
-  {y:11, s:"L", n:"05", mark:"press",     url:"registration.html"},
-  {y:13, s:"R", n:"06", mark:"image",     url:"image.html"},
-  {y:15, s:"L", n:"07", mark:"depth",     url:"depth.html"},
-  {y:17, s:"R", n:"08", mark:"gallery",   url:"tunnel.html"},
-  {y:19, s:"L", n:"09", mark:"film",      url:"film.html"},
-  {y:21, s:"R", n:"10", mark:"screening", url:"theater.html"},
-  {y:23, s:"L", n:"11", mark:"presence",  url:"presence-demo.html"},
-  {y:25, s:"R", n:"12", mark:"creature",  url:"creature.html"},
-  {y:27, s:"L", n:"13", mark:"study",     url:"study.html"},
-  {y:29, s:"R", n:"14", mark:"portrait",  url:"mike.html"},
-  {y:31, s:"L", n:"16", mark:"who",       url:"self-portrait.html"},
-  {y:33, s:"R", n:"18", mark:"shelf",     url:"shelf.html"},
-  {y:35, s:"L", n:"15", mark:"ma/ré",     url:"https://sleepyplanet.studio/mare", out:true},
-  {y:35, s:"L", n:"17", mark:"walk",      url:"hall.html"}
+  {y:2, s:"L", n:"01", mark:"city",      url:"city.html",          face:"city",      tint:[150,190,235], hz:196, wave:"square"},
+  {y:5, s:"R", n:"02", mark:"hallway",   url:"hallway-walk.html",  face:"hallway",   tint:[255,215,120], hz:220, wave:"sine"},
+  {y:8, s:"L", n:"03", mark:"breath",    url:"hallway.html",       face:"breath",    tint:[170,235,220], hz:247, wave:"sine"},
+  {y:11, s:"R", n:"04", mark:"routes",    url:"century.html",       face:"routes",    tint:[150,225,140], hz:262, wave:"triangle"},
+  {y:14, s:"L", n:"05", mark:"press",     url:"registration.html",  face:"press",     tint:[225,95,80],   hz:294, wave:"square"},
+  {y:17, s:"R", n:"06", mark:"image",     url:"image.html",         face:"image",     tint:[215,215,225], hz:330, wave:"sine"},
+  {y:20, s:"L", n:"07", mark:"depth",     url:"depth.html",         face:"depth",     tint:[175,145,235], hz:349, wave:"triangle"},
+  {y:23, s:"R", n:"08", mark:"gallery",   url:"tunnel.html",        face:"gallery",   tint:[245,235,210], hz:392, wave:"sine"},
+  {y:26, s:"L", n:"09", mark:"film",      url:"film.html",          face:"film",      tint:[205,165,110], hz:440, wave:"sawtooth"},
+  {y:29, s:"R", n:"10", mark:"screening", url:"theater.html",       face:"screening", tint:[225,65,75],   hz:494, wave:"square"},
+  {y:32, s:"L", n:"11", mark:"presence",  url:"presence-demo.html", face:"presence",  tint:[240,150,175], hz:523, wave:"sine"},
+  {y:35, s:"R", n:"12", mark:"creature",  url:"creature.html",      face:"creature",  tint:[165,240,95],  hz:587, wave:"triangle"},
+  {y:38, s:"L", n:"13", mark:"study",     url:"study.html",         face:"study",     tint:[255,175,85],  hz:659, wave:"sine"},
+  {y:41, s:"R", n:"14", mark:"portrait",  url:"mike.html",          face:"portrait",  tint:[235,185,145], hz:698, wave:"sine"},
+  {y:44, s:"L", n:"16", mark:"who",       url:"self-portrait.html", face:"who",       tint:[255,255,255], hz:784, wave:"triangle"},
+  {y:47, s:"R", n:"18", mark:"shelf",     url:"shelf.html",         face:"shelf",     tint:[195,135,85],  hz:880, wave:"sawtooth"},
+  {y:50, s:"L", n:"15", mark:"ma/ré",     url:"https://sleepyplanet.studio/mare", out:true, face:"mare", tint:[95,165,225], hz:988, wave:"sine"},
+  {y:53, s:"R", n:"17", mark:"walk",      url:"hall.html",          face:"walk",      tint:[135,175,125], hz:1047, wave:"triangle"}
 ];
-var MW=7, MH=40;
+var MW=7, MH=57;
+/* a door is two cells wide and the full wall tall — a real door's proportions, and wide enough on screen to carry a face */
+var DW=2;
 /* the door at the far end. You can't see into it; it draws a card each visit. */
-var END={y:MH-1, s:"E", mark:"unmarked", end:true};
+var END={y:MH-1, s:"E", mark:"unmarked", end:true, face:"unmarked", tint:[205,205,205], hz:131, wave:"sine"};
 
-var MAP=[];
+var MAP=[], ROWDOOR=[];
 (function build(){
-  for(var y=0;y<MH;y++) MAP.push((y===0||y===MH-1) ? "#######".split("") : "#.....#".split(""));
-  DOORS.forEach(function(d){ MAP[d.y][d.s==="L"?0:MW-1] = d.dark ? "K" : "D"; });
-  MAP[MH-1][3]="X";
+  for(var y=0;y<MH;y++){ MAP.push((y===0||y===MH-1) ? "#######".split("") : "#.....#".split("")); ROWDOOR.push(null); }
+  DOORS.forEach(function(d){ for(var r=0;r<DW;r++){ MAP[d.y+r][d.s==="L"?0:MW-1] = d.dark ? "K" : "D"; ROWDOOR[d.y+r]=d; } d.cx = d.s==="L" ? 0.5 : MW-0.5; d.cy = d.y+DW/2; });
+  MAP[MH-1][3]="X"; MAP[MH-1][4]="X"; END.cx=4; END.cy=MH-0.5;
 })();
 function cellAt(x,y){ if(x<0||y<0||x>=MW||y>=MH) return "#"; return MAP[y|0][x|0]; }
 function solid(x,y){ var c=cellAt(x,y); return c!=="."; }
 
-/* ---------- door faces: a 5x7 stencil number, painted on the panel ---------- */
-var TW=18, TH=20;
+/* =====================================================================
+   DOOR FACES — a 24x28 stencil per door, painted on the panel.
+   cl: 1 = structure (resolves at middling range), 2 = detail (only up close)
+   anim(tx,ty,t,T) may override a cell while you're near and the faces are alive.
+   ===================================================================== */
+var TW=34, TH=28;
 var FONT={
  "0":["01110","10001","10011","10101","11001","10001","01110"],
  "1":["00100","01100","00100","00100","00100","00100","01110"],
@@ -137,67 +269,142 @@ var FONT={
  "6":["00110","01000","10000","11110","10001","10001","01110"],
  "7":["11111","00001","00010","00100","01000","01000","01000"],
  "8":["01110","10001","10001","01110","10001","10001","01110"],
- "9":["01110","10001","10001","01111","00001","00010","01100"]
+ "9":["01110","10001","10001","01111","00001","00010","01100"],
+ "?":["01110","10001","00001","00010","00100","00000","00100"]
 };
-/* cl: 1 = door structure (resolves at middling range), 2 = the number (only up close) */
-function buildTex(num){
-  var ch=[], cl=[], x, y;
-  for(y=0;y<TH;y++){ ch.push(new Array(TW).fill(" ")); cl.push(new Array(TW).fill(0)); }
-  function put(px,py,c,k){ if(px>=0&&px<TW&&py>=0&&py<TH){ ch[py][px]=c; cl[py][px]=k; } }
-  for(y=1;y<TH;y++){ put(1,y,"|",1); put(TW-2,y,"|",1); }        // jambs
-  for(x=1;x<TW-1;x++) put(x,0,"_",1);                             // lintel
-  for(x=3;x<TW-3;x++){ put(x,2,"-",1); put(x,TH-3,"-",1); }       // panel seams
-  put(TW-4,(TH*0.62)|0,"o",1);                                    // handle
-  if(num){
-    var a=FONT[num.charAt(0)], b=FONT[num.charAt(1)], ox=((TW-11)/2)|0, oy=5;
-    for(var r=0;r<7;r++) for(var c=0;c<5;c++){
-      if(a[r].charAt(c)==="1") put(ox+c,   oy+r, "#", 2);
-      if(b[r].charAt(c)==="1") put(ox+6+c, oy+r, "#", 2);
-    }
-  }
-  return {ch:ch, cl:cl};
+function hash3(a,b,c){
+  var n=(Math.imul(a,374761393)+Math.imul(b,668265263)+Math.imul(c,1442695040))>>>0;
+  n=Math.imul(n^(n>>>13),1274126177)>>>0;
+  return ((n^(n>>>16))>>>0)/4294967296;
 }
-var TEX={};
-DOORS.forEach(function(d){ TEX[d.y] = buildTex(d.n||null); });
-var TEX_END = buildTex(null);
-function texFor(my){ return (my===MH-1) ? TEX_END : (TEX[my]||TEX_END); }
-function doorAtRow(my){ for(var i=0;i<DOORS.length;i++) if(DOORS[i].y===my) return DOORS[i]; return null; }
+function Tex(){ this.ch=[]; this.cl=[]; for(var y=0;y<TH;y++){ this.ch.push(new Array(TW).fill(" ")); this.cl.push(new Array(TW).fill(0)); } }
+Tex.prototype.put=function(x,y,c,k){ x|=0; y|=0; if(x>=0&&x<TW&&y>=0&&y<TH){ this.ch[y][x]=c; this.cl[y][x]=k||1; } };
+Tex.prototype.rect=function(x0,y0,x1,y1,k){ for(var x=x0;x<=x1;x++){ this.put(x,y0,"-",k); this.put(x,y1,"-",k); } for(var y=y0;y<=y1;y++){ this.put(x0,y,"|",k); this.put(x1,y,"|",k); } };
+Tex.prototype.line=function(x0,y0,x1,y1,c,k){ var n=Math.max(Math.abs(x1-x0),Math.abs(y1-y0))||1; for(var i=0;i<=n;i++) this.put(Math.round(x0+(x1-x0)*i/n), Math.round(y0+(y1-y0)*i/n), c, k); };
+Tex.prototype.glyph=function(g,ox,oy,c,k){ var f=FONT[g]; if(!f) return; for(var r=0;r<7;r++) for(var q=0;q<5;q++) if(f[r].charAt(q)==="1") this.put(ox+q,oy+r,c,k); };
+Tex.prototype.frame=function(){ for(var y=1;y<TH;y++){ this.put(1,y,"|",1); this.put(TW-2,y,"|",1); } for(var x=1;x<TW-1;x++) this.put(x,0,"_",1); this.put(TW-4,(TH*0.62)|0,"o",1); };
+Tex.prototype.number=function(num,oy){ if(!num) return; var ox=((TW-11)/2)|0; this.glyph(num.charAt(0),ox,oy,"#",2); this.glyph(num.charAt(1),ox+6,oy,"#",2); };
+/* aspect-corrected distance from the face centre, in cells */
+function rad(tx,ty,cx,cy){ var dx=(tx-cx)*0.6, dy=(ty-cy); return Math.sqrt(dx*dx+dy*dy); }
 
-/* ---------- grid: full bleed, edge to edge, at any size ---------- */
-var CW=0.60, CH=0.92, PLANE=0.90, WALLH=2.50;
-var W,H,FS,PROJ;
+var FACES={
+  stencil:function(T,d){ T.frame(); T.number(d.n,9); },
+  city:function(T,d){ T.frame(); var base=TH-2;
+    for(var x=3;x<TW-3;x++){ var h=4+((hash3(x>>1,7,1)*13)|0); for(var y=base;y>base-h;y--){ var top=(y===base-h+1);
+      T.put(x,y, top?"_":((x+y)%2?":":" "), top?1:2); } }
+    T.number(d.n,1); },
+  hallway:function(T,d){ T.frame(); var cx=TW/2, cy=TH/2;
+    for(var i=0;i<4;i++){ var w=14-i*3.4, h=11-i*2.6; T.rect(Math.round(cx-w),Math.round(cy-h),Math.round(cx+w),Math.round(cy+h),i<2?1:2); }
+    T.line(2,1,cx-2,cy-3,"\\",2); T.line(TW-3,1,cx+2,cy-3,"/",2); T.line(2,TH-1,cx-2,cy+3,"/",2); T.line(TW-3,TH-1,cx+2,cy+3,"\\",2);
+    T.put(cx,cy,"·",2); },
+  breath:function(T,d){ T.frame(); T.number(d.n,1); },
+  routes:function(T,d){ T.frame();
+    var c=TW/2|0; T.line(c,TH-2,c,17,"|",1); T.line(c,17,c-9,10,"/",1); T.line(c,17,c+9,10,"\\",1);
+    T.line(c-9,10,c-13,4,"/",2); T.line(c-9,10,c-5,4,"\\",2); T.line(c+9,10,c+5,4,"/",2); T.line(c+9,10,c+13,4,"\\",2);
+    [[c-13,3],[c-5,3],[c+5,3],[c+13,3]].forEach(function(p){ T.put(p[0],p[1],"o",2); }); },
+  press:function(T,d){ T.frame();
+    var L="SIGNALFORM", i=0; for(var y=3;y<TH-3;y+=2) for(var x=4;x<TW-4;x+=2){ T.put(x,y,L.charAt((i++)%L.length),2); }
+    T.rect(3,2,TW-4,TH-4,1); T.number(d.n,10); },
+  image:function(T,d){ T.frame(); var R="@%#*+=-:. ", cx=TW/2, cy=TH/2-1;
+    for(var y=2;y<TH-2;y++) for(var x=3;x<TW-3;x++){ var r=rad(x,y,cx-4,cy-4)/12; var k=Math.min(R.length-1,(r*R.length+hash3(x,y,9)*.7)|0);
+      T.put(x,y,R.charAt(k),k<3?1:2); }
+    T.number(d.n,TH-9); },
+  depth:function(T,d){ T.frame(); var cx=TW/2|0, cy=TH/2|0;
+    for(var i=0;i<6;i++){ var w=15-i*2.5, h=12-i*2; T.rect(Math.round(cx-w),Math.round(cy-h),Math.round(cx+w),Math.round(cy+h),i<3?1:2); }
+    T.put(cx,cy,"·",2); },
+  gallery:function(T,d){ T.frame();
+    var m=TW/2|0; [[4,3,m-2,9],[m+2,3,TW-5,9],[4,12,m-2,18],[m+2,12,TW-5,18],[8,20,TW-9,25]].forEach(function(r,i){ T.rect(r[0],r[1],r[2],r[3],1);
+      for(var y=r[1]+1;y<r[3];y++) for(var x=r[0]+1;x<r[2];x++) if(hash3(x,y,i)>0.6) T.put(x,y,hash3(x,y,i+9)>0.5?"*":".",2); }); },
+  film:function(T,d){ T.frame(); T.rect(5,3,TW-6,TH-5,1); T.number(d.n,10);
+    for(var y=1;y<TH;y+=3){ T.put(2,y,"[",1); T.put(3,y,"]",1); T.put(TW-4,y,"[",1); T.put(TW-3,y,"]",1); } },
+  screening:function(T,d){ T.frame();
+    for(var y=1;y<TH;y++){ for(var x=2;x<7;x++) T.put(x,y,(x+y)%2?")":"(",x<4?1:2); for(var x2=TW-7;x2<TW-2;x2++) T.put(x2,y,(x2+y)%2?"(":")",x2>TW-5?1:2); }
+    for(var yy=4;yy<TH-6;yy++) for(var xx=8;xx<TW-8;xx++) T.put(xx,yy,"#",1);
+    T.number(d.n,TH-7); },
+  presence:function(T,d){ T.frame(); T.number(d.n,TH-9); },
+  creature:function(T,d){ T.frame(); T.number(d.n,TH-9); },
+  study:function(T,d){ T.frame(); var cx=TW/2|0;
+    T.line(cx-4,5,cx+4,5,"_",1); T.line(cx-4,5,cx-6,8,"/",1); T.line(cx+4,5,cx+6,8,"\\",1); T.line(cx-6,8,cx+6,8,"=",1); T.put(cx,4,"|",1);
+    for(var y=9;y<TH-5;y++){ var w=2+(y-9)*0.9; for(var x=Math.round(cx-w);x<=Math.round(cx+w);x++) T.put(x,y,hash3(x,y,3)>0.55?":":".",2); }
+    for(var b=0;b<4;b++) T.line(4+b*2,TH-3-b,TW-5-b*2,TH-3-b,"=",1); },
+  portrait:function(T,d){ T.frame(); var cx=TW/2, cy=10;
+    for(var y=2;y<TH-2;y++) for(var x=3;x<TW-3;x++){ var r=rad(x,y,cx,cy); if(r>4.4&&r<5.3) T.put(x,y,y<cy?"(":")",1);
+      if(y>17){ var s=Math.abs(x-cx)*0.6, sh=Math.sqrt(Math.max(0,(y-17)*8)); if(Math.abs(s-sh)<0.7) T.put(x,y,x<cx?"/":"\\",1); } }
+    T.put(cx-2,cy-1,"·",2); T.put(cx+2,cy-1,"·",2); T.put(cx,cy+2,"-",2); },
+  who:function(T,d){ T.frame(); var ox=((TW-5)/2)|0;
+    for(var r=0;r<7;r++) for(var q=0;q<5;q++) if(FONT["?"][r].charAt(q)==="1"){ T.put(ox+q*2,7+r*2,"?",2); T.put(ox+q*2+1,7+r*2,"?",2); T.put(ox+q*2,8+r*2,"?",2); T.put(ox+q*2+1,8+r*2,"?",2); } },
+  shelf:function(T,d){ T.frame();
+    [7,15,23].forEach(function(py,i){ T.line(3,py,TW-4,py,"=",1); var x=4; while(x<TW-4){ var w=1+((hash3(x,i,2)*2)|0), h=3+((hash3(x,i,5)*3)|0);
+      for(var y=py-1;y>py-1-h;y--){ T.put(x,y,"|",2); if(w>1) T.put(x+1,y,hash3(x,y,i)>0.7?":":" ",2); T.put(x+w,y,"|",2); } x+=w+1; } }); },
+  mare:function(T,d){ T.frame(); T.number(d.n,2); },
+  walk:function(T,d){ T.frame(); for(var i=0;i<7;i++){ var y=TH-3-i*3.5, x=TW/2+(i%2?3:-3)+Math.sin(i)*2; T.put(x,y,",",1); T.put(x+1,y-1,"'",1); T.put(x+2,y-1,"'",2); } },
+  unmarked:function(T,d){ T.frame(); }
+};
+var ANIM={
+  city:function(tx,ty,t,T){ if(T.cl[ty][tx]===2 && hash3(tx,ty,(t*1.5)|0)>0.93) return "*"; return null; },
+  breath:function(tx,ty,t,T){ if(tx<2||tx>TW-3||ty<1) return null; var r=rad(tx,ty,TW/2,TH/2-1); var ph=(r-t*1.6)%3.2; if(ph<0) ph+=3.2; if(ph<0.55) return r<1.2?"o":"("; if(ph>2.9) return "·"; return null; },
+  depth:function(tx,ty,t,T){ if(tx<2||tx>TW-3||ty<1) return null; var dx=Math.abs(tx-TW/2)*0.6, dy=Math.abs(ty-TH/2); var r=Math.max(dx/9*12,dy); var ph=(r+t*2.2)%2; if(ph<0.25) return (dx/10*12>dy)?"|":"-"; return null; },
+  film:function(tx,ty,t,T){ if(tx<=3||tx>=TW-4){ var y2=(ty+((t*5)|0))%3; return (y2===1 && ty>0) ? (tx<12?"[]".charAt(tx&1):"[]".charAt(tx&1)) : " "; } return null; },
+  screening:function(tx,ty,t,T){ if(T.ch[ty][tx]==="#"){ var f=hash3(tx>>1,ty,(t*9)|0); return f>0.82?"%":(f<0.07?"+":null); } return null; },
+  presence:function(tx,ty,t,T){ if(tx<2||tx>TW-3||ty<1||ty>TH-9) return null; var b=0.5+0.5*Math.sin(t*0.9); var r=rad(tx,ty,TW/2,10)/(5+b*2.4); if(r>1.2) return null; var v=1-r; v=v*v+(hash3(tx,ty,1)-.5)*.18; var R="@%#*+=-:·"; var k=Math.min(R.length-1,Math.max(0,((1-v)*R.length)|0)); return R.charAt(k); },
+  creature:function(tx,ty,t,T){ if(tx<2||tx>TW-3||ty<1||ty>TH-9) return null; var blink=(t%4.3)<0.16; var r=rad(tx,ty,TW/2,10); var px=TW/2+Math.sin(t*0.7)*2, py=10+Math.cos(t*0.5)*1.2;
+    if(blink){ return (r<6.5&&Math.abs(ty-10)<0.6)?"-":null; }
+    if(r>5.8&&r<6.6) return ty<10?"(":")"; if(rad(tx,ty,px,py)<2) return "@"; if(rad(tx,ty,px,py)<2.8) return "#"; if(r<6) return " "; return null; },
+  who:function(tx,ty,t,T){ if(T.cl[ty][tx]===2 && hash3(tx,ty,(t*6)|0)>0.85) return " "; if(T.cl[ty][tx]===0 && tx>2&&tx<TW-3&&ty>1 && hash3(tx,ty,(t*6)|0)>0.985) return "?"; return null; },
+  mare:function(tx,ty,t,T){ if(tx<2||tx>TW-3||ty<10) return null; var w=Math.sin(tx*0.55+t*2.1+ty*0.9)+Math.sin(tx*0.21-t*1.3); return w>1.1?"≈":(w>0.35?"~":(w<-1.2?"_":null)); },
+  unmarked:function(tx,ty,t,T){ return hash3(tx,ty,(t*1.4)|0)>0.986?"·":null; }
+};
+var TEX={};
+DOORS.forEach(function(d){ var T=new Tex(); (FACES[d.face]||FACES.stencil)(T,d); d.tex=T; d.anim=ANIM[d.face]||null; for(var r=0;r<DW;r++) TEX[d.y+r]=d; });
+(function(){ var T=new Tex(); FACES.unmarked(T,END); END.tex=T; END.anim=ANIM.unmarked; })();
+function doorFor(my){ return (my===MH-1) ? END : (TEX[my]||END); }
+
+/* =====================================================================
+   GRID — full bleed, edge to edge, at any size. Canvas + glyph atlas.
+   ===================================================================== */
+var LIGHT="@&%#*+=~";
+var CHARS=(function(){ var s={}; RAMPS.forEach(function(r){ r.s.split("").forEach(function(c){ s[c]=1; }); });
+  (LIGHT+"·|_-o#[]()/\\\\*:.,'=~≈?@%+<>{}$&").split("").forEach(function(c){ s[c]=1; });
+  for(var k in FACES){ var T=new Tex(); FACES[k](T,{n:"00"}); T.ch.forEach(function(r){ r.forEach(function(c){ s[c]=1; }); }); }
+  return Object.keys(s).join(""); })();
+var CIDX={}; for(var ci=0;ci<CHARS.length;ci++) CIDX[CHARS.charAt(ci)]=ci;
+var W,H,FS,PROJ,DPR,GW,GH,atlas,col,colData,PLANE,SHADE,LMAX,lastVW=-1,lastVH=-1;
 function sizeGrid(){
-  var vw=innerWidth, vh=innerHeight;
-  var target = vw<520 ? 76 : (vw<900 ? 112 : 156);       // legible columns, not a fixed cap
-  FS = Math.max(7, Math.min(26, vw/(target*CW)));
-  /* overscan a little: real font metrics never match CW/CH exactly, and a short
-     grid would leave a dead strip at the edge. Full bleed is the standing order. */
-  W = Math.min(300, Math.max(40, Math.ceil(vw/(FS*CW)*1.03)));
-  H = Math.min(132, Math.max(28, Math.ceil(vh/(FS*CH)*1.06)));
-  /* characters are taller than they are wide — without this the corridor
-     projects as a thin slot instead of something you're standing inside */
-  PROJ = WALLH*W*CW/(2*PLANE*CH);
-  screen.style.fontSize = FS.toFixed(2)+"px";
+  var vw=innerWidth||document.documentElement.clientWidth||1280, vh=innerHeight||document.documentElement.clientHeight||800;
+  lastVW=innerWidth; lastVH=innerHeight; DPR=Math.min(2.5, window.devicePixelRatio||1);
+  var cols = vw<520 ? Math.min(P.cols,96) : P.cols;
+  FS = Math.max(4, Math.min(40, vw/(cols*P.cellW)));
+  GW = Math.max(2, Math.round(FS*P.cellW*DPR)); GH = Math.max(3, Math.round(FS*P.cellH*DPR));
+  W = Math.max(8, Math.min(400, Math.ceil(vw*DPR/GW))); H = Math.max(6, Math.min(200, Math.ceil(vh*DPR/GH)));
+  cv.width=W*GW; cv.height=H*GH; cv.style.width=(W*GW/DPR)+"px"; cv.style.height=(H*GH/DPR)+"px";
+  gl.width=Math.max(8,(W*GW/4)|0); gl.height=Math.max(8,(H*GH/4)|0);
+  /* the atlas: every glyph once, white, at this exact cell size */
+  atlas=document.createElement("canvas"); atlas.width=GW*CHARS.length; atlas.height=GH;
+  var a=atlas.getContext("2d"); a.fillStyle="#fff"; a.textBaseline="middle"; a.textAlign="center";
+  a.font=(FS*DPR).toFixed(2)+"px "+FONTS[P.font|0];
+  for(var i=0;i<CHARS.length;i++) a.fillText(CHARS.charAt(i), i*GW+GW/2, GH/2);
+  col=document.createElement("canvas"); col.width=W; col.height=H; colData=col.getContext("2d").createImageData(W,H);
+  alloc();
 }
-sizeGrid();
+function recomputeProj(){
+  PLANE=P.fov; PROJ = P.wallH*W*P.cellW/(2*PLANE*P.cellH);
+  SHADE=RAMPS[P.ramp|0].s; LMAX=SHADE.length-1;
+}
 addEventListener("resize",sizeGrid);
 addEventListener("orientationchange",function(){ setTimeout(sizeGrid,200); });
 
 /* ---------- camera + raycaster ---------- */
-var cam={x:3.5,y:1.6}, dirX=0, dirY=1, planeX=-PLANE, planeY=0;
+var cam={x:3.5,y:1.6}, dirX=0, dirY=1, planeX=0, planeY=0, pitch=0;
 function setDir(a){ dirX=Math.cos(a); dirY=Math.sin(a); planeX=-dirY*PLANE; planeY=dirX*PLANE; }
 function heading(){ return Math.atan2(dirY,dirX); }
-setDir(Math.PI/2);
 
-/* A sparse ramp on purpose: density is the only brightness control an ASCII
-   scene has, and this corridor is meant to sit in near-dark. */
-var SHADE="#=+~:-.,·`  ", LIGHT="@&%#*+=~", VIEW=28;
-var cS,cE,cD,cSide,cCell,cU,cRow,cRdx,cRdy,rowD,fxR,fyR;
+var VIEW=28;
+var cS,cE,cD,cSide,cCell,cU,cRow,cRdx,cRdy,cHx,cHy,fxR,fyR;
 function alloc(){ cS=new Int16Array(W);cE=new Int16Array(W);cD=new Float32Array(W);
   cSide=new Int8Array(W);cCell=new Array(W);cU=new Float32Array(W);cRow=new Int16Array(W);
-  cRdx=new Float32Array(W);cRdy=new Float32Array(W); }
-function cast(){
-  if(!cS||cS.length!==W) alloc();
+  cRdx=new Float32Array(W);cRdy=new Float32Array(W);cHx=new Float32Array(W);cHy=new Float32Array(W);
+  fxR=new Float32Array(W); fyR=new Float32Array(W); }
+function cast(hz){
   for(var x=0;x<W;x++){
     var camX=2*x/W-1, rdx=dirX+planeX*camX, rdy=dirY+planeY*camX;
     var mx=cam.x|0, my=cam.y|0, ddx=Math.abs(1/rdx), ddy=Math.abs(1/rdy), stX,stY,sdx,sdy;
@@ -206,89 +413,130 @@ function cast(){
     var side=0,hit=false,g=0;
     while(!hit&&g++<400){ if(sdx<sdy){sdx+=ddx;mx+=stX;side=0;}else{sdy+=ddy;my+=stY;side=1;} if(solid(mx,my))hit=true; }
     var d=(side===0)?(sdx-ddx):(sdy-ddy); if(d<0.0001)d=0.0001;
-    var u=(side===0)?(cam.y+d*rdy):(cam.x+d*rdx); u-=Math.floor(u);
-    if(side===0&&rdx<0) u=1-u;                 // keep painted numbers reading the same on both walls
+    var u, hit0=(side===0)?(cam.y+d*rdy):(cam.x+d*rdx), cc=cellAt(mx,my);
+    if(cc==="D"||cc==="K"){ u=(hit0-ROWDOOR[my].y)/DW; }            // a door spans DW cells: one face across all of them
+    else if(cc==="X"){ u=(hit0-3)/DW; }
+    else { u=hit0-Math.floor(hit0); }
+    if(side===0&&rdx<0) u=1-u;                 // keep painted faces reading the same on both walls
     if(side===1&&rdy>0) u=1-u;
     var lh=Math.floor(PROJ/d);
-    cS[x]=((H-lh)/2)|0; cE[x]=((H+lh)/2)|0; cD[x]=d; cSide[x]=side; cCell[x]=cellAt(mx,my); cU[x]=u; cRow[x]=my;
-    cRdx[x]=rdx; cRdy[x]=rdy;   /* kept for floor/ceiling casting — rayDir projects to 1 along dir,
-                                   so travelling t along it lands at perpendicular distance t */
+    cS[x]=(hz-lh/2)|0; cE[x]=(hz+lh/2)|0; cD[x]=d; cSide[x]=side; cCell[x]=cellAt(mx,my); cU[x]=u; cRow[x]=my;
+    cRdx[x]=rdx; cRdy[x]=rdy; cHx[x]=cam.x+rdx*d; cHy[x]=cam.y+rdy*d;
   }
 }
 function noise(x,y,t){ var m=Math.sin(x*12.9898+y*78.233+t)*43758.5453; return m-Math.floor(m); }
 
-var MID=MW/2, LMAX=SHADE.length-1;
+var MID=MW/2;
 function shadeAt(d,bias){ var i=Math.floor(d/VIEW*LMAX)+bias; return SHADE[i<0?0:(i>LMAX?LMAX:i)]; }
-/* stable per-surface-point hash — dithering keyed to the world, not the screen,
-   so the grain sits still on the wall instead of crawling as you walk */
-function hash3(a,b,c){
-  var n=(Math.imul(a,374761393)+Math.imul(b,668265263)+Math.imul(c,1442695040))>>>0;
-  n=Math.imul(n^(n>>>13),1274126177)>>>0;
-  return ((n^(n>>>16))>>>0)/4294967296;
+function fogAt(d){ var f=1-d/VIEW; if(f<0) return 0; return Math.pow(f,P.fog); }
+/* the ceiling lights are the only light source in here; this is the pool one throws */
+function lightAt(x,y){ var g=P.lightGap, ly=Math.round(y/g)*g; var dx=(x-MID)*0.8, dy=y-ly; return P.lightPow*0.55/(1+dx*dx+dy*dy); }
+/* which door's colour reaches this world point, and how strongly */
+var bl_d=null, bl_w=0;
+function bleedAt(x,y){
+  bl_w=0; bl_d=null; var r=y|0;
+  for(var i=r-1;i<=r+1;i++){ var d=(i>=0&&i<MH)?ROWDOOR[i]:null; if(i===MH-1) d=END; if(!d) continue;
+    var dx=(x-d.cx), dy=(y-d.cy); var w=1-Math.sqrt(dx*dx+dy*dy)/2.4; if(w>bl_w){ bl_w=w; bl_d=d; } }
+  if(bl_w>0) bl_w=Math.min(1, bl_w*bl_w*P.bleed);
 }
+/* base ink, hue-shifted once per frame */
+var BASE=[230,201,138];
+function hueShift(c,deg){ if(!deg) return c.slice(); var a=deg*Math.PI/180, cs=Math.cos(a), sn=Math.sin(a);
+  var m=[.299+.701*cs+.168*sn,.587-.587*cs+.330*sn,.114-.114*cs-.497*sn, .299-.299*cs-.328*sn,.587+.413*cs+.035*sn,.114-.114*cs+.292*sn, .299-.3*cs+1.25*sn,.587-.588*cs-1.05*sn,.114+.886*cs-.203*sn];
+  return [c[0]*m[0]+c[1]*m[1]+c[2]*m[2], c[0]*m[3]+c[1]*m[4]+c[2]*m[5], c[0]*m[6]+c[1]*m[7]+c[2]*m[8]]; }
+
 function render(now){
-  var t=now*0.001, out="", tf=(t*7)|0, half=H/2;
-  if(!rowD||rowD.length!==H) rowD=new Float32Array(H);
-  for(var yy=0;yy<H;yy++){ var k=Math.abs(yy-half); rowD[yy] = k<0.5 ? 1e9 : PROJ/(2*k); }
-  if(!fxR||fxR.length!==W){ fxR=new Float32Array(W); fyR=new Float32Array(W); }
+  if(innerWidth!==lastVW||innerHeight!==lastVH) sizeGrid();   // the viewport can arrive late
+  var t=now*0.001, tf=(t*7)|0, hz=H/2 + (P.pitch?pitch:0)*H*0.42;
+  VIEW=P.view; recomputeProj(); setDir(heading());
+  cast(hz);
+  var data=colData.data, base=hueShift(BASE,P.hue), br0=P.bright, sat=P.sat, alive=!!P.anim;
+  var bx=base[0],by=base[1],bz=base[2];
+  ctx.globalCompositeOperation="source-over";
+  ctx.fillStyle="#000"; ctx.fillRect(0,0,cv.width,cv.height);   // multiply needs an opaque ground
+  var dustT=P.dust, grain=P.grain;
   for(var y=0;y<H;y++){
-    var r="", below=y>half, dRow=rowD[y], dNext=rowD[below?(y+1<H?y+1:y):(y>0?y-1:y)];
-    var live=dRow<VIEW;
+    var kk=y-hz, ak=Math.abs(kk), dRow = ak<0.5 ? 1e9 : PROJ/(2*ak), live=dRow<VIEW, below=kk>0;
+    var kn=below?(ak+1):(ak-1); var dNext = kn<0.5 ? 1e9 : PROJ/(2*kn);
     if(live) for(var xx=0;xx<W;xx++){ fxR[xx]=cam.x+cRdx[xx]*dRow; fyR[xx]=cam.y+cRdy[xx]*dRow; }
     for(var x=0;x<W;x++){
-      var s=cS[x], e=cE[x], ch=" ";
+      var s=cS[x], e=cE[x], ch=" ", br=0, tw=0, tr=0,tg=0,tb=0;
       if(y>e || y<s){
         /* Floor and ceiling, cast in real perspective, as a grid that converges on the
-           vanishing point. A portrait phone looking down a corridor sees mostly these
-           two surfaces, so they have to carry the space — seams are found by testing
-           where a row or column crosses a whole world unit, which keeps every line
-           exactly one cell thick instead of smearing into bands near the horizon. */
+           vanishing point. Seams are found where a row or column crosses a whole world
+           unit, so every line stays exactly one cell thick. */
         if(live){
-          var seam=false;
-          if(dNext!==dRow && Math.floor(fyR[x])!==Math.floor(cam.y+cRdy[x]*dNext)) seam=true;
-          if(!seam && x>0 && Math.floor(fxR[x])!==Math.floor(fxR[x-1])) seam=true;
-          if(seam) ch=shadeAt(dRow, y>e?2:4);
+          var fx=fxR[x], fy=fyR[x], seam=false;
+          if(dNext!==dRow && Math.floor(fy)!==Math.floor(cam.y+cRdy[x]*dNext)) seam=true;
+          if(!seam && x>0 && Math.floor(fx)!==Math.floor(fxR[x-1])) seam=true;
+          var L=lightAt(fx,fy), fg=fogAt(dRow);
+          if(seam){ ch=shadeAt(dRow, y>e?2:4); br=fg*0.9+L; }
           if(y<s){
-            /* a run of dim panels overhead, every four units. They are the only light
+            /* a run of dim panels overhead, every few units. They are the only light
                source in here, and they explain the pools of it on the floor. */
-            var cy=fyR[x];
-            if(Math.abs(fxR[x]-MID)<0.55 && (cy-Math.floor(cy/4)*4)<0.7)
-              ch=LIGHT[Math.min(LIGHT.length-1, 4+((dRow/VIEW)*4|0))];
+            var g=P.lightGap, cy=fy-Math.floor(fy/g)*g;
+            if(Math.abs(fx-MID)<0.38 && cy<0.5){ ch=LIGHT[Math.min(LIGHT.length-1, 4+((dRow/VIEW)*4|0))]; br=0.35+fg*0.9*Math.max(0.2,P.lightPow); }
+          } else if(ch===" " && L>0.08){
+            /* lit floor shows its grain — stable in the world, not the screen */
+            var hsh=hash3((fx*3)|0,(fy*3)|0,5);
+            if(hsh < L*grain*1.6){ ch = hsh<L*grain*0.5 ? ":" : "."; br=(fg*0.5+L)*0.9; }
           }
+          if(ch!==" "){ bleedAt(fx,fy); if(bl_w>0){ tw=bl_w*0.85; tr=bl_d.tint[0]; tg=bl_d.tint[1]; tb=bl_d.tint[2]; } }
         }
       } else {
         var d=cD[x], cell=cCell[x], v=(y-s)/Math.max(1,e-s), bias=cSide[x]===1?1:0;
         var tx=(cU[x]*TW)|0, ty=(v*TH)|0;
         if(tx<0)tx=0; if(tx>=TW)tx=TW-1; if(ty<0)ty=0; if(ty>=TH)ty=TH-1;
+        var hx=cHx[x], hy=cHy[x], Lw=lightAt(hx,hy)*0.8, fgw=fogAt(d);
+        br=0.12+fgw*0.78+Lw;
         if(cell==="#"){
           /* joints every world unit. Vertical, so they converge with the corridor
              instead of banding across it the way horizontal courses do. */
           ch = (tx<1||tx>TW-2) ? shadeAt(d,bias) : shadeAt(d,bias+1);
+          bleedAt(hx,hy); if(bl_w>0){ tw=bl_w; tr=bl_d.tint[0]; tg=bl_d.tint[1]; tb=bl_d.tint[2]; }
         } else {
-          var tex=texFor(cRow[x]), k=tex.cl[ty][tx];
-          ch=shadeAt(d,bias+3);                                       // panel, recessed from the wall
-          if(k===1 && d<15) ch=tex.ch[ty][tx];                        // jambs, lintel, seams, handle
-          else if(k===2 && d<7.5) ch=tex.ch[ty][tx];                  // the number — only up close
-          if(cell==="D" && v>0.945) ch=LIGHT[Math.min(LIGHT.length-1, 1+((d/VIEW)*9|0))];
-          if(cell==="X" && hash3(tx,ty,(t*1.4)|0)>0.986) ch="·";      // the unmarked one, faintly astir
+          var dr=doorFor(cRow[x]), tex=dr.tex, k=tex.cl[ty][tx];
+          ch=shadeAt(d,bias+4); br*=0.55;                             // panel, recessed from the wall, dimmer than its frame
+          if(k===1 && d<15){ ch=tex.ch[ty][tx]; br/=0.55; }            // structure
+          else if(k===2 && d<7.5){ ch=tex.ch[ty][tx]; br/=0.55; }      // detail — only up close
+          if(alive && dr.anim && d<12){ var ov=dr.anim(tx,ty,t,tex); if(ov!==null){ ch=ov; if(k===0) br=0.12+fgw*0.78+Lw; } }
+          if(cell==="D" && v>0.945){ ch=LIGHT[Math.min(LIGHT.length-1, 1+((d/VIEW)*9|0))]; br=0.5+fgw; }   // light under the door
+          tw=Math.min(1, 0.55+0.45*fgw); tr=dr.tint[0]; tg=dr.tint[1]; tb=dr.tint[2];
+          if(k>0) br+=0.12;
         }
       }
-      if(ch===" " && noise(x,y,tf)>0.9977) ch="·";                    // dust
-      r+=ch;
+      if(ch===" " && dustT>0 && noise(x,y,tf)>1-dustT){ ch="·"; br=0.35; }                    // dust
+      var o=(y*W+x)*4;
+      if(ch===" "){ data[o]=0; data[o+1]=0; data[o+2]=0; data[o+3]=255; continue; }
+      var r=bx,gg=by,b=bz;
+      if(tw>0){ r+= (tr-r)*tw; gg+=(tg-gg)*tw; b+=(tb-b)*tw; }
+      if(sat!==1){ var lum=r*.3+gg*.59+b*.11; r=lum+(r-lum)*sat; gg=lum+(gg-lum)*sat; b=lum+(b-lum)*sat; }
+      var m=br*br0; if(m>1.6) m=1.6;
+      r*=m; gg*=m; b*=m;
+      data[o]=r>255?255:r; data[o+1]=gg>255?255:gg; data[o+2]=b>255?255:b; data[o+3]=255;
+      var idx=CIDX[ch]; if(idx===undefined) idx=CIDX["#"];
+      ctx.drawImage(atlas, idx*GW, 0, GW, GH, x*GW, y*GH, GW, GH);
     }
-    out+=r+"\n";
   }
-  screen.textContent=out;
+  /* colour: white glyphs × the per-cell colour map, one draw */
+  col.getContext("2d").putImageData(colData,0,0);
+  ctx.globalCompositeOperation="multiply"; ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(col,0,0,W,H,0,0,cv.width,cv.height);
+  ctx.globalCompositeOperation="source-over";
+  /* the glass: a soft copy of the frame, screened back over itself */
+  if(P.glow>0){ gctx.clearRect(0,0,gl.width,gl.height); gctx.drawImage(cv,0,0,gl.width,gl.height);
+    gl.style.opacity=Math.min(1,P.glow); gl.style.filter="blur("+P.blur+"px)"; gl.style.display="block"; }
+  else gl.style.display="none";
+  scan.style.opacity=P.scan;
 }
 
 /* ---------- which door you're alongside ---------- */
-/* Doors alternate walls every two cells, so at most one is ever within reach. */
-var REACH=1.35, active=null, activeKey="";
+var REACH=1.75, active=null, activeKey="";
 function findActive(){
   if(cam.y > MH-3.0) return END;
   var best=null, bd=1e9;
   for(var i=0;i<DOORS.length;i++){
-    var dy=Math.abs(cam.y-(DOORS[i].y+0.5));
+    var dy=Math.abs(cam.y-DOORS[i].cy);
     if(dy<REACH && dy<bd){ bd=dy; best=DOORS[i]; }
   }
   return best;
@@ -296,7 +544,8 @@ function findActive(){
 function keyOf(d){ return d ? (d.end?"end":String(d.y)) : ""; }
 function paintRead(d){
   read.classList.toggle("shut", !!(d&&d.dark));
-  if(!d) return;
+  if(!d){ document.documentElement.style.setProperty("--tint","230,201,138"); return; }
+  document.documentElement.style.setProperty("--tint", d.tint.join(","));
   if(d.end){ rNum.textContent="⁂"; rMark.textContent="unmarked"; rOpen.textContent="open →"; }
   else if(d.dark){ rNum.textContent="——"; rMark.textContent="unlit"; }
   else { rNum.textContent=d.n; rMark.textContent=d.mark; rOpen.textContent = d.out ? "open ↗" : "open →"; }
@@ -308,10 +557,7 @@ function remember(){ try{ sessionStorage.setItem("corridor",
   JSON.stringify({x:cam.x,y:cam.y,a:heading()})); }catch(e){} }
 function openDoor(){
   var d=active; if(!d||opening||d.dark) return;
-  audio(); creak();
-  /* the one door that leaves the building opens in its own tab — there is no way
-     to hang a way-back on someone else's site, so the corridor stays behind you.
-     A real link, not window.open: with noopener that returns null even on success. */
+  audio(); creak(); if(d.hz) setTimeout(function(){ tone(d.hz/2,.5,d.wave,.08); },140);
   if(d.out){
     remember();
     var a=document.createElement("a");
@@ -320,30 +566,72 @@ function openDoor(){
     return;
   }
   var url=d.url;
-  if(d.end){                                   /* Door 4 — draws a card */
+  if(d.end){
     var pool=DOORS.filter(function(k){ return k.url && !k.out; });
     url = pool[(Math.random()*pool.length)|0].url;
   }
   opening=true; remember(); fade.style.opacity=1;
+  if(document.pointerLockElement) document.exitPointerLock();
   setTimeout(function(){ location.href=url; },520);
 }
 rOpen.addEventListener("click",function(e){ e.preventDefault(); openDoor(); });
 
-/* ---------- input ---------- */
+/* ---------- input: keys ---------- */
 var keys={}, walking=false;
 addEventListener("keydown",function(e){
   var k=e.key.toLowerCase();
+  if(k==="tab"){ e.preventDefault(); togglePanel(); return; }
+  if(setEl.classList.contains("open") && k==="escape"){ togglePanel(false); return; }
+  if(e.target && (e.target.tagName==="INPUT"||e.target.tagName==="SELECT")) return;
   if(!walking){ if(k==="enter"||k===" "||k==="w"||k==="arrowup"){ e.preventDefault(); begin(); } return; }
   if(k==="enter"||k==="o"){ e.preventDefault(); openDoor(); return; }
+  if(k==="l"){ toggleLock(); return; }
   keys[k]=true; if(k.indexOf("arrow")===0||k===" ") e.preventDefault();
 });
 addEventListener("keyup",function(e){ keys[e.key.toLowerCase()]=false; });
 [].forEach.call(document.querySelectorAll(".btn"),function(b){
   var k=b.dataset.k;
-  var on=function(e){ e.preventDefault(); audio(); keys[k]=true; b.classList.add("on"); };
+  var on=function(e){ e.preventDefault(); e.stopPropagation(); audio(); keys[k]=true; b.classList.add("on"); };
   var off=function(e){ e.preventDefault(); keys[k]=false; b.classList.remove("on"); };
   b.addEventListener("pointerdown",on); b.addEventListener("pointerup",off);
   b.addEventListener("pointerleave",off); b.addEventListener("pointercancel",off);
+});
+
+/* ---------- input: the mouse, like a game ----------
+   drag to look (mouse or finger); double-click or L to lock the pointer; wheel walks;
+   a plain click alongside a door opens it. */
+var drag=null, SENS=0.0032;
+function look(dx,dy){
+  setDir(heading()+dx*SENS*P.sens);
+  if(P.pitch){ pitch += (P.invert?1:-1)*dy*SENS*P.sens*0.9; if(pitch>0.7) pitch=0.7; if(pitch<-0.7) pitch=-0.7; }
+}
+stage.addEventListener("pointerdown",function(e){
+  if(!walking) return; if(e.button!==undefined&&e.button!==0) return;
+  drag={id:e.pointerId, x:e.clientX, y:e.clientY, moved:0};
+  try{ stage.setPointerCapture(e.pointerId); }catch(err){}
+});
+stage.addEventListener("pointermove",function(e){
+  if(document.pointerLockElement===stage){ look(e.movementX||0, e.movementY||0); return; }
+  if(!drag || e.pointerId!==drag.id) return;
+  var dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag.x=e.clientX; drag.y=e.clientY; drag.moved+=Math.abs(dx)+Math.abs(dy);
+  var mul = e.pointerType==="touch" ? 1.6 : 1;
+  look(dx*mul, dy*mul);
+});
+function endDrag(e){
+  if(!drag || e.pointerId!==drag.id) return;
+  if(drag.moved<6 && active && walking && e.type==="pointerup"){ openDoor(); }
+  drag=null;
+}
+stage.addEventListener("pointerup",endDrag); stage.addEventListener("pointercancel",endDrag);
+stage.addEventListener("dblclick",function(e){ e.preventDefault(); if(walking && e.pointerType!=="touch") toggleLock(); });
+stage.addEventListener("wheel",function(e){ if(!walking) return; e.preventDefault();
+  var mv=Math.max(-0.6,Math.min(0.6,-e.deltaY*0.004)); step(dirX*mv, dirY*mv); },{passive:false});
+function toggleLock(){
+  if(document.pointerLockElement===stage){ document.exitPointerLock(); }
+  else { try{ var p=stage.requestPointerLock({unadjustedMovement:true}); if(p&&p.catch) p.catch(function(){ stage.requestPointerLock(); }); }catch(err){ stage.requestPointerLock(); } }
+}
+document.addEventListener("pointerlockchange",function(){
+  var on=document.pointerLockElement===stage; stage.classList.toggle("locked",on); cross.classList.toggle("on",on);
 });
 
 function step(fx,fy){
@@ -352,20 +640,61 @@ function step(fx,fy){
   if(!solid(cam.x, ny+Math.sign(fy)*0.22)) cam.y=ny;
 }
 function turn(a){ setDir(heading()+a); }
-/* per 60th of a second, not per frame — otherwise a 120Hz screen walks the
-   corridor at double speed */
-var MOVE=0.105, TURN=0.045, lastTs=0;
+var lastTs=0;
+
+/* =====================================================================
+   THE INSTRUMENT — sliders built from SPEC, persisted, every one live.
+   ===================================================================== */
+var rows=document.getElementById("rows"), presetsEl=document.getElementById("presets"), inputs={};
+function fmt(v,st){ return st>=1 ? String(Math.round(v)) : (st>=0.01 ? Number(v).toFixed(2) : Number(v).toFixed(4)); }
+function apply(k,v,fromUI){
+  P[k]=v; if(inputs[k]&&!fromUI){ inputs[k].el.value=v; }
+  if(inputs[k]&&inputs[k].val) inputs[k].val.textContent=fmt(v,inputs[k].st);
+  if(inputs[k]&&inputs[k].struct) sizeGrid();
+  if(k==="fps") fpsEl.classList.toggle("on",!!v);
+  save();
+}
+var saveT=null;
+function save(){ clearTimeout(saveT); saveT=setTimeout(function(){ try{ localStorage.setItem("corridorP",JSON.stringify(P)); }catch(e){} },80); }
+SPEC.forEach(function(sp){
+  if(sp.h){ var h=document.createElement("h2"); h.textContent=sp.h; rows.appendChild(h); return; }
+  var row=document.createElement("div"); row.className="row";
+  var lab=document.createElement("label"); lab.innerHTML=sp.l+" <b></b>"; row.appendChild(lab);
+  var el;
+  if(sp.opts){ el=document.createElement("select"); sp.opts.forEach(function(o,i){ var op=document.createElement("option"); op.value=i; op.textContent=o; el.appendChild(op); });
+    el.value=P[sp.k]|0; el.addEventListener("change",function(){ apply(sp.k, el.value|0, true); }); lab.querySelector("b").remove(); }
+  else { el=document.createElement("input"); el.type="range"; el.min=sp.mn; el.max=sp.mx; el.step=sp.st; el.value=P[sp.k];
+    el.addEventListener("input",function(){ apply(sp.k, parseFloat(el.value), true); }); }
+  row.appendChild(el); rows.appendChild(row);
+  inputs[sp.k]={el:el, val:lab.querySelector("b"), st:sp.st, struct:sp.struct};
+  if(inputs[sp.k].val) inputs[sp.k].val.textContent=fmt(P[sp.k],sp.st);
+});
+Object.keys(PRESETS).forEach(function(name){
+  var c=document.createElement("span"); c.className="chip"; c.textContent=name;
+  c.addEventListener("click",function(){ var pr=PRESETS[name]; for(var k in DEF){ apply(k, (k in pr)?pr[k]:DEF[k]); } });
+  presetsEl.appendChild(c);
+});
+document.getElementById("pReset").addEventListener("click",function(){ for(var k in DEF) apply(k,DEF[k]); });
+document.getElementById("pCopy").addEventListener("click",function(){ var s=JSON.stringify(P); try{ navigator.clipboard.writeText(s); }catch(e){} this.textContent="copied"; var me=this; setTimeout(function(){ me.textContent="copy json"; },1200); });
+document.getElementById("pClose").addEventListener("click",function(){ togglePanel(false); });
+function togglePanel(force){ var on = force===undefined ? !setEl.classList.contains("open") : force; setEl.classList.toggle("open",on); if(on && document.pointerLockElement) document.exitPointerLock(); }
+gear.addEventListener("click",function(){ togglePanel(); });
+setEl.addEventListener("pointerdown",function(e){ e.stopPropagation(); });
+fpsEl.classList.toggle("on",!!P.fps);
 
 /* ---------- the arrival ---------- */
 function begin(){
   if(walking) return;
   walking=true; audio();
-  gate.classList.add("gone"); sig.classList.add("gone"); screen.classList.add("lit");
+  gate.classList.add("gone"); sig.classList.add("gone"); stage.classList.add("lit"); gear.classList.add("on");
   [].forEach.call(pads,function(p){ p.classList.remove("hid"); });
-  setTimeout(function(){ gate.style.display="none"; },1200);
+  setTimeout(function(){ gate.style.display="none"; hint.classList.add("on"); },1200);
+  setTimeout(function(){ hint.classList.remove("on"); },9000);
 }
 document.getElementById("enter").addEventListener("click",function(e){ e.preventDefault(); begin(); });
 gate.addEventListener("click",function(){ begin(); });
+
+sizeGrid(); recomputeProj(); setDir(Math.PI/2);
 
 /* came back through a door? stand where you left. */
 (function restore(){
@@ -373,36 +702,50 @@ gate.addEventListener("click",function(){ begin(); });
   if(!raw) return;
   try{ var p=JSON.parse(raw); cam.x=p.x; cam.y=p.y; setDir(p.a); }catch(e){ return; }
   gate.style.display="none"; sig.classList.add("gone"); walking=true;
-  screen.classList.add("lit");
+  stage.classList.add("lit"); gear.classList.add("on");
   [].forEach.call(pads,function(pd){ pd.classList.remove("hid"); });
 })();
 
 /* ---------- loop ---------- */
-function frame(now){
-  now = now||0;
-  var dt = lastTs ? Math.min(3, (now-lastTs)/16.667) : 1; lastTs = now;
+var fpsAcc=0, fpsN=0, fpsLast=0;
+function tickFrame(now,dt){
   if(walking && !opening){
-    var mv=MOVE*dt, tn=TURN*dt;
+    var mv=P.move*dt, tn=P.turn*dt;
     if(keys["w"]||keys["arrowup"])   step(dirX*mv, dirY*mv);
     if(keys["s"]||keys["arrowdown"]) step(-dirX*mv,-dirY*mv);
     if(keys["a"]||keys["arrowleft"]) turn(-tn);
     if(keys["d"]||keys["arrowright"])turn(tn);
     if(keys["q"]) step(dirY*mv,-dirX*mv);
     if(keys["e"]) step(-dirY*mv, dirX*mv);
+    if(!P.pitch && pitch!==0) pitch*=0.9;
   }
   var d=findActive(), k=keyOf(d);
-  if(k!==activeKey){ activeKey=k; active=d; if(d){ paintRead(d); if(walking) tick(); } }
+  if(k!==activeKey){ activeKey=k; active=d; paintRead(d); if(d&&walking){ tick(); if(d.hz) setTimeout(function(){ tone(d.hz,.09,d.wave,.03); },60); } }
   if(d && walking){
-    var dy = d.end ? Math.max(0,(MH-1.4)-cam.y)*0.6 : Math.abs(cam.y-(d.y+0.5));
+    var dy = d.end ? Math.max(0,(MH-1.4)-cam.y)*0.6 : Math.abs(cam.y-d.cy);
     var prox = Math.max(0.3, Math.min(1, 1-(dy/REACH)*0.85));
     read.style.opacity = prox; read.style.pointerEvents = "auto";
   } else {
     read.style.opacity = 0; read.style.pointerEvents = "none";
   }
-  cast(); render(now||0);
+  render(now);
+}
+function frame(now){
+  now = now||0;
+  var dt = lastTs ? Math.min(3, (now-lastTs)/16.667) : 1; lastTs = now;
+  tickFrame(now,dt);
+  if(P.fps){ fpsAcc+=now-fpsLast; fpsN++; if(fpsAcc>500){ fpsEl.textContent=Math.round(1000*fpsN/fpsAcc)+" fps · "+W+"×"+H+" · "+(W*H)+" cells"; fpsAcc=0; fpsN=0; } }
+  fpsLast=now;
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
+/* keep breathing on a second monitor */
+setInterval(function(){ if(document.hidden){ var n=performance.now(); tickFrame(n,1); } },250);
+
+/* harness — drive it without watching it */
+window.__x={P:P, cam:cam, DOORS:DOORS, step:function(n,dt){ for(var i=0;i<(n||1);i++) tickFrame(performance.now(),dt||1); },
+  walk:function(n){ for(var i=0;i<n;i++) step(dirX*P.move, dirY*P.move); }, begin:begin, look:look, open:openDoor, setDir:setDir,
+  goto:function(y){ cam.x=3.5; cam.y=y; }, size:function(){ return {W:W,H:H,FS:FS}; }, toggle:togglePanel};
 })();
 </script>
 </body>
